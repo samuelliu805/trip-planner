@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 218,
+  "publicFunctionCount": 219,
   "catalog": [
     {
       "schema": "public",
@@ -1472,6 +1472,16 @@
       "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "get_public_city_photo_sources_v1(uuid)",
+      "arguments": [{ "name": "shared_token", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_anonymous",
+      "authorization": "public_token_snapshot"
     },
     {
       "schema": "public",

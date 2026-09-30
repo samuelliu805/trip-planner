@@ -29,6 +29,8 @@ export function PublicPhotoProvider({
   const fingerprint = JSON.stringify(
     itinerary.settings.showPlacePhotos === true && process.env.NEXT_PUBLIC_APP_REGION !== "cn"
       ? itinerary.days.flatMap((day) => {
+          if (day.photoSource)
+            return [{ itemRef: day.photoSource.ref, placeId: day.photoSource.googlePlaceId }];
           const item = publicGoogleCoverItem(day);
           return item?.place?.googlePlaceId &&
             item.media?.some((media) => media.source === "google_place")

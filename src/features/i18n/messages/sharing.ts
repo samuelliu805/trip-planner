@@ -1,4 +1,17 @@
 export const sharingZhCN: Record<string, string> = {
+  "A journey, beautifully kept": "珍藏这段旅程",
+  "The little things, all in one place": "旅途点滴，珍藏在这里",
+  "The chapters ahead": "接下来的篇章",
+  "Shared days": "已分享日期",
+  "Shared pages": "已分享篇章",
+  Contents: "目录",
+  Chapter: "篇章",
+  "{count} plans": "{count} 个事项",
+  "{count} transfers": "{count} 项交通",
+  "Turn to this day": "翻到这一天",
+  "Journey transport": "全程交通",
+  "Only {shared} of {planned} planned days are shared.":
+    "当前仅分享 {shared} 天的内容。规划范围共 {planned} 天，其余日期未公开安排。",
   "THE DAY": "当天安排",
   Chapters: "章节目录",
   "{count} planned days": "{count} 个规划日",

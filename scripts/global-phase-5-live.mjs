@@ -700,6 +700,16 @@ async function run() {
       "anonymous immutable snapshot",
     );
     assertPublicProjection(projection, intendedTitle, privateTitle, userA.id);
+    assert.deepEqual(
+      ok(
+        await anonymous.rpc("get_public_city_photo_sources_v1", {
+          shared_token: share.publicToken,
+        }),
+        "anonymous city-photo scope",
+      ),
+      [],
+      "A published page without saved cities exposes no city sources.",
+    );
     if (process.env.PHASE5_REQUIRE_BROWSER_SMOKE === "1") {
       const recoveryPassword = `${randomBytes(18).toString("base64url")}aA1!`;
       const recoveryLink = ok(

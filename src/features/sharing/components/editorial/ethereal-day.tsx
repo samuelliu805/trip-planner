@@ -3,7 +3,6 @@
 import { editorialDaySections } from "../../editorial-presentation";
 import { DayHeading } from "./day-heading";
 import { DayPlans, DayTransport, OptionalNote } from "./day-plans";
-import { DayPhoto } from "./day-photo";
 import type { EditorialDayProps } from "./journal-day";
 
 export function EtherealDay({
@@ -21,17 +20,16 @@ export function EtherealDay({
     >
       <div className="ethereal-chapter-lead">
         <DayHeading day={day} />
-        {!exporting ? <DayPhoto day={day} /> : null}
         <OptionalNote text={day.notes} exporting={exporting} />
       </div>
       <div className="ethereal-chapter-flow">
-        <DayTransport items={transport} onSelect={onSelect} exporting={exporting} />
         <DayPlans
           items={plans}
           onSelect={onSelect}
           selectedItemRef={selectedItemRef}
           exporting={exporting}
         />
+        <DayTransport items={transport} onSelect={onSelect} exporting={exporting} />
       </div>
     </article>
   );

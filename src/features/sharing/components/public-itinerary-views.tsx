@@ -1,4 +1,6 @@
 import { ItineraryEdition } from "./editorial/itinerary-edition";
+import { OverviewEdition } from "./editorial/overview-edition";
+import { EditionNavigation } from "./editorial/edition-navigation";
 import { canonicalPublicViews } from "../schema";
 import type { PublicItinerary, PublicView } from "../types";
 import { PublicOverview } from "./public-overview";
@@ -62,23 +64,30 @@ export function PublicItineraryViewPanel({
   view: PublicView;
 }) {
   const viewProps = { itinerary, onSelectDay, onSelectItem, selectedDayRef, selectedItemRef };
+  const editorial = templateId === "journal" || templateId === "ethereal";
   return (
     <section
       aria-labelledby={`public-${option}-tab`}
-      className="h-full min-h-0 min-w-0"
+      className={`h-full min-h-0 min-w-0 ${editorial && option === "timeline" ? "edition-timeline-panel" : ""}`}
       hidden={view !== option}
       id={`public-${option}-panel`}
       role="tabpanel"
     >
+      {editorial && option === "timeline" ? (
+        <EditionNavigation
+          days={itinerary.days}
+          onSelectDay={onSelectDay}
+          selectedDayRef={selectedDayRef}
+          variant="dates"
+        />
+      ) : null}
       <div
         className={`public-view-scroll h-full min-w-0 ${option === "table" ? "overflow-hidden" : "overflow-y-auto"}`}
       >
-        {option !== "table" && (templateId === "journal" || templateId === "ethereal") ? (
-          <ItineraryEdition
-            {...viewProps}
-            templateId={templateId}
-            overview={option === "overview"}
-          />
+        {option === "overview" && editorial ? (
+          <OverviewEdition {...viewProps} templateId={templateId} />
+        ) : option === "timeline" && editorial ? (
+          <ItineraryEdition {...viewProps} templateId={templateId} />
         ) : option === "overview" ? (
           <PublicOverview {...viewProps} />
         ) : option === "table" ? (

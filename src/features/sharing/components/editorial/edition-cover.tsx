@@ -1,0 +1,95 @@
+"use client";
+
+import { Route } from "lucide-react";
+import { useI18n } from "@/features/i18n/i18n-provider";
+import { meaningfulText } from "../../editorial-presentation";
+import type { PublicItinerary } from "../../types";
+import { DayPhoto } from "./day-photo";
+import { EditionNavigation } from "./edition-navigation";
+import { publicDateSummary } from "../public-trip-header";
+
+export function EditionCover({
+  itinerary,
+  templateId,
+  onSelectDay,
+  timeline = false,
+  exporting = false,
+}: {
+  itinerary: PublicItinerary;
+  templateId: "ethereal" | "journal";
+  onSelectDay: (ref: string) => void;
+  timeline?: boolean;
+  exporting?: boolean;
+}) {
+  const { t, locale } = useI18n();
+  const count = new Set(itinerary.days.map((day) => day.dayNumber)).size;
+  const description = itinerary.settings.showNotes
+    ? meaningfulText(itinerary.metadata.description)
+    : undefined;
+  const dates = publicDateSummary(itinerary, locale);
+  const photo = !exporting && itinerary.days[0] ? <DayPhoto day={itinerary.days[0]} /> : null;
+  const title = (
+    <div className="edition-cover-copy">
+      <span className="edition-kicker">
+        {t(
+          templateId === "journal"
+            ? "The little things, all in one place"
+            : "A journey, beautifully kept",
+        )}
+      </span>
+      <h2>{itinerary.trip.title}</h2>
+      {description ? <p className="edition-cover-description">{description}</p> : null}
+      <p className="edition-cover-dates">
+        {dates || t("Date TBD")} · {itinerary.variant.name}
+      </p>
+      {timeline && templateId === "ethereal" ? (
+        <div className="edition-cover-signature">
+          <span>{t("There we go")}</span>
+          <Route aria-hidden="true" />
+        </div>
+      ) : null}
+    </div>
+  );
+  if (templateId === "journal")
+    return (
+      <header className={`edition-front edition-journal-front ${timeline ? "is-timeline" : ""}`}>
+        {title}
+        {!timeline && !exporting ? (
+          <div className="edition-journal-front-spread">
+            {photo}
+            <aside className="edition-contents-paper">
+              <span className="edition-paper-tab">{t("Contents")}</span>
+              <EditionNavigation days={itinerary.days} onSelectDay={onSelectDay} />
+              <div
+                className="edition-journal-stamp"
+                aria-label={t("{count} shared days", { count })}
+              >
+                <strong>{String(count).padStart(2, "0")}</strong>
+                <span>{t("Shared pages")}</span>
+              </div>
+            </aside>
+          </div>
+        ) : null}
+      </header>
+    );
+  return (
+    <header className={`edition-front edition-ethereal-cover ${timeline ? "is-timeline" : ""}`}>
+      {timeline ? photo : null}
+      {title}
+      {!timeline ? (
+        <div className="edition-cover-visual">
+          {photo}
+          <div className="edition-journey-numeral" aria-hidden="true">
+            {String(count).padStart(2, "0")}
+            <span>{t("Shared days")}</span>
+          </div>
+        </div>
+      ) : (
+        <span className="edition-cover-count">
+          {String(count).padStart(2, "0")}
+          <small>{t("Shared days")}</small>
+        </span>
+      )}
+    </header>
+  );
+}

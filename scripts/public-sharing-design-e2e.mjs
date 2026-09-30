@@ -24,6 +24,7 @@ try {
   const errors = [];
   page.on("pageerror", (e) => errors.push({ message: e.message, stack: e.stack, url: page.url() }));
   const requests = { resolve: 0, media: 0, external: 0 };
+  const resolvedRefs = [];
   page.on("request", (r) => {
     if (/googleapis|generativelanguage|openai.com|anthropic/.test(r.url())) requests.external++;
   });
@@ -34,6 +35,7 @@ try {
     if (url.searchParams.has("resolve")) {
       requests.resolve++;
       const itemRef = url.pathname.split("/").at(-1);
+      resolvedRefs.push(itemRef);
       await route.fulfill({
         json: {
           id: `google-place:${itemRef}`,
@@ -82,57 +84,7 @@ try {
         await page.locator(".itinerary-edition").first().waitFor();
         await page.evaluate(() => document.fonts.ready);
         if (photos) {
-          await page
-            .locator("#public-overview-panel .edition-day")
-            .first()
-            .scrollIntoViewIfNeeded();
-          try {
-            await page.locator("#public-overview-panel .edition-photo").first().waitFor();
-          } catch (error) {
-            console.error(
-              JSON.stringify({
-                template,
-                photos,
-                width,
-                requests,
-                errors,
-                hydration: await page.evaluate(() => {
-                  const element = document.querySelector(".public-itinerary-shell");
-                  let fiber =
-                    element?.[Object.keys(element).find((key) => key.startsWith("__reactFiber$"))];
-                  const providers = [];
-                  while (fiber) {
-                    const name = fiber.type?.name ?? fiber.type?.displayName;
-                    if (name?.includes("PhotoProvider"))
-                      providers.push({ name, memo: fiber.memoizedState?.memoizedState?.[1] });
-                    fiber = fiber.return;
-                  }
-                  return {
-                    providers,
-                    serializedCandidates:
-                      document.documentElement.innerHTML.includes("google-place:"),
-                    panelHidden: document.querySelector("#public-overview-panel")?.hidden,
-                  };
-                }),
-                state: await page
-                  .locator("#public-overview-panel .edition-day")
-                  .first()
-                  .evaluate((node) => ({
-                    html: node.outerHTML,
-                    rect: node.getBoundingClientRect().toJSON(),
-                    observer: node
-                      .querySelector(".edition-photo-observer")
-                      ?.getBoundingClientRect()
-                      .toJSON(),
-                    scroll: node.closest(".public-view-scroll")?.scrollTop,
-                  })),
-              }),
-            );
-            throw error;
-          }
-          await page
-            .locator("#public-overview-panel .public-view-scroll")
-            .evaluate((n) => (n.scrollTop = 0));
+          await page.locator("#public-overview-panel .edition-photo").first().waitFor();
         }
         for (const view of ["overview", "timeline"]) {
           await page.getByRole("tab", { name: view, exact: false }).click();
@@ -233,21 +185,127 @@ try {
         await page.locator("#public-overview-panel").waitFor({ state: "visible" });
         assert.equal(requests.resolve, before.resolve);
         assert.equal(requests.media, before.media);
-        if (template === "journal") {
-          const columns = await page
-            .locator("#public-overview-panel .journal-day-spread")
-            .first()
-            .evaluate((n) => getComputedStyle(n).gridTemplateColumns.split(" ").length);
-          assert.equal(columns, photos && width > 620 ? 2 : 1);
-        }
+        assert.equal(
+          await page.locator("#public-overview-panel .edition-plan-list").count(),
+          0,
+          "Overview presents compact chapters rather than the timeline's item list.",
+        );
+        assert.equal(
+          await page.locator("#public-overview-panel .edition-overview-day-card").count(),
+          fixture.days.length,
+        );
+        const columns = await page
+          .locator("#public-overview-panel .edition-overview-cards")
+          .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length);
+        assert.equal(columns, width <= 700 ? 1 : template === "journal" ? 2 : 3);
       }
       console.log(
         `PASS ${template} ${photos ? "photos" : "no photos"} responsive overview/timeline and media reuse`,
       );
     }
+  // Sticky chapter numbers remain contained, including two-digit Chinese chapters.
+  for (const template of ["journal", "ethereal"]) {
+    const fixture = structuredClone(parisPublicItinerary);
+    fixture.settings.templateId = template;
+    fixture.settings.showPlacePhotos = false;
+    fixture.settings.showMapRoutes = false;
+    fixture.days = fixture.days.slice(0, 2).map((day, index) => ({
+      ...day,
+      dayNumber: 9 + index,
+      title: index ? "广州市 · 返程与城市漫步" : "基督城 · 南岛旅程开始",
+    }));
+    app.setFixture(fixture);
+    for (const width of [390, 430, 820, 1440]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto(`${app.baseUrl}/share/${token}`);
+      await page.locator(".itinerary-edition").first().waitFor();
+      await page.locator("#public-overview-panel .edition-overview-open").nth(1).click();
+      await page.locator("#public-timeline-panel").waitFor({ state: "visible" });
+      await page.waitForFunction(
+        (ref) => document.activeElement?.getAttribute("data-public-day-ref") === ref,
+        fixture.days[1].ref,
+      );
+      const day = page.locator("#public-timeline-panel .edition-day").nth(1);
+      const bounds = await day.evaluate((node) => {
+        const heading = node.querySelector(".edition-day-heading").getBoundingClientRect();
+        const number = node.querySelector(".edition-day-number").getBoundingClientRect();
+        const scroller = node.closest(".public-view-scroll").getBoundingClientRect();
+        const markers = [...node.querySelectorAll(".edition-plan-order")].map((marker) => ({
+          width: marker.getBoundingClientRect().width,
+          height: marker.getBoundingClientRect().height,
+          radius: getComputedStyle(marker).borderRadius,
+        }));
+        return {
+          heading: heading.toJSON(),
+          number: number.toJSON(),
+          scroller: scroller.toJSON(),
+          markers,
+        };
+      });
+      if (template === "journal") {
+        assert.equal(bounds.number.width, 48);
+        assert.equal(bounds.number.height, 48);
+        assert.ok(
+          bounds.number.top >= bounds.heading.top && bounds.number.bottom <= bounds.heading.bottom,
+        );
+        assert.ok(
+          bounds.number.top >= bounds.scroller.top &&
+            bounds.number.bottom <= bounds.scroller.bottom,
+        );
+      } else {
+        assert.ok(bounds.markers.length > 0);
+        assert.ok(
+          bounds.markers.every(
+            (marker) => marker.width === 37 && marker.height === 37 && marker.radius === "50%",
+          ),
+        );
+      }
+    }
+  }
+  // Saved city photos take the first chapter; a repeat city uses its saved POI.
+  const cityFixture = structuredClone(parisPublicItinerary);
+  cityFixture.settings.templateId = "journal";
+  cityFixture.settings.showPlacePhotos = true;
+  cityFixture.settings.showMapRoutes = false;
+  cityFixture.days.forEach((day) =>
+    day.items.forEach((item) => {
+      if (item.type === "activity" && item.place)
+        item.place.googlePlaceId = `saved-poi-${day.dayNumber}`;
+    }),
+  );
+  cityFixture.cityPhotoSources = cityFixture.days.map((day) => ({
+    dayRef: day.ref,
+    ref: String(day.dayNumber).repeat(64),
+    name: day.city,
+    googlePlaceId: `saved-city-${day.city}`,
+  }));
+  app.setFixture(cityFixture);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const cityRequestStart = resolvedRefs.length;
+  await page.goto(`${app.baseUrl}/share/${token}`);
+  await page.locator("#public-overview-panel .edition-photo").first().waitFor();
+  assert.ok(resolvedRefs.slice(cityRequestStart).includes("1".repeat(64)));
+  assert.ok(
+    !resolvedRefs
+      .slice(cityRequestStart)
+      .includes(cityFixture.days[0].items.find((item) => item.type === "activity").ref),
+  );
+  await page.locator("#public-overview-panel .edition-overview-open").nth(1).click();
+  await page
+    .locator("#public-timeline-panel .edition-day")
+    .nth(1)
+    .locator(".edition-photo")
+    .waitFor();
+  assert.ok(
+    resolvedRefs
+      .slice(cityRequestStart)
+      .includes(cityFixture.days[1].items.find((item) => item.type === "activity").ref),
+  );
+  assert.ok(!resolvedRefs.slice(cityRequestStart).includes("2".repeat(64)));
+  await page.getByRole("tab", { name: "Overview", exact: true }).click();
   // Explicit chapter selection enters the same-page timeline and reaches the day.
   await page.getByRole("tab", { name: "Overview", exact: true }).click();
-  await page.locator("#public-overview-panel .edition-contents button").nth(2).click();
+  await page.locator("#public-overview-panel .edition-overview-open").nth(2).click();
   assert.equal(
     await page.getByRole("tab", { name: "Timeline", exact: true }).getAttribute("aria-selected"),
     "true",
@@ -285,22 +343,26 @@ try {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(`${app.baseUrl}/share/${token}`);
       await page.locator(".itinerary-edition").first().waitFor();
-      await page.locator("#public-overview-panel .edition-day").scrollIntoViewIfNeeded();
+      await page
+        .locator("#public-overview-panel .edition-overview-day-card")
+        .scrollIntoViewIfNeeded();
+      assert.equal(await page.locator("#public-overview-panel .edition-plan-list").count(), 0);
+      await page.getByRole("tab", { name: "Timeline", exact: true }).click();
       if (scenario === "blank" || scenario === "failed-photo")
-        assert.equal(await page.locator("#public-overview-panel .edition-note").count(), 0);
+        assert.equal(await page.locator("#public-timeline-panel .edition-note").count(), 0);
       if (scenario === "blank")
-        assert.equal(await page.locator("#public-overview-panel .edition-plan").count(), 0);
+        assert.equal(await page.locator("#public-timeline-panel .edition-plan").count(), 0);
       if (templateId === "journal")
         assert.equal(
           await page
-            .locator("#public-overview-panel .journal-day-spread")
+            .locator("#public-timeline-panel .journal-day-spread")
             .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length),
           1,
         );
       if (scenario === "long-text") {
-        await page.locator("#public-overview-panel .edition-note summary").click();
+        await page.locator("#public-timeline-panel .edition-note summary").click();
         assert.equal(
-          await page.locator("#public-overview-panel .edition-note p").textContent(),
+          await page.locator("#public-timeline-panel .edition-note p").textContent(),
           fixture.days[0].notes,
         );
       }

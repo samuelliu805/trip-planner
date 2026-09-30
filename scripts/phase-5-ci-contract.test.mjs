@@ -133,6 +133,9 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
     /verify-cloudbase-migration-plan\.mjs[\s\\]*\n[\s\S]{0,100}20260902075444/,
   );
   assert.match(workflow, /20260908103000 20260909011000 20260909034815/);
+  assert.match(workflow, /Apply only the reviewed city-photo migration to the approved dev target/);
+  assert.match(workflow, /--deployment 20260930104055/);
+  assert.match(workflow, /20260928061000 20260930104055/);
   assert.doesNotMatch(workflow, /tcb fn invoke|CLOUDBASE_CAM_SECRET_/);
   assert.equal(workflow.match(/--cloudbase-api-key "\$CLOUDBASE_API_KEY"/g)?.length, 1);
   assert.match(workflow, /PHASE5_AMAP_ALLOWED_HOSTNAME:/);

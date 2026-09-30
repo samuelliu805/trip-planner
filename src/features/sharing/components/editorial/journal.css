@@ -1,175 +1,145 @@
 .public-template-journal .itinerary-edition {
-  background-image: repeating-linear-gradient(
-    0deg,
-    transparent 0 31px,
-    rgb(116 111 82 / 4%) 31px 32px
-  );
-  font-family: var(--font-journal-sans), "PingFang SC", "Microsoft YaHei", sans-serif;
+  --edition-paper: #f5f1e5;
+  --edition-border: #d8cebb;
 }
-.public-template-journal .edition-front {
+.public-template-journal .itinerary-edition .edition-journal-book {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: 2.5rem;
-  align-items: center;
+  grid-template-columns: 182px minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
 }
-.public-template-journal .edition-cover {
-  position: relative;
-  padding: 1.5rem 0;
+.public-template-journal .itinerary-edition .edition-journal-book > .edition-front {
+  grid-column: 1/-1;
+  margin-bottom: 0;
 }
-.public-template-journal .edition-cover h2 {
-  font-family: var(--font-journal-hand), "Kaiti SC", "KaiTi", cursive;
-  font-weight: 600;
+.public-template-journal .itinerary-edition .edition-rail {
+  position: sticky;
+  top: 12px;
+  min-width: 0;
 }
-.public-template-journal .edition-cover::after {
-  display: block;
-  width: 4rem;
-  height: 3px;
-  margin-top: 1.5rem;
-  background: #be7259;
-  content: "";
-  transform: rotate(-3deg);
+.public-template-journal .itinerary-edition .edition-rail button {
+  gap: 12px;
+  min-height: 78px;
+  padding: 14px 12px;
+  margin-bottom: 10px;
+  border: 1px solid transparent;
+  border-radius: 3px;
 }
-.public-template-journal .edition-contents {
-  position: relative;
-  border: 1px solid #d9cfbc;
+.public-template-journal .itinerary-edition .edition-rail button[aria-current="date"] {
   background: #fffdf5;
-  padding: 1.5rem;
-  box-shadow: 4px 5px 0 #e9e2d2;
+  border-color: #d9cfbc;
+  box-shadow: 2px 3px 0 #d4c9b82c;
 }
-.public-template-journal .edition-contents::before {
-  position: absolute;
-  top: -8px;
-  left: 35%;
-  width: 65px;
-  height: 18px;
-  background: rgb(175 194 166 / 65%);
-  content: "";
-  transform: rotate(-4deg);
-  pointer-events: none;
+.public-template-journal .itinerary-edition .edition-rail strong {
+  font-size: 12px;
+  line-height: 1.5;
 }
-.public-template-journal .edition-contents button > span {
-  color: #be7259;
-  font-family: var(--font-journal-hand), cursive;
-  font-size: 1.25rem;
-}
-.public-template-journal .edition-contents button {
-  border-bottom-style: dashed;
-}
-.public-template-journal .edition-day-number {
-  position: relative;
-  color: #be7259;
-  font-family: var(--font-journal-hand), cursive;
-}
-.public-template-journal .edition-day-number::before {
-  position: absolute;
-  inset: -0.25rem;
-  border: 1px solid #be7259;
-  border-radius: 50%;
-  content: "";
-  transform: rotate(-12deg);
-  pointer-events: none;
-}
-.public-template-journal .edition-day-heading h3 {
-  font-family: var(--font-journal-hand), "Kaiti SC", "KaiTi", cursive;
-  font-weight: 600;
-}
-.public-template-journal .edition-day-heading {
+.public-template-journal .itinerary-edition .edition-day-heading {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: #faf7ee;
+  background: var(--edition-paper);
+  padding: 8px 0;
+  margin-bottom: 24px;
 }
-.public-template-journal .journal-day-spread {
+.public-template-journal .itinerary-edition .edition-day-number {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid #c8826b;
+  border-radius: 48% 52% 44% 53%;
+  color: #b36e55;
+  font: italic 26px/1 var(--edition-serif);
+  letter-spacing: -0.03em;
+}
+.public-template-journal .itinerary-edition .edition-day-number::before {
+  display: none;
+}
+.public-template-journal .itinerary-edition .edition-day-heading h3 {
+  font-style: italic;
+  font-size: 35px;
+  margin: 3px 0 8px;
+}
+.public-template-journal .itinerary-edition .edition-day-heading .edition-kicker {
+  display: none;
+}
+.public-template-journal .itinerary-edition .journal-day-spread {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  gap: 26px;
   align-items: start;
-  gap: 2rem;
 }
-.public-template-journal .journal-day-spread:has(.edition-photo-slot) {
+.public-template-journal .itinerary-edition .journal-day-spread:has(> .edition-photo-slot) {
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
 }
-.public-template-journal .edition-photo {
+.public-template-journal .itinerary-edition .edition-photo {
   position: relative;
   isolation: isolate;
-  border: 1px solid #d9cfbc;
   background: #fffdf9;
-  padding: 0.75rem 0.75rem 1rem;
-  box-shadow: 0 5px 14px rgb(72 57 30 / 8%);
+  border: 1px solid #d9cfbc;
+  padding: 12px 12px 0;
+  box-shadow: 2px 6px 16px #796a4c18;
 }
-.public-template-journal .edition-photo::before {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border: 1px solid #d9cfbc;
-  background: #fffdf9;
+.public-template-journal .itinerary-edition .edition-journal-front-spread .edition-photo::before {
   content: "";
-  transform: rotate(-2deg);
+  position: absolute;
+  top: -9px;
+  left: 38%;
+  width: 80px;
+  height: 20px;
+  background: #d6dfcfb3;
+  transform: rotate(-3deg);
   pointer-events: none;
 }
-.public-template-journal .edition-photo::after {
-  position: absolute;
-  top: -8px;
-  left: 40%;
-  width: 62px;
-  height: 17px;
-  background: rgb(175 194 166 / 60%);
-  content: "";
-  transform: rotate(5deg);
-  pointer-events: none;
+.public-template-journal .itinerary-edition .edition-plan-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
-.public-template-journal .journal-day-paper.has-plans {
+.public-template-journal .itinerary-edition .edition-plan {
   position: relative;
-  border: 1px solid #d9cfbc;
-  border-left: 3px double #d9cfbc;
-  background: #fffdf5;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 4px 5px 0 #e9e2d2;
+  border: 1px solid #ddd2bc;
+  background: #fffdf8;
+  padding: 18px 18px 16px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
 }
-.public-template-journal .journal-day-paper.has-plans::before {
-  position: absolute;
-  top: -0.5rem;
-  right: 1rem;
-  width: 2rem;
-  height: 0.75rem;
-  background: #bfcfb9;
-  content: "";
-  pointer-events: none;
+.public-template-journal .itinerary-edition .edition-plan:last-child:nth-child(odd) {
+  grid-column: 1/-1;
 }
-.public-template-journal .edition-plans > h4 {
-  color: #be7259;
-  border-bottom: 1px dashed #d9cfbc;
-  padding-bottom: 0.75rem;
+.public-template-journal .itinerary-edition .edition-plan::before {
+  display: none;
 }
-.public-template-journal .edition-plan {
-  border-bottom: 1px dashed #e0d8c8;
+.public-template-journal .itinerary-edition .edition-plan-order {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #d3dcc4;
+  border-radius: 50%;
+  color: #84916e;
+  font-size: 10px;
 }
-.public-template-journal .edition-plan:last-child {
-  border-bottom: 0;
+.public-template-journal .itinerary-edition .edition-plan-button strong {
+  font-size: 14px;
 }
-.public-template-journal .edition-plan-order {
-  color: #be7259;
-  font-family: var(--font-journal-hand), cursive;
-  font-size: 0.9375rem;
+.public-template-journal .itinerary-edition .edition-plan-category {
+  font-size: 10px;
 }
-@container public-content (max-width: 620px) {
-  .public-template-journal .journal-day-spread:has(.edition-photo-slot) {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.5rem;
-  }
-  .public-template-journal .journal-day-paper.has-plans {
-    padding: 1rem;
-  }
-  .public-template-journal .edition-cover {
-    padding: 1rem 0;
-  }
-  .public-template-journal .edition-cover h2 {
-    font-size: clamp(2.5rem, 10cqw, 3.5rem);
-  }
+.public-template-journal .itinerary-edition .edition-transport {
+  background: #e9eddf;
+  border-style: dashed;
 }
-.timeline-export-document.public-template-journal .journal-day-paper.has-plans {
-  padding: 1rem;
+.public-template-journal .edition-dates {
+  background: #fbf8ef;
 }
-.timeline-export-document.public-template-journal .edition-cover {
-  padding: 1rem 0;
+.public-template-journal .edition-dates button {
+  border-radius: 2px;
+}
+.public-template-journal .edition-dates button[aria-current="date"] {
+  border: 1px solid #e2bc89;
+  background: #efdab9;
+  color: #835b39;
 }

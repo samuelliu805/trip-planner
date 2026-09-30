@@ -81,9 +81,9 @@ export function DayPlans({
                     <Localized value={category} />
                   </span>
                   <strong>{item.type === "car_rental" ? t(title) : title}</strong>
-                  {schedule || place ? (
+                  {schedule || (place && place !== title) ? (
                     <span className="edition-plan-meta">
-                      {[schedule, place].filter(Boolean).join(" · ")}
+                      {[schedule, place !== title ? place : undefined].filter(Boolean).join(" · ")}
                     </span>
                   ) : null}
                 </button>

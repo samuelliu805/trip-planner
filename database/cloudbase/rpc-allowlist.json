@@ -107,6 +107,7 @@
     ["update_trip_status(uuid,text,bigint,uuid)", "member_guard"]
   ],
   "anonymous": [
+    ["get_public_city_photo_sources_v1(uuid)", "public_token_snapshot"],
     ["get_public_itinerary_v4(uuid)", "public_token_snapshot"],
     ["get_public_share_page_v3(uuid)", "public_token_snapshot"],
     ["public_share_image_manifest_v1(text)", "public_token_snapshot"],

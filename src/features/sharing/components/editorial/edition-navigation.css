@@ -1,0 +1,112 @@
+.edition-navigation {
+  min-width: 0;
+}
+.edition-navigation ol {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+.edition-navigation button {
+  display: flex;
+  min-height: 44px;
+  width: 100%;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  text-align: left;
+}
+.edition-navigation-number {
+  flex: none;
+  font:
+    italic 32px/1.15 Georgia,
+    "Songti SC",
+    serif;
+  color: #b8745b;
+}
+.edition-navigation-copy {
+  display: block;
+  min-width: 0;
+}
+.edition-navigation-copy strong {
+  display: block;
+  font-weight: 400;
+}
+.edition-navigation-copy time {
+  display: block;
+  margin-top: 8px;
+  color: #8a8473;
+  font-size: 11px;
+}
+.edition-navigation button > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-left: auto;
+}
+.edition-dates {
+  display: flex;
+  flex: none;
+  min-height: 64px;
+  align-items: center;
+  gap: 20px;
+  overflow: hidden;
+  border-bottom: 1px solid #d6d7cb;
+  background: #fffefa;
+  padding: 8px 30px;
+}
+.edition-dates > .edition-kicker {
+  flex: none;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.edition-dates ol {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.edition-dates li {
+  flex: none;
+}
+.edition-dates button {
+  width: auto;
+  padding: 10px 18px;
+  border-radius: 24px;
+  white-space: nowrap;
+  gap: 10px;
+}
+.edition-dates .edition-navigation-number,
+.edition-dates .edition-navigation-copy time {
+  margin: 0;
+  font:
+    12px var(--font-sans),
+    sans-serif;
+  color: #748170;
+}
+.edition-dates button[aria-current="date"] {
+  background: #304d41;
+  color: #fffefa;
+}
+.edition-dates button[aria-current="date"] :is(span, time) {
+  color: inherit;
+}
+.public-itinerary-shell:is(.public-template-ethereal, .public-template-journal)
+  .edition-dates
+  button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  box-shadow: none;
+  color: #748170;
+  font-weight: 400;
+}
+.public-itinerary-shell:is(.public-template-ethereal, .public-template-journal)
+  .edition-dates
+  button[aria-current="date"] {
+  background: #304d41;
+  color: #fffefa;
+}

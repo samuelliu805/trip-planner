@@ -506,8 +506,8 @@
     }
   ],
   "requests": {
-    "resolve": 19,
-    "media": 19,
+    "resolve": 21,
+    "media": 21,
     "external": 0
   },
   "errors": []

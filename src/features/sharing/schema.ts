@@ -167,6 +167,14 @@ const publicDaySchema = z
     notes: optionalPublicText(5000),
     ref: z.string().length(64),
     primaryLocality: z.string().min(1).max(300).optional(),
+    photoSource: z
+      .object({
+        ref: z.string().length(64),
+        googlePlaceId: z.string().trim().min(1).max(300),
+        name: z.string().min(1).max(300),
+      })
+      .strict()
+      .optional(),
     title: z.string().max(200).nullable().optional(),
   })
   .strict();

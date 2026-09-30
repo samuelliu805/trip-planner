@@ -10,7 +10,7 @@ import { tripPlannerBrandName, tripPlannerWordmark } from "@/features/landing/br
 import type { CompiledPublicTemplateV1 } from "../templates/schema";
 import type { PublicItinerary } from "../types";
 
-function publicDateSummary(itinerary: PublicItinerary, locale: "en" | "zh-CN") {
+export function publicDateSummary(itinerary: PublicItinerary, locale: "en" | "zh-CN") {
   if (itinerary.trip.startDate && itinerary.trip.endDate) {
     const start = parseISO(itinerary.trip.startDate);
     const end = parseISO(itinerary.trip.endDate);

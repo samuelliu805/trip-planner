@@ -80,3 +80,44 @@ test("oversized note continuations preserve Unicode, original references, order,
     day.items.map((item) => item.ref),
   );
 });
+
+test("city covers use only saved published city sources, then POIs for repeat visits", async () => {
+  const { withPublicCityPhotos } = await import("./public-city-photos.ts");
+  const itinerary = publicItinerarySchema.parse(structuredClone(parisPublicItinerary));
+  itinerary.settings.showPlacePhotos = true;
+  itinerary.days.forEach((day) =>
+    day.items.forEach((item) => {
+      if (item.type === "activity" && item.place)
+        item.place.googlePlaceId = `saved-poi-${day.dayNumber}`;
+    }),
+  );
+  const sources = itinerary.days.map((day) => ({
+    dayRef: day.ref,
+    ref: String(day.dayNumber).repeat(64),
+    googlePlaceId: `saved-city-${day.city}`,
+    name: day.city!,
+  }));
+  const selected = withPublicCityPhotos(itinerary, sources);
+  assert.equal(selected.days[0].photoSource?.googlePlaceId, "saved-city-Paris");
+  assert.equal(
+    selected.days[1].photoSource,
+    undefined,
+    "A repeated city uses its already saved POI.",
+  );
+  assert.equal(selected.days[2].photoSource?.googlePlaceId, "saved-city-Versailles");
+  assert.ok(
+    itinerary.days.every((day) => !day.photoSource),
+    "Selection never mutates the published snapshot.",
+  );
+  assert.ok(withPublicCityPhotos(itinerary, []).days.every((day) => !day.photoSource));
+  const withoutPoi = structuredClone(itinerary);
+  withoutPoi.days[1].items.forEach((item) => {
+    if (item.place) delete item.place.googlePlaceId;
+  });
+  assert.equal(
+    withPublicCityPhotos(withoutPoi, sources).days[1].photoSource?.googlePlaceId,
+    "saved-city-Paris",
+  );
+  itinerary.settings.showPlacePhotos = false;
+  assert.equal(withPublicCityPhotos(itinerary, sources), itinerary);
+});

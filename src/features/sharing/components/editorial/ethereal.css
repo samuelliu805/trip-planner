@@ -1,86 +1,120 @@
-.public-template-ethereal .edition-front {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: 2rem;
-  align-items: center;
-}
-.public-template-ethereal .edition-cover {
+.public-template-ethereal .itinerary-edition .edition-ethereal-cover {
+  position: relative;
   background: #304d41;
   color: #fffefa;
-  padding: clamp(1.5rem, 4cqw, 3.5rem);
 }
-.public-template-ethereal .edition-cover h2 {
-  font-family: var(--ethereal-serif);
-  font-weight: 400;
-}
-.public-template-ethereal .edition-contents {
-  padding: 1rem 0;
-}
-.public-template-ethereal .edition-contents button > span {
-  color: #a58b5d;
-  font-family: var(--ethereal-serif);
-  font-size: 1.5rem;
-}
-.public-template-ethereal .edition-day-number {
-  color: #a58b5d;
-  font-family: var(--ethereal-serif);
-}
-.public-template-ethereal .edition-day-heading h3 {
-  font-family: var(--ethereal-serif);
-  font-weight: 400;
-}
-.public-template-ethereal .ethereal-chapter {
+.public-template-ethereal .edition-overview .edition-ethereal-cover {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr);
+  align-items: center;
+  margin-bottom: 32px;
 }
-.public-template-ethereal .ethereal-chapter-lead,
-.public-template-ethereal .ethereal-chapter-flow {
-  min-width: 0;
+.public-template-ethereal .edition-overview .edition-ethereal-cover:not(:has(.edition-photo-slot)) {
+  grid-template-columns: minmax(0, 1fr) 240px;
+  min-height: 320px;
 }
-.public-template-ethereal .ethereal-chapter-lead {
-  position: relative;
+.public-template-ethereal .itinerary-edition .edition-cover-copy {
+  padding: 40px 42px;
 }
-.public-template-ethereal .edition-plans {
-  padding-top: 0.5rem;
+.public-template-ethereal .itinerary-edition .edition-cover-copy > .edition-kicker {
+  color: #d3d7b9;
+  font-size: 9px;
 }
-.public-template-ethereal .edition-plan {
-  position: relative;
-  border-left: 1px solid #bcc6ba;
-  padding-left: 1rem;
+.public-template-ethereal .itinerary-edition .edition-cover-dates,
+.public-template-ethereal .itinerary-edition .edition-cover-description {
+  color: #d8dfcf;
 }
-.public-template-ethereal .edition-plan::before {
+.public-template-ethereal .edition-editorial-spread {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: start;
+}
+.public-template-ethereal .itinerary-edition .edition-ethereal-cover.is-timeline {
+  position: sticky;
+  top: 0;
+}
+.public-template-ethereal .itinerary-edition .is-timeline .edition-cover-copy {
+  padding: 34px 32px 24px;
+}
+.public-template-ethereal .itinerary-edition .is-timeline .edition-cover-copy h2 {
+  font-size: clamp(38px, 4.4cqw, 61px);
+}
+.public-template-ethereal .itinerary-edition .is-timeline .edition-cover-copy > .edition-kicker {
+  padding-right: 74px;
+  line-height: 1.9;
+}
+.public-template-ethereal .itinerary-edition .edition-cover-count {
   position: absolute;
-  top: 1.3rem;
-  left: -3px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #667169;
+  right: 26px;
+  top: 34px;
+  color: #d8dbc1;
+  font: italic 40px/1 var(--edition-serif);
+  text-align: center;
+}
+.public-template-ethereal
+  .itinerary-edition
+  .is-timeline:has(.edition-photo-slot)
+  .edition-cover-count {
+  position: static;
+  display: block;
+  text-align: left;
+  padding: 0 32px 24px;
+}
+.public-template-ethereal .itinerary-edition .edition-cover-count small {
+  display: block;
+  margin-top: 6px;
+  font:
+    8px var(--font-sans),
+    sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.public-template-ethereal .itinerary-edition .edition-cover-signature {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #718672;
+  color: #e2e5d4;
+  font: italic 17px var(--edition-serif);
+}
+.public-template-ethereal .itinerary-edition .edition-cover-signature svg {
+  width: 22px;
+  height: 22px;
+}
+.public-template-ethereal .itinerary-edition .ethereal-chapter {
+  display: block;
+}
+.public-template-ethereal .itinerary-edition .edition-plan {
+  position: relative;
+}
+.public-template-ethereal .itinerary-edition .edition-plan:not(:last-child)::before {
+  position: absolute;
   content: "";
+  left: 18px;
+  top: 37px;
+  bottom: 0;
+  width: 1px;
+  background: #d1d8c6;
 }
-.public-template-ethereal .edition-plan-button strong {
-  font-family: var(--ethereal-serif);
-  font-size: 1.3125rem;
-  font-weight: 400;
+.public-template-ethereal .itinerary-edition .edition-plan-order {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 37px;
+  height: 37px;
+  border-radius: 50%;
+  background: #e8edde;
+  color: #6e796b;
+  font-size: 11px;
+  line-height: 1;
 }
-.public-template-ethereal .edition-transport {
-  margin: 0 0 1.25rem;
+.public-template-ethereal .itinerary-edition .edition-plan::after {
+  display: none;
 }
-.public-template-ethereal .itinerary-edition .edition-chapters {
-  gap: 3.5rem;
-}
-@container public-content (max-width: 620px) {
-  .public-template-ethereal .ethereal-chapter-flow {
-    margin-top: 1.75rem;
-  }
-  .public-template-ethereal .edition-cover h2 {
-    font-size: clamp(2.5rem, 10cqw, 3.5rem);
-  }
-}
-.timeline-export-document.public-template-ethereal .edition-cover {
-  padding: 2rem;
-}
-.timeline-export-document.public-template-ethereal .ethereal-chapter-flow {
-  margin-top: 1rem;
+.public-template-ethereal .itinerary-edition .edition-plan-button strong {
+  padding-top: 4px;
 }

@@ -77,8 +77,14 @@ export async function startPublicSharingDesignRuntime() {
       url.pathname.endsWith("get_public_share_page_v3") ||
       url.pathname.endsWith("get_public_itinerary_v4")
     )
-      return response.end(JSON.stringify(fixture));
+      return response.end(
+        JSON.stringify(
+          Object.fromEntries(Object.entries(fixture).filter(([key]) => key !== "cityPhotoSources")),
+        ),
+      );
     if (url.pathname.endsWith("public_share_page_image_v1")) return response.end("null");
+    if (url.pathname.endsWith("get_public_city_photo_sources_v1"))
+      return response.end(JSON.stringify(fixture.cityPhotoSources ?? []));
     if (url.pathname === "/auth/v1/user") return response.end(JSON.stringify(user));
     if (url.pathname === "/rest/v1/profiles")
       return response.end(

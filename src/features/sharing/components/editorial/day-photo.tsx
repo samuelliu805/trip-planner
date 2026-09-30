@@ -8,14 +8,14 @@ import { usePublicPlacePhoto } from "../public-photo-provider";
 export function DayPhoto({ day }: { day: PublicItineraryDay }) {
   const { t } = useI18n();
   const item = publicGoogleCoverItem(day);
-  const { observerRef, photo } = usePublicPlacePhoto(item?.ref);
+  const { observerRef, photo } = usePublicPlacePhoto(day.photoSource?.ref ?? item?.ref);
   return (
     <div ref={observerRef} className={photo ? "edition-photo-slot" : "edition-photo-observer"}>
       {photo ? (
         <figure className="edition-photo">
           {/* eslint-disable-next-line @next/next/no-img-element -- preserve provider pixels and natural aspect ratio. */}
           <img
-            alt={photo.media.alt ?? item?.title ?? t("Itinerary place")}
+            alt={photo.media.alt ?? day.photoSource?.name ?? item?.title ?? t("Itinerary place")}
             src={photo.displayUrl}
           />
           <figcaption>

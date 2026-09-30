@@ -9,6 +9,7 @@ import { PlatformOperationError } from "@/platform/contracts/errors";
 import { retryTransientRead } from "@/platform/transient-read";
 
 import { publicPlaceMediaSources } from "./public-media-data";
+import { publicCityPhotoSourcesSchema, withPublicCityPhotos } from "./public-city-photos";
 import { publicPlacePhotosConfigured } from "@/lib/providers/places/public-photo.server";
 
 import { ownerShareImageStateSchema, shareImageManifestSchema } from "./long-image/schema";
@@ -35,14 +36,22 @@ export async function getPublicItinerary(token: string): Promise<PublicItinerary
   const parsed = publicItinerarySchema.safeParse(data);
   if (!parsed.success) return null;
 
+  let itinerary = parsed.data;
+  if (publicPlacePhotosConfigured() && itinerary.settings.showPlacePhotos) {
+    const cities = await retryTransientRead(async () =>
+      database.rpc("get_public_city_photo_sources_v1", { shared_token: token }),
+    );
+    const sources = publicCityPhotoSourcesSchema.safeParse(cities.data);
+    itinerary = withPublicCityPhotos(itinerary, sources.success ? sources.data : []);
+  }
   const sourceRefs = new Set(
     publicPlacePhotosConfigured()
-      ? publicPlaceMediaSources(parsed.data).map(({ itemRef }) => itemRef)
+      ? publicPlaceMediaSources(itinerary).map(({ itemRef }) => itemRef)
       : [],
   );
   return {
-    ...parsed.data,
-    days: parsed.data.days.map((day) => ({
+    ...itinerary,
+    days: itinerary.days.map((day) => ({
       ...day,
       items: day.items.map((item) =>
         sourceRefs.has(item.ref)
