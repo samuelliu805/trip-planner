@@ -90,17 +90,21 @@ export function TripCoverPhoto({ tripId, source }: { tripId: string; source?: Tr
   return (
     <div
       ref={root}
-      className="trip-cover-photo pointer-events-none absolute right-6 top-16 w-[28%] max-w-40 min-w-0"
+      className={
+        photo
+          ? "trip-cover-photo pointer-events-none col-start-2 row-start-1 mt-10 w-28 min-w-0 sm:w-36"
+          : "trip-cover-photo-observer pointer-events-none absolute right-6 top-16 size-px"
+      }
     >
       {photo ? (
         <figure className="rounded-sm border bg-background p-1 shadow-sm">
           {/* eslint-disable-next-line @next/next/no-img-element -- retain natural provider pixels and aspect ratio. */}
           <img
-            className="block h-auto w-full object-contain"
+            className="mx-auto block h-auto max-h-40 w-auto max-w-full"
             alt={source.name}
             src={photo.displayUrl}
           />
-          <figcaption className="pointer-events-auto relative z-10 py-1 text-[9px] leading-relaxed text-muted-foreground">
+          <figcaption className="pointer-events-auto relative z-10 py-1 break-words text-[9px] leading-relaxed text-muted-foreground">
             {(photo.media.attributions ?? []).map((author, index) => (
               <span key={`${author.label}:${index}`}>
                 <T message="Photo by" />{" "}

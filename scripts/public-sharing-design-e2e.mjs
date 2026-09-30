@@ -51,6 +51,8 @@ try {
   });
   const svg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#b4c9c0"/><path d="M0 410L240 250 470 420 620 220 800 390V600H0" fill="#527368"/><circle cx="650" cy="140" r="60" fill="#eee5d4"/><text x="30" y="560" font-family="sans-serif" font-size="22" fill="white">Controlled place photo · test only</text></svg>';
+  let tripPhotoSvg = svg;
+  let tripPhotoAuthors = [{ label: "Test author", url: "https://example.invalid/author" }];
   await page.route("**/api/public-place-photo/**", async (route) => {
     const url = new URL(route.request().url());
     if (url.searchParams.has("resolve")) {
@@ -82,13 +84,13 @@ try {
           kind: "image",
           source: "google_place",
           url: `${url.pathname}?photo=places/saved-city-Paris/photos/mock&signature=${"a".repeat(64)}`,
-          attributions: [{ label: "Test author", url: "https://example.invalid/author" }],
+          attributions: tripPhotoAuthors,
           sourceUrl: "https://www.google.com/maps/search/?api=1&query=Paris",
         },
       });
     }
     tripPhotoRequests.media++;
-    return route.fulfill({ contentType: "image/svg+xml", body: svg });
+    return route.fulfill({ contentType: "image/svg+xml", body: tripPhotoSvg });
   });
   const report = [];
   if (runs("responsive")) {
@@ -882,7 +884,8 @@ try {
         const card = photo.closest("[data-trip-card]");
         const identity = card.querySelector(".trip-card-identity");
         return {
-          position: getComputedStyle(photo).position,
+          column: getComputedStyle(photo).gridColumnStart,
+          inHeader: photo.parentElement.classList.contains("trip-card-header"),
           image: photo.querySelector("img").getBoundingClientRect().toJSON(),
           identity: identity.getBoundingClientRect().toJSON(),
           card: card.getBoundingClientRect().toJSON(),
@@ -890,10 +893,11 @@ try {
         };
       });
     assert.equal(
-      tripGeometry.position,
-      "absolute",
+      tripGeometry.column,
+      "2",
       "City artwork belongs in the card background, not a separate image row.",
     );
+    assert.ok(tripGeometry.inHeader);
     assert.ok(tripGeometry.image.top < tripGeometry.identity.bottom);
     assert.ok(tripGeometry.image.bottom < tripGeometry.footer.top);
     for (const width of [390, 430, 820, 1440]) {
@@ -919,6 +923,46 @@ try {
         await page.screenshot({ path: `${directory}/trips-city-background-${width}.png` });
     }
 
+    tripPhotoSvg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="800"><rect width="400" height="800" fill="#b4c9c0"/><text x="20" y="400" font-size="20">Portrait town photo · test only</text></svg>';
+    tripPhotoAuthors = [
+      {
+        label:
+          "An intentionally long photographer attribution that must stay completely visible beside the trip title",
+        url: "https://example.invalid/author",
+      },
+    ];
+    await page.reload();
+    await page.locator(".trip-cover-photo img").first().waitFor();
+    for (const width of [390, 430, 820, 1440]) {
+      await page.setViewportSize({ width, height: 1000 });
+      const portrait = await page
+        .locator(".trip-cover-photo")
+        .first()
+        .evaluate((photo) => {
+          const image = photo.querySelector("img"),
+            rect = image.getBoundingClientRect(),
+            card = photo.closest("[data-trip-card]");
+          return {
+            ratio: rect.width / rect.height,
+            natural: image.naturalWidth / image.naturalHeight,
+            height: rect.height,
+            photoBottom: photo.getBoundingClientRect().bottom,
+            footerTop: card.querySelector(".trip-card-footer").getBoundingClientRect().top,
+            attribution: photo.querySelector("figcaption").textContent,
+          };
+        });
+      assert.ok(
+        Math.abs(portrait.ratio - portrait.natural) < 0.01,
+        "Portrait town photos preserve their natural aspect ratio.",
+      );
+      assert.ok(portrait.height <= 160);
+      assert.ok(
+        portrait.photoBottom <= portrait.footerTop,
+        "Every attribution remains clear of the trip footer.",
+      );
+      assert.ok(portrait.attribution.includes(tripPhotoAuthors[0].label));
+    }
     assert.equal(await page.locator("#trip-list svg path[stroke-dasharray]").count(), 0);
     assert.ok(
       (await page.locator(".trip-cover-photo figcaption").first().textContent()).includes(
