@@ -38,6 +38,9 @@
 .public-template-ethereal .ethereal-chapter-flow {
   min-width: 0;
 }
+.public-template-ethereal .ethereal-chapter-lead {
+  position: relative;
+}
 .public-template-ethereal .edition-plans {
   padding-top: 0.5rem;
 }

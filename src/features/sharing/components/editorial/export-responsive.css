@@ -4,6 +4,9 @@
 .timeline-export-document .itinerary-edition .edition-day {
   display: block;
 }
+.timeline-export-document .edition-day-heading {
+  position: static;
+}
 .timeline-export-document .edition-attachment-names {
   margin-top: 0.5rem;
   font-size: 0.75rem;

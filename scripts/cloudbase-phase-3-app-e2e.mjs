@@ -5093,19 +5093,19 @@ async function verifyPublicTabletViewportMatrix(browser, publicToken) {
   await navigate(browser, `/share/${publicToken}?view=timeline`);
   await waitFor(
     browser,
-    `document.querySelectorAll('.timeline-transport-list-v4.is-flow').length > 0`,
+    `document.querySelectorAll('#public-timeline-panel .journal-page .edition-transport').length > 0`,
     "Journal scrolling transport rows",
   );
   const journalTimelineTransport = await evaluate(
     browser,
     `(() => {
-      const header = document.querySelector('.timeline-section-header-v4');
-      const rows = [...document.querySelectorAll('.timeline-transport-list-v4.is-flow')];
+      const header = document.querySelector('#public-timeline-panel .journal-page .edition-day-heading');
+      const rows = [...document.querySelectorAll('#public-timeline-panel .journal-page .edition-transport')];
       return {
         flowCount: rows.length,
         headerPosition: getComputedStyle(header).position,
-        headerTransportCount: document.querySelectorAll('.timeline-section-header-v4 [data-public-transport]').length,
-        rowsOutsideHeaders: rows.every((row) => !row.closest('.timeline-section-header-v4')),
+        headerTransportCount: document.querySelectorAll('#public-timeline-panel .edition-day-heading .edition-transfer').length,
+        rowsOutsideHeaders: rows.every((row) => !row.closest('.edition-day-heading')),
         rowsStatic: rows.every((row) => getComputedStyle(row).position === 'static'),
       };
     })()`,

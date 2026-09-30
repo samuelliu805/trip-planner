@@ -73,6 +73,12 @@
   font-family: var(--font-journal-hand), "Kaiti SC", "KaiTi", cursive;
   font-weight: 600;
 }
+.public-template-journal .edition-day-heading {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #faf7ee;
+}
 .public-template-journal .journal-day-spread {
   position: relative;
   display: grid;

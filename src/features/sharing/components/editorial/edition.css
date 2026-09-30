@@ -1,6 +1,7 @@
 @import "./ethereal.css";
 @import "./journal.css";
 @import "./export-responsive.css";
+@import "../public-provider-photo.css";
 
 :is(.public-template-ethereal, .public-template-journal) .itinerary-edition {
   min-height: 100%;

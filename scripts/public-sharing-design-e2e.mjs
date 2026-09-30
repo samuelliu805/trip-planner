@@ -86,7 +86,50 @@ try {
             .locator("#public-overview-panel .edition-day")
             .first()
             .scrollIntoViewIfNeeded();
-          await page.locator("#public-overview-panel .edition-photo").first().waitFor();
+          try {
+            await page.locator("#public-overview-panel .edition-photo").first().waitFor();
+          } catch (error) {
+            console.error(
+              JSON.stringify({
+                template,
+                photos,
+                width,
+                requests,
+                errors,
+                hydration: await page.evaluate(() => {
+                  const element = document.querySelector(".public-itinerary-shell");
+                  let fiber =
+                    element?.[Object.keys(element).find((key) => key.startsWith("__reactFiber$"))];
+                  const providers = [];
+                  while (fiber) {
+                    const name = fiber.type?.name ?? fiber.type?.displayName;
+                    if (name?.includes("PhotoProvider"))
+                      providers.push({ name, memo: fiber.memoizedState?.memoizedState?.[1] });
+                    fiber = fiber.return;
+                  }
+                  return {
+                    providers,
+                    serializedCandidates:
+                      document.documentElement.innerHTML.includes("google-place:"),
+                    panelHidden: document.querySelector("#public-overview-panel")?.hidden,
+                  };
+                }),
+                state: await page
+                  .locator("#public-overview-panel .edition-day")
+                  .first()
+                  .evaluate((node) => ({
+                    html: node.outerHTML,
+                    rect: node.getBoundingClientRect().toJSON(),
+                    observer: node
+                      .querySelector(".edition-photo-observer")
+                      ?.getBoundingClientRect()
+                      .toJSON(),
+                    scroll: node.closest(".public-view-scroll")?.scrollTop,
+                  })),
+              }),
+            );
+            throw error;
+          }
           await page
             .locator("#public-overview-panel .public-view-scroll")
             .evaluate((n) => (n.scrollTop = 0));
@@ -94,6 +137,7 @@ try {
         for (const view of ["overview", "timeline"]) {
           await page.getByRole("tab", { name: view, exact: false }).click();
           const selector = `#public-${view}-panel`;
+          await page.locator(selector).waitFor({ state: "visible" });
           assert.equal(await page.locator(selector + " .edition-note").count(), 0);
           const data = await page.evaluate((sel) => {
             window.scrollTo(100, 100);
@@ -123,6 +167,22 @@ try {
             new Set(fixture.days.flatMap((d) => d.items).map((i) => i.ref)),
           );
           assert.equal(data.refs.length, new Set(data.refs).size);
+          if (template === "journal" && view === "timeline") {
+            const flow = await page.locator(selector).evaluate((panel) => {
+              const heading = panel.querySelector(".edition-day-heading");
+              const bands = [...panel.querySelectorAll(".edition-transport")];
+              return {
+                headingPosition: getComputedStyle(heading).position,
+                count: bands.length,
+                outsideHeading: bands.every((band) => !band.closest(".edition-day-heading")),
+                positions: bands.map((band) => getComputedStyle(band).position),
+              };
+            });
+            assert.equal(flow.headingPosition, "sticky");
+            assert.ok(flow.count > 0);
+            assert.equal(flow.outsideHeading, true);
+            assert.ok(flow.positions.every((position) => position === "static"));
+          }
           if (directory && [390, 820, 1440].includes(width)) {
             await page.screenshot({
               path: `${directory}/${template}-${view}-${width}-${photos ? "photo" : "no-photo"}.png`,
@@ -141,6 +201,7 @@ try {
         }
         const before = { ...requests };
         await page.getByRole("tab", { name: "Table", exact: true }).click();
+        await page.locator("#public-table-panel").waitFor({ state: "visible" });
         if (width >= 768 && width <= 1180) {
           const frame = await page.locator(".public-matrix").evaluate((matrix) => {
             const rows = [...matrix.querySelectorAll('[role="row"]')];
@@ -161,11 +222,15 @@ try {
             return { gap: first.top - header.bottom, bottom: last.bottom, nav: nav.top, frozen };
           });
           assert.ok(Math.abs(frame.gap) <= 1, "Matrix first row meets its header.");
-          assert.ok(Math.abs(frame.bottom - frame.nav) <= 1, "Short Matrix reaches navigation.");
+          assert.ok(
+            Math.abs(frame.bottom - frame.nav) <= 1,
+            `Short Matrix reaches navigation: ${JSON.stringify({ template, photos, width, height, frame })}`,
+          );
           assert.ok(Math.abs(frame.frozen[0].left - frame.frozen[1].left) <= 1);
           assert.ok(Math.abs(frame.frozen[0].width - frame.frozen[1].width) <= 1);
         }
         await page.getByRole("tab", { name: "Overview", exact: true }).click();
+        await page.locator("#public-overview-panel").waitFor({ state: "visible" });
         assert.equal(requests.resolve, before.resolve);
         assert.equal(requests.media, before.media);
         if (template === "journal") {
@@ -278,6 +343,98 @@ try {
       );
     }
   }
+  // Existing templates retain complete fallback cards until a valid image is ready.
+  await page.unroute("**/api/public-place-photo/**");
+  let imageAvailable = false;
+  let classicResolves = 0;
+  await page.route("**/api/public-place-photo/**", async (route) => {
+    if (route.request().url().includes("resolve=1")) {
+      classicResolves++;
+      if (!imageAvailable) return route.fulfill({ status: 429 });
+      const ref = new URL(route.request().url()).pathname.split("/").at(-1);
+      return route.fulfill({
+        json: {
+          id: `google-place:${ref}`,
+          kind: "image",
+          source: "google_place",
+          url: `/api/public-place-photo/${token}/${ref}?fixture=1`,
+        },
+      });
+    }
+    return route.fulfill({ contentType: "image/svg+xml", body: svg });
+  });
+  for (const templateId of ["neon", "bento", "traverse"]) {
+    for (const photos of [false, true]) {
+      const fixture = structuredClone(parisPublicItinerary);
+      fixture.settings.templateId = templateId;
+      fixture.settings.templateVersion = templateId === "bento" ? 2 : 1;
+      fixture.settings.showPlacePhotos = photos;
+      fixture.settings.showMapRoutes = false;
+      fixture.days.forEach((day) => {
+        day.notes = "";
+        day.items.forEach((item) => {
+          item.notes = "";
+          if (item.type === "activity") item.place.googlePlaceId = `saved-place-${day.dayNumber}`;
+        });
+      });
+      app.setFixture(fixture);
+      imageAvailable = false;
+      const before = classicResolves;
+      await page.goto(`${app.baseUrl}/share/${token}?view=overview`);
+      await page.locator("#public-overview-panel .overview-item-card-v4").first().waitFor();
+      if (photos) {
+        const deadline = Date.now() + 5000;
+        while (classicResolves === before && Date.now() < deadline) await page.waitForTimeout(20);
+      }
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+      assert.equal(
+        await page.locator("#public-overview-panel .overview-item-card-v4.has-media").count(),
+        0,
+      );
+      assert.equal(await page.locator("#public-overview-panel .google-place img").count(), 0);
+      if (!photos) assert.equal(classicResolves, before);
+      if (photos) {
+        await page.waitForTimeout(50);
+        assert.ok(
+          classicResolves > before,
+          "A visible candidate must resolve without reserving a blank photo card.",
+        );
+        imageAvailable = true;
+        await page.reload();
+        await page
+          .locator("#public-overview-panel .overview-item-card-v4.has-media")
+          .first()
+          .waitFor();
+        await page.locator("#public-overview-panel .google-place img").first().waitFor();
+        const presentation = await page
+          .locator("#public-overview-panel .google-place img")
+          .first()
+          .evaluate((image) => {
+            const rect = image.getBoundingClientRect();
+            const frame = image.closest(".media-thumb-v4");
+            return {
+              ratio: rect.width / rect.height,
+              naturalRatio: image.naturalWidth / image.naturalHeight,
+              filter: getComputedStyle(image).filter,
+              transform: getComputedStyle(image).transform,
+              frameFilter: getComputedStyle(frame).filter,
+              overlay: getComputedStyle(frame, "::after").display,
+              frameHeight: frame.getBoundingClientRect().height,
+              imageHeight: rect.height,
+            };
+          });
+        assert.ok(Math.abs(presentation.ratio - presentation.naturalRatio) < 0.01);
+        assert.equal(presentation.filter, "none");
+        assert.equal(presentation.transform, "none");
+        assert.equal(presentation.frameFilter, "none");
+        assert.equal(presentation.overlay, "none");
+        assert.ok(presentation.frameHeight >= presentation.imageHeight - 1);
+      }
+    }
+  }
+  console.log("PASS classic templates: disabled/failed photos stay complete, valid photos expand");
   // Real /trips rendering, filters, role-dependent menu entries, and stable local artwork.
   await page.context().addCookies([designSessionCookie()]);
   await page.goto(`${app.baseUrl}/trips`);

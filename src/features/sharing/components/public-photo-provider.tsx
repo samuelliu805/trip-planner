@@ -30,7 +30,8 @@ export function PublicPhotoProvider({
     itinerary.settings.showPlacePhotos === true && process.env.NEXT_PUBLIC_APP_REGION !== "cn"
       ? itinerary.days.flatMap((day) => {
           const item = publicGoogleCoverItem(day);
-          return item?.place?.googlePlaceId
+          return item?.place?.googlePlaceId &&
+            item.media?.some((media) => media.source === "google_place")
             ? [{ itemRef: item.ref, placeId: item.place.googlePlaceId }]
             : [];
         })
@@ -89,9 +90,11 @@ export function PublicPhotoProvider({
   return <PhotoContext.Provider value={session}>{children}</PhotoContext.Provider>;
 }
 
-export function usePublicPlacePhoto(itemRef?: string) {
+export function usePublicPlacePhoto<ElementType extends HTMLElement = HTMLDivElement>(
+  itemRef?: string,
+) {
   const session = useContext(PhotoContext);
-  const observerRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<ElementType>(null);
   const [loaded, setLoaded] = useState<{
     session: typeof session;
     ref: string;

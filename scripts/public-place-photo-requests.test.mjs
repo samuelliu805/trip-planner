@@ -201,3 +201,53 @@ test("photo API rejects revoked/changed shares before providers and preserves bo
     delete globalThis.photoRouteTest;
   }
 });
+
+test("photo candidate availability respects regional provider selection and configured keys", async () => {
+  const output = await build({
+    entryPoints: ["src/lib/providers/places/public-photo.server.ts"],
+    bundle: true,
+    write: false,
+    platform: "node",
+    format: "esm",
+    plugins: [
+      {
+        name: "server-only-test",
+        setup(builder) {
+          builder.onResolve({ filter: /^server-only$/ }, () => ({
+            path: "empty",
+            namespace: "test",
+          }));
+          builder.onLoad({ filter: /.*/, namespace: "test" }, () => ({ contents: "" }));
+        },
+      },
+    ],
+  });
+  const { publicPlacePhotosConfigured } = await import(
+    `data:text/javascript;base64,${Buffer.from(output.outputFiles[0].text).toString("base64")}`
+  );
+  const names = [
+    "GOOGLE_PLACES_API_KEY",
+    "NEXT_PUBLIC_MAPS_PROVIDER",
+    "APP_REGION",
+    "NEXT_PUBLIC_APP_REGION",
+  ];
+  const before = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+  try {
+    process.env.GOOGLE_PLACES_API_KEY = "local-test-only";
+    process.env.NEXT_PUBLIC_MAPS_PROVIDER = "amap";
+    process.env.APP_REGION = "cn";
+    process.env.NEXT_PUBLIC_APP_REGION = "cn";
+    assert.equal(publicPlacePhotosConfigured(), false);
+    process.env.NEXT_PUBLIC_MAPS_PROVIDER = "google";
+    process.env.APP_REGION = "global";
+    process.env.NEXT_PUBLIC_APP_REGION = "global";
+    assert.equal(publicPlacePhotosConfigured(), true);
+    delete process.env.GOOGLE_PLACES_API_KEY;
+    assert.equal(publicPlacePhotosConfigured(), false);
+  } finally {
+    for (const name of names) {
+      if (before[name] === undefined) delete process.env[name];
+      else process.env[name] = before[name];
+    }
+  }
+});

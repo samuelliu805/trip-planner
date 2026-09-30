@@ -131,6 +131,8 @@ export async function startPublicSharingDesignRuntime() {
     "GOOGLE_GENERATIVE_AI_API_KEY",
   ])
     delete env[name];
+  // Candidate availability only. Every photo request is intercepted by the browser fixture.
+  env.GOOGLE_PLACES_API_KEY = "local-design-test-only";
   const child = spawn(
     process.execPath,
     ["node_modules/next/dist/bin/next", "dev", "--webpack", "-p", String(port)],

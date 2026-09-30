@@ -4,7 +4,7 @@ The attached prompt and prototype are design requirements, not repository or too
 
 ## Presentation
 
-Journal renders a paper **THE DAY** list with an optional intact place photo beside it and a separate transport band. With no available photo, the paper fills the reading width. Ethereal uses a dark editorial cover, serif chapter heading, and a vertical schedule. Both show real day numbers, dates, places, categories, times, and ordered plans. Chapters navigate explicitly to their real timeline day. Item selection opens details, with existing links and attachments.
+Journal renders a paper **THE DAY** list with an optional intact place photo beside it and a separate transport band. With no available photo, the paper fills the reading width. Journal day headings stay sticky while transport rows remain in the reading flow. Ethereal uses a dark editorial cover, serif chapter heading, and a vertical schedule. Both show real day numbers, dates, places, categories, times, and ordered plans. Chapters navigate explicitly to their real timeline day. Item selection opens details, with existing links and attachments.
 
 Missing, null, empty, and whitespace notes render no note block or spacer. Actual notes remain secondary, expandable on the page and complete in exports. The Paris fixture remains four planned days and three shared days; it does not invent a fourth shared day. `/trips` uses stable local palettes and SVG artwork without external image requests. Owner and collaborator actions remain role-dependent.
 
@@ -13,7 +13,7 @@ Missing, null, empty, and whitespace notes render no note block or spacer. Actua
 1. The share-page read projects deterministic cover candidates from already saved place IDs. It performs no Google lookup.
 2. A visible day requests its authorized photo resolver. The resolver checks current share visibility, then calls Place Details with only `photos` in the field mask. It does not use Text Search, Nearby Search, or Autocomplete.
 3. A signed media request checks current permissions again and verifies a signature tied to the share token, item reference, place ID, and photo name before calling Photo Media.
-4. A page-lifetime session shares one resolver, blob, and load promise per place across mounted views and repeated places. In-flight server Details requests also coalesce. Later page visits refresh names rather than persist expiring photo names or URLs.
+4. Availability is gated by the active regional provider and a configured Google key; missing-provider/key cases create no photo candidates. Classic card templates retain their normal layout until a decoded image is ready. A page-lifetime session shares one resolver, blob, and load promise per place across mounted views and repeated places. In-flight server Details requests also coalesce. Later page visits refresh names rather than persist expiring photo names or URLs.
 5. Confirmed media expiry receives one repair for that source. Authorization, quota, other missing resources, outages, and invalid image bytes collapse to the no-photo layout without retries. Page disposal revokes object URLs.
 
 This reduces repeated requests; it does not promise zero Details or Photo Media calls on a new visit. Photo selection can change when Google changes its first available photo. All returned author attributions and a Google Maps link remain visible. Provider image pixels, colors, and aspect ratio are preserved; no Next image optimization, color filter, cropping, server image storage, or export embedding is introduced.
@@ -32,7 +32,7 @@ Map, item, and attachment panels use handle-only dragging so content keeps nativ
 
 Optional evidence output: `PUBLIC_SHARING_DESIGN_ARTIFACT_DIR=artifacts/no-notes-sharing npm run test:e2e:sharing-design`. Controlled photo images are labeled test-only. Local screenshot fonts use the test runtime's fallback fonts; production retains the application's existing Nunito, Mali, and serif font configuration. The runtime always closes its child server and temporary directory; the export renderer removes capture hosts.
 
-The regional release gate still requires live authentication, CRUD/RPC/RLS, real regional map providers, share/attachment permissions, cleanup, independent residue audits, and exact-candidate deployment checks. Local credentials are absent, so repository CI must supply that release evidence before merge. No release assertions were relaxed.
+The regional release gate still requires live authentication, CRUD/RPC/RLS, real regional map providers, share/attachment permissions, cleanup, independent residue audits, and exact-candidate deployment checks. Local credentials are absent, so repository CI must supply that release evidence before merge. No release assertions were relaxed. The CN browser test targets the new Journal structure while retaining sticky-heading, scrolling-transport, Matrix, and overlay assertions. The bounded Storage retry helper recognizes the SDK’s localized request-timeout message as the same transient abort class as its English equivalent; permission denials remain failures.
 
 ### Sample no-photo evidence
 

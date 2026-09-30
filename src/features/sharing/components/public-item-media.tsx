@@ -13,6 +13,7 @@ import {
 } from "@/features/attachments/components/attachment-viewer";
 
 import { usePublicPlacePhoto } from "./public-photo-provider";
+import type { LoadedPlacePhoto } from "../public-photo-session";
 
 import type { PublicItemMedia } from "../types";
 
@@ -31,11 +32,18 @@ function viewerAttachment(media: AttachmentMedia): ViewerAttachment {
   };
 }
 
-function GoogleImage({ media, prioritize }: { media: GoogleMedia; prioritize: boolean }) {
+function GoogleImage({
+  media,
+  photo,
+  prioritize,
+}: {
+  media: GoogleMedia;
+  photo: LoadedPlacePhoto;
+  prioritize: boolean;
+}) {
   const { t } = useI18n();
-  const { observerRef, photo } = usePublicPlacePhoto(media.id.replace(/^google-place:/, ""));
   return (
-    <div ref={observerRef} className="media-thumb-v4">
+    <div className="media-thumb-v4">
       {photo ? (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element -- session resource, no image processing. */}
@@ -170,7 +178,6 @@ export function PublicItemMediaGallery({
   const exporting = useContext(PublicMediaExportContext);
   const [viewerId, setViewerId] = useState<string>();
   const [viewerTrigger, setViewerTrigger] = useState<HTMLElement | null>(null);
-  if (!media.length) return null;
 
   const attachmentMedia = media.filter(
     (entry): entry is AttachmentMedia => entry.source === "attachment",
@@ -178,9 +185,24 @@ export function PublicItemMediaGallery({
   const googleMedia = media.filter(
     (entry): entry is GoogleMedia => entry.source === "google_place",
   );
-  const showGoogleMedia =
-    process.env.NEXT_PUBLIC_APP_REGION !== "cn" && variant === "overview" && googleMedia.length > 0;
-  if (!showGoogleMedia && !attachmentMedia.length) return null;
+  const observeGoogle =
+    !exporting &&
+    process.env.NEXT_PUBLIC_APP_REGION !== "cn" &&
+    variant === "overview" &&
+    googleMedia.length > 0;
+  const { observerRef, photo } = usePublicPlacePhoto(
+    observeGoogle ? googleMedia[0].id.replace(/^google-place:/, "") : undefined,
+  );
+  const showGoogleMedia = observeGoogle && Boolean(photo);
+  if (!media.length) return null;
+  if (!showGoogleMedia && !attachmentMedia.length)
+    return observeGoogle ? (
+      <div
+        aria-hidden="true"
+        ref={observerRef}
+        style={{ position: "absolute", width: 1, height: 1, pointerEvents: "none" }}
+      />
+    ) : null;
 
   if (exporting)
     return attachmentMedia.length ? (
@@ -200,10 +222,17 @@ export function PublicItemMediaGallery({
 
   return (
     <div className={rootClass}>
+      {observeGoogle ? (
+        <div
+          aria-hidden="true"
+          ref={observerRef}
+          style={{ position: "absolute", width: 1, height: 1, pointerEvents: "none" }}
+        />
+      ) : null}
       {showGoogleMedia ? (
         <div className={`public-media-gallery media-grid-v4 count-1 google-place ${variant}`}>
           <div className="public-media-entry">
-            <GoogleImage media={googleMedia[0]} prioritize={prioritizeFirst} />
+            <GoogleImage media={googleMedia[0]} photo={photo!} prioritize={prioritizeFirst} />
           </div>
         </div>
       ) : null}

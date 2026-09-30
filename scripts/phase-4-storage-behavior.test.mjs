@@ -317,3 +317,27 @@ test("Phase 4 CI authenticates the CloudBase audit CLI before independent live s
   assert.match(phaseThree, /CLOUDBASE_API_KEY: \$\{\{ secrets\.CLOUDBASE_API_KEY \}\}/);
   assert.doesNotMatch(phaseThree, /NEXT_PUBLIC_CLOUDBASE_API_KEY/);
 });
+
+test("the SDK's localized request timeout is transient but localized access denial is not", async () => {
+  const { isTransientCloudBaseFailure, runCloudBaseSdkCall } =
+    await import("./lib/cloudbase-phase-4-live-requests.mjs");
+  const timeout = { name: "StorageError", message: "请求在15s内未完成，已中断" };
+  assert.equal(isTransientCloudBaseFailure(timeout), true);
+  assert.equal(
+    isTransientCloudBaseFailure({ name: "StorageError", message: "没有权限访问此文件" }),
+    false,
+  );
+  let calls = 0;
+  const result = await runCloudBaseSdkCall(
+    async () => {
+      calls++;
+      return calls === 1
+        ? { error: timeout }
+        : { data: { path: "controlled-test-object" }, error: null };
+    },
+    "localized timeout",
+    { backoffMilliseconds: 0 },
+  );
+  assert.equal(calls, 2);
+  assert.equal(result.error, null);
+});

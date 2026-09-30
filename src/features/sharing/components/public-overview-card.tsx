@@ -5,6 +5,7 @@ import { Localized, useI18n } from "@/features/i18n/i18n-provider";
 import type { PublicOverviewItemPresentation } from "../public-overview-presentation";
 import { PublicItemIcon, publicItemTypeLabels } from "./public-item-icon";
 import { PublicItemMediaGallery } from "./public-item-media";
+import { usePublicPlacePhoto } from "./public-photo-provider";
 import { PublicQuickActions } from "./public-quick-actions";
 
 export function PublicOverviewCard({
@@ -34,7 +35,10 @@ export function PublicOverviewCard({
   const place = item.place?.localityName ?? item.place?.displayName;
   const placeMedia = media.filter(({ source }) => source === "google_place");
   const attachments = media.filter(({ source }) => source === "attachment");
-  const hasVisualMedia = placeMedia.length > 0;
+  const { observerRef, photo } = usePublicPlacePhoto<HTMLElement>(
+    placeMedia[0]?.id.replace(/^google-place:/, ""),
+  );
+  const hasVisualMedia = Boolean(photo);
 
   const spanClass = hasVisualMedia
     ? "span-featured"
@@ -45,6 +49,7 @@ export function PublicOverviewCard({
 
   return (
     <article
+      ref={observerRef}
       className={`public-overview-card overview-item-card-v4 ${spanClass} ${typeClass} ${hasVisualMedia ? "has-media" : "no-media"} ${selected ? "is-selected" : ""}`}
     >
       <button

@@ -9,6 +9,7 @@ import { PlatformOperationError } from "@/platform/contracts/errors";
 import { retryTransientRead } from "@/platform/transient-read";
 
 import { publicPlaceMediaSources } from "./public-media-data";
+import { publicPlacePhotosConfigured } from "@/lib/providers/places/public-photo.server";
 
 import { ownerShareImageStateSchema, shareImageManifestSchema } from "./long-image/schema";
 import {
@@ -34,7 +35,11 @@ export async function getPublicItinerary(token: string): Promise<PublicItinerary
   const parsed = publicItinerarySchema.safeParse(data);
   if (!parsed.success) return null;
 
-  const sourceRefs = new Set(publicPlaceMediaSources(parsed.data).map(({ itemRef }) => itemRef));
+  const sourceRefs = new Set(
+    publicPlacePhotosConfigured()
+      ? publicPlaceMediaSources(parsed.data).map(({ itemRef }) => itemRef)
+      : [],
+  );
   return {
     ...parsed.data,
     days: parsed.data.days.map((day) => ({
