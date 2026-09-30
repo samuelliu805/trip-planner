@@ -24,8 +24,13 @@ import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 type PublicTemplateController = {
   desktopMap: boolean;
+  detailItemRef?: string;
+  detailTrigger: HTMLElement | null;
+  setDetailItemRef: Dispatch<SetStateAction<string | undefined>>;
   itinerary: PublicItinerary;
   mapSheetOpen: boolean;
+  mapTrigger: HTMLElement | null;
+  setMapTrigger: Dispatch<SetStateAction<HTMLElement | null>>;
   mapVisible: boolean;
   shareImage: ShareImageManifest | null;
   onSelectionChange: Dispatch<SetStateAction<PublicMapSelection>>;
@@ -77,9 +82,12 @@ export function PublicTemplateControllerProvider({
   token: string;
 }) {
   usePublicViewportContainment();
+  const [detailItemRef, setDetailItemRef] = useState<string>();
+  const [detailTrigger, setDetailTrigger] = useState<HTMLElement | null>(null);
   const [view, setView] = useState<PublicView>(initialView);
   const [mapVisible, setMapVisible] = useState(itinerary.settings.showMapRoutes);
   const [mapSheetOpen, setMapSheetOpen] = useState(false);
+  const [mapTrigger, setMapTrigger] = useState<HTMLElement | null>(null);
   const [desktopMap, setDesktopMap] = useState(false);
   const [split, setSplit] = useState(64);
   const [selection, setSelection] = useState<PublicMapSelection>({});
@@ -148,13 +156,33 @@ export function PublicTemplateControllerProvider({
   }
 
   function selectDay(dayRef: string) {
+    if (view === "overview") switchView("timeline");
     setSelection((current) => ({
       dayRef,
       scope: current.dayRef === dayRef && !current.itemRef ? current.scope : undefined,
     }));
+    requestAnimationFrame(() => {
+      const panel = shellRef.current?.querySelector("#public-timeline-panel");
+      const day = Array.from(
+        panel?.querySelectorAll<HTMLElement>("[data-public-day-ref]") ?? [],
+      ).find((node) => node.dataset.publicDayRef === dayRef);
+      const scroller = panel?.querySelector<HTMLElement>(".public-view-scroll");
+      if (day && scroller) {
+        scroller.scrollTop +=
+          day.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+        day.tabIndex = -1;
+        day.focus({ preventScroll: true });
+      }
+    });
   }
 
   function selectItem(itemRef: string, dayRef: string) {
+    if (template.id === "journal" || template.id === "ethereal") {
+      setDetailTrigger(
+        document.activeElement instanceof HTMLElement ? document.activeElement : null,
+      );
+      setDetailItemRef(itemRef);
+    }
     setSelection((current) => ({
       dayRef,
       itemRef,
@@ -180,8 +208,13 @@ export function PublicTemplateControllerProvider({
     <PublicTemplateControllerContext.Provider
       value={{
         desktopMap,
+        detailItemRef,
+        detailTrigger,
+        setDetailItemRef,
         itinerary,
         mapSheetOpen,
+        mapTrigger,
+        setMapTrigger,
         mapVisible,
         shareImage,
         onSelectionChange: setSelection,

@@ -1,3 +1,4 @@
+import { ItineraryEdition } from "./editorial/itinerary-edition";
 import { canonicalPublicViews } from "../schema";
 import type { PublicItinerary, PublicView } from "../types";
 import { PublicOverview } from "./public-overview";
@@ -11,6 +12,7 @@ export function PublicItineraryViews({
   selectedDayRef,
   selectedItemRef,
   transportPlacement,
+  templateId,
   view,
 }: {
   itinerary: PublicItinerary;
@@ -19,6 +21,7 @@ export function PublicItineraryViews({
   selectedDayRef?: string;
   selectedItemRef?: string;
   transportPlacement?: "flow" | "header";
+  templateId?: string;
   view: PublicView;
 }) {
   return canonicalPublicViews.map((option) => (
@@ -30,6 +33,7 @@ export function PublicItineraryViews({
       option={option}
       selectedDayRef={selectedDayRef}
       selectedItemRef={selectedItemRef}
+      templateId={templateId}
       transportPlacement={transportPlacement}
       view={view}
     />
@@ -44,6 +48,7 @@ export function PublicItineraryViewPanel({
   selectedDayRef,
   selectedItemRef,
   transportPlacement,
+  templateId,
   view,
 }: {
   itinerary: PublicItinerary;
@@ -53,6 +58,7 @@ export function PublicItineraryViewPanel({
   selectedDayRef?: string;
   selectedItemRef?: string;
   transportPlacement?: "flow" | "header";
+  templateId?: string;
   view: PublicView;
 }) {
   const viewProps = { itinerary, onSelectDay, onSelectItem, selectedDayRef, selectedItemRef };
@@ -67,7 +73,13 @@ export function PublicItineraryViewPanel({
       <div
         className={`public-view-scroll h-full min-w-0 ${option === "table" ? "overflow-hidden" : "overflow-y-auto"}`}
       >
-        {option === "overview" ? (
+        {option !== "table" && (templateId === "journal" || templateId === "ethereal") ? (
+          <ItineraryEdition
+            {...viewProps}
+            templateId={templateId}
+            overview={option === "overview"}
+          />
+        ) : option === "overview" ? (
           <PublicOverview {...viewProps} />
         ) : option === "table" ? (
           <PublicTable {...viewProps} />

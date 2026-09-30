@@ -1,0 +1,50 @@
+.timeline-export-document .itinerary-edition {
+  padding: 1.25rem;
+}
+.timeline-export-document .itinerary-edition .edition-day {
+  display: block;
+}
+.timeline-export-document .edition-attachment-names {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+}
+.timeline-export-document .edition-plan-button {
+  color: inherit;
+  font: inherit;
+}
+.timeline-export-document .edition-front {
+  margin-bottom: 1.5rem;
+}
+.timeline-export-document .edition-cover h2 {
+  font-size: 2.625rem;
+}
+@container public-content (max-width: 620px) {
+  .itinerary-edition .edition-front {
+    display: block;
+  }
+  .itinerary-edition .edition-cover {
+    padding: 1.75rem;
+  }
+  .itinerary-edition .edition-contents {
+    margin-top: 1.5rem;
+  }
+  .itinerary-edition .edition-day {
+    display: block;
+  }
+  .itinerary-edition .edition-day-heading {
+    gap: 0.875rem;
+  }
+  .itinerary-edition .edition-day-number {
+    font-size: 3rem;
+  }
+}
+
+/* The document keeps every title and date, even when the runtime's compact header elides it. */
+.timeline-export-document.edition-export .public-trip-title,
+.timeline-export-document.edition-export .public-trip-meta,
+.timeline-export-document.edition-export .public-trip-meta-copy {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}

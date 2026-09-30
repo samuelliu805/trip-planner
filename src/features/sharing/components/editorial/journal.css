@@ -1,0 +1,169 @@
+.public-template-journal .itinerary-edition {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0 31px,
+    rgb(116 111 82 / 4%) 31px 32px
+  );
+  font-family: var(--font-journal-sans), "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+.public-template-journal .edition-front {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 2.5rem;
+  align-items: center;
+}
+.public-template-journal .edition-cover {
+  position: relative;
+  padding: 1.5rem 0;
+}
+.public-template-journal .edition-cover h2 {
+  font-family: var(--font-journal-hand), "Kaiti SC", "KaiTi", cursive;
+  font-weight: 600;
+}
+.public-template-journal .edition-cover::after {
+  display: block;
+  width: 4rem;
+  height: 3px;
+  margin-top: 1.5rem;
+  background: #be7259;
+  content: "";
+  transform: rotate(-3deg);
+}
+.public-template-journal .edition-contents {
+  position: relative;
+  border: 1px solid #d9cfbc;
+  background: #fffdf5;
+  padding: 1.5rem;
+  box-shadow: 4px 5px 0 #e9e2d2;
+}
+.public-template-journal .edition-contents::before {
+  position: absolute;
+  top: -8px;
+  left: 35%;
+  width: 65px;
+  height: 18px;
+  background: rgb(175 194 166 / 65%);
+  content: "";
+  transform: rotate(-4deg);
+  pointer-events: none;
+}
+.public-template-journal .edition-contents button > span {
+  color: #be7259;
+  font-family: var(--font-journal-hand), cursive;
+  font-size: 1.25rem;
+}
+.public-template-journal .edition-contents button {
+  border-bottom-style: dashed;
+}
+.public-template-journal .edition-day-number {
+  position: relative;
+  color: #be7259;
+  font-family: var(--font-journal-hand), cursive;
+}
+.public-template-journal .edition-day-number::before {
+  position: absolute;
+  inset: -0.25rem;
+  border: 1px solid #be7259;
+  border-radius: 50%;
+  content: "";
+  transform: rotate(-12deg);
+  pointer-events: none;
+}
+.public-template-journal .edition-day-heading h3 {
+  font-family: var(--font-journal-hand), "Kaiti SC", "KaiTi", cursive;
+  font-weight: 600;
+}
+.public-template-journal .journal-day-spread {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 2rem;
+}
+.public-template-journal .journal-day-spread:has(.edition-photo-slot) {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+}
+.public-template-journal .edition-photo {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid #d9cfbc;
+  background: #fffdf9;
+  padding: 0.75rem 0.75rem 1rem;
+  box-shadow: 0 5px 14px rgb(72 57 30 / 8%);
+}
+.public-template-journal .edition-photo::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid #d9cfbc;
+  background: #fffdf9;
+  content: "";
+  transform: rotate(-2deg);
+  pointer-events: none;
+}
+.public-template-journal .edition-photo::after {
+  position: absolute;
+  top: -8px;
+  left: 40%;
+  width: 62px;
+  height: 17px;
+  background: rgb(175 194 166 / 60%);
+  content: "";
+  transform: rotate(5deg);
+  pointer-events: none;
+}
+.public-template-journal .journal-day-paper.has-plans {
+  position: relative;
+  border: 1px solid #d9cfbc;
+  border-left: 3px double #d9cfbc;
+  background: #fffdf5;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 4px 5px 0 #e9e2d2;
+}
+.public-template-journal .journal-day-paper.has-plans::before {
+  position: absolute;
+  top: -0.5rem;
+  right: 1rem;
+  width: 2rem;
+  height: 0.75rem;
+  background: #bfcfb9;
+  content: "";
+  pointer-events: none;
+}
+.public-template-journal .edition-plans > h4 {
+  color: #be7259;
+  border-bottom: 1px dashed #d9cfbc;
+  padding-bottom: 0.75rem;
+}
+.public-template-journal .edition-plan {
+  border-bottom: 1px dashed #e0d8c8;
+}
+.public-template-journal .edition-plan:last-child {
+  border-bottom: 0;
+}
+.public-template-journal .edition-plan-order {
+  color: #be7259;
+  font-family: var(--font-journal-hand), cursive;
+  font-size: 0.9375rem;
+}
+@container public-content (max-width: 620px) {
+  .public-template-journal .journal-day-spread:has(.edition-photo-slot) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+  .public-template-journal .journal-day-paper.has-plans {
+    padding: 1rem;
+  }
+  .public-template-journal .edition-cover {
+    padding: 1rem 0;
+  }
+  .public-template-journal .edition-cover h2 {
+    font-size: clamp(2.5rem, 10cqw, 3.5rem);
+  }
+}
+.timeline-export-document.public-template-journal .journal-day-paper.has-plans {
+  padding: 1rem;
+}
+.timeline-export-document.public-template-journal .edition-cover {
+  padding: 1rem 0;
+}

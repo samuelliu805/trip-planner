@@ -1,4 +1,13 @@
 export const sharingZhCN: Record<string, string> = {
+  "THE DAY": "当天安排",
+  Chapters: "章节目录",
+  "{count} planned days": "{count} 个规划日",
+  "{count} shared days": "{count} 个已分享日",
+  "Shared days, places, and plans in your original order.":
+    "按原顺序浏览已分享的日期、地点与安排。",
+  "Shared itinerary attachments": "已分享的行程资料",
+  "Shared itinerary item": "已分享的行程事项",
+
   "The Share Page is invalid.": "分享页面无效。",
   "Permanent image exports are not supported by this backend.": "当前后端不支持永久长图导出。",
   "Public sharing is not supported by this backend.": "当前后端不支持公开分享。",

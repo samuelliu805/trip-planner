@@ -21,6 +21,7 @@ import {
   paginateTimelineDayHeights,
   splitTimelineExportDays,
 } from "./layout";
+import { splitOversizedTimelineDay } from "./continuation";
 import { TimelineExportDocument } from "./timeline-export-document";
 
 type RenderTimelineExportInput = {
@@ -123,7 +124,9 @@ function documentHeight(node: HTMLElement) {
 }
 
 function dayMeasurements(node: HTMLElement) {
-  const dayNodes = Array.from(node.querySelectorAll<HTMLElement>(".timeline-section-v4"));
+  const dayNodes = Array.from(
+    node.querySelectorAll<HTMLElement>(".timeline-section-v4, .edition-day"),
+  );
   const dayHeights = dayNodes.map((day) => day.getBoundingClientRect().height);
   const sections = node.querySelector<HTMLElement>(".timeline-sections-v4");
   const dayGap = sections ? Number.parseFloat(getComputedStyle(sections).rowGap) || 0 : 0;
@@ -170,7 +173,7 @@ export async function renderTimelineExport(input: RenderTimelineExportInput) {
     margin: 3,
     width: 180,
   });
-  const days = splitTimelineExportDays(input.itinerary.days);
+  let days = splitTimelineExportDays(input.itinerary.days);
   const host = createCaptureHost();
   const root = createRoot(host);
 
@@ -196,11 +199,37 @@ export async function renderTimelineExport(input: RenderTimelineExportInput) {
     if (documentHeight(node) <= TIMELINE_EXPORT_MAX_CSS_HEIGHT)
       return [await captureDocument(node, fontEmbedCSS)];
 
-    const { dayGap, dayHeights } = dayMeasurements(node);
-    const firstPageChromeHeight =
+    let { dayGap, dayHeights } = dayMeasurements(node);
+    let firstPageChromeHeight =
       documentHeight(node) -
       dayHeights.reduce((sum, height) => sum + height, 0) -
       Math.max(0, dayHeights.length - 1) * dayGap;
+    // Measure actual typography, then split only sections that cannot fit on a complete page.
+    for (let pass = 0; pass < 16; pass++) {
+      const allowance = TIMELINE_EXPORT_MAX_CSS_HEIGHT - firstPageChromeHeight;
+      if (dayHeights.every((height) => height <= allowance)) break;
+      let changed = false;
+      days = days.flatMap((day, index) => {
+        if (dayHeights[index] <= allowance) return [day];
+        const parts = splitOversizedTimelineDay(day);
+        if (!parts)
+          throw new Error("A Timeline section cannot fit within the supported image dimensions.");
+        changed = true;
+        return parts;
+      });
+      if (!changed) break;
+      node = await showDocument(
+        host,
+        root,
+        { ...input, days, includeHeader: true, qrDataUrl, showIntro: true },
+        template,
+      );
+      ({ dayGap, dayHeights } = dayMeasurements(node));
+      firstPageChromeHeight =
+        documentHeight(node) -
+        dayHeights.reduce((sum, height) => sum + height, 0) -
+        Math.max(0, dayHeights.length - 1) * dayGap;
+    }
     node = await showDocument(
       host,
       root,

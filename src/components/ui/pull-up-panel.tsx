@@ -47,11 +47,13 @@ export function useExclusivePullUpPanel(
 export function PullUpPanelHandle({
   className,
   onClose,
+  handleOnly = false,
 }: {
   className?: string;
   onClose: () => void;
+  handleOnly?: boolean;
 }) {
-  const controllerRef = usePullUpPanelDrag(onClose);
+  const controllerRef = usePullUpPanelDrag(onClose, handleOnly);
 
   return (
     <div
@@ -80,18 +82,20 @@ export function PullUpPanel({
   open,
   overlayClassName,
   title,
+  trigger,
 }: {
   children: ReactNode;
   className?: string;
   compactHeader?: boolean;
   description?: string;
-  dragMode?: "all" | "mobile";
+  dragMode?: "all" | "mobile" | "handle";
   focusPanelOnOpen?: boolean;
   id: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   overlayClassName?: string;
   title: string;
+  trigger?: HTMLElement | null;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   useExclusivePullUpPanel(id, open, onOpenChange);
@@ -110,11 +114,17 @@ export function PullUpPanel({
           panelRef.current?.focus({ preventScroll: true });
         }}
         ref={panelRef}
-        showCloseButton={false}
+        onCloseAutoFocus={(event) => {
+          if (!trigger?.isConnected) return;
+          event.preventDefault();
+          trigger.focus({ preventScroll: true });
+        }}
+        showCloseButton={dragMode === "handle"}
         side="bottom"
         tabIndex={focusPanelOnOpen ? -1 : undefined}
       >
         <PullUpPanelHandle
+          handleOnly={dragMode === "handle"}
           className={cn(dragMode === "mobile" ? "sm:hidden" : undefined, compactHeader && "h-5")}
           onClose={() => onOpenChange(false)}
         />

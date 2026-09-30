@@ -1,6 +1,16 @@
 name: Deploy CN
 
 on:
+  workflow_call:
+    inputs:
+      candidate_sha:
+        description: Exact same-repository owner PR SHA after regional verification
+        required: true
+        type: string
+      deployment_gate:
+        description: Type DEPLOY only after the candidate release gate passes
+        required: true
+        type: string
   workflow_run:
     workflows: [CloudBase PG schema security]
     branches: [master]
@@ -25,14 +35,18 @@ jobs:
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_branch == 'master') ||
-      (github.event_name == 'workflow_dispatch' && inputs.deployment_gate == 'DEPLOY')
+      (github.event_name == 'workflow_dispatch' && inputs.deployment_gate == 'DEPLOY') ||
+      (github.event_name == 'pull_request' && inputs.deployment_gate == 'DEPLOY' &&
+       inputs.candidate_sha == github.event.pull_request.head.sha &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.login == github.repository_owner)
     environment: cloudbase-cn-dev
     runs-on: ubuntu-latest
     timeout-minutes: 75
     env:
       AMAP_JS_SECURITY_CODE: ${{ secrets.AMAP_JS_SECURITY_CODE }}
       AMAP_WEB_SERVICE_KEY: ${{ secrets.AMAP_WEB_SERVICE_KEY }}
-      APP_DEPLOYMENT_ID: ${{ github.event.workflow_run.head_sha || github.sha }}
+      APP_DEPLOYMENT_ID: ${{ inputs.candidate_sha || github.event.workflow_run.head_sha || github.sha }}
       APP_REGION: cn
       AUTH_PROVIDER: cloudbase
       CLOUDBASE_API_KEY: ${{ secrets.CLOUDBASE_API_KEY }}
@@ -56,15 +70,18 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ inputs.candidate_sha || github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
           cache: npm
           node-version: 24
       - name: Verify exact workflow head
         env:
-          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.event.workflow_run.head_sha || github.sha }}
+          DEPLOY_SHA: ${{ inputs.candidate_sha || github.event.workflow_run.head_sha || github.sha }}
         run: |
+          test "${#DEPLOY_SHA}" -eq 40
+          test "$DEPLOY_SHA" = "$SOURCE_SHA"
           test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
           test "$APP_DEPLOYMENT_ID" = "$DEPLOY_SHA"
           test "${#NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}" -gt 0

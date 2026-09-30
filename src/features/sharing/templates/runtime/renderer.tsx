@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  PublicAttachmentsTrigger,
+  PublicItemDetailsPanel,
+} from "../../components/public-resources-panel";
+
 import type { ReactNode } from "react";
 
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
@@ -53,6 +58,7 @@ function TemplateRegion({
     return (
       <div {...data} className="public-template-region-header-actions public-header-actions">
         {children}
+        <PublicAttachmentsTrigger />
         <LanguageSwitcher className="public-header-button px-2" />
       </div>
     );
@@ -90,6 +96,7 @@ export function PublicTemplateRenderer({ template }: { template: CompiledPublicT
       data-public-template-version={template.version}
     >
       <style data-public-template-styles={template.key}>{template.scopedCss}</style>
+      <PublicItemDetailsPanel />
       {template.layout.children.map((node, index) => (
         <TemplateNode key={`${node.type}:${node.name}:${index}`} node={node} />
       ))}

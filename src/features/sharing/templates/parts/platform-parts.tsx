@@ -4,14 +4,7 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { Map, PanelRightClose, PanelRightOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { PullUpPanel, useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
 
 import {
   PublicItineraryViewPanel,
@@ -71,6 +64,7 @@ function ActiveViewPart() {
       onSelectItem={selectItem}
       selectedDayRef={selection.dayRef}
       selectedItemRef={selection.itemRef}
+      templateId={template.id}
       transportPlacement={template.id === "journal" ? "flow" : "header"}
       view={view}
     />
@@ -93,6 +87,7 @@ function PublicViewPart({ option }: { option: "overview" | "table" | "timeline" 
       option={option}
       selectedDayRef={selection.dayRef}
       selectedItemRef={selection.itemRef}
+      templateId={template.id}
       transportPlacement={template.id === "journal" ? "flow" : "header"}
       view={view}
     />
@@ -155,14 +150,17 @@ function PlatformMapWorkspace() {
 }
 
 function MobileMapTriggerPart() {
-  const { setMapSheetOpen, showMap } = usePublicTemplateController();
+  const { setMapSheetOpen, setMapTrigger, showMap } = usePublicTemplateController();
   if (!showMap) return null;
   return (
     <Button
       aria-label="Open map and routes"
       data-i18n-aria-label={"Open map and routes"}
       className="public-mobile-map-control"
-      onClick={() => setMapSheetOpen(true)}
+      onClick={(event) => {
+        setMapTrigger(event.currentTarget);
+        setMapSheetOpen(true);
+      }}
       type="button"
     >
       <Map aria-hidden="true" className="size-4" />
@@ -174,29 +172,25 @@ function MobileMapTriggerPart() {
 }
 
 function MobileMapSheetPart() {
-  const { mapSheetOpen, setMapSheetOpen, showMap, template } = usePublicTemplateController();
+  const { mapSheetOpen, mapTrigger, setMapSheetOpen, showMap, template } =
+    usePublicTemplateController();
   useExclusivePullUpPanel("public-map", mapSheetOpen, setMapSheetOpen);
   if (!showMap) return null;
   return (
-    <Sheet onOpenChange={setMapSheetOpen} open={mapSheetOpen}>
-      <SheetContent
-        className={`public-map-sheet public-share-surface public-template-${template.id} p-0`}
-        data-public-template-key={template.key}
-        side="right"
-      >
-        <SheetHeader className="shrink-0">
-          <SheetTitle>
-            <T message={"Map & routes"} />
-          </SheetTitle>
-          <SheetDescription className="sr-only">
-            <T message={" Shared route first; route exploration stays temporary. "} />
-          </SheetDescription>
-        </SheetHeader>
-        <div className="min-h-0 flex-1">
-          <PlatformMapWorkspace />
-        </div>
-      </SheetContent>
-    </Sheet>
+    <PullUpPanel
+      id="public-map"
+      onOpenChange={setMapSheetOpen}
+      open={mapSheetOpen}
+      trigger={mapTrigger}
+      title="Map & routes"
+      description="Shared route first; route exploration stays temporary."
+      dragMode="handle"
+      className={`public-map-pull-up public-share-surface public-template-${template.id} h-[85dvh] max-h-[85dvh] p-0`}
+    >
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <PlatformMapWorkspace />
+      </div>
+    </PullUpPanel>
   );
 }
 

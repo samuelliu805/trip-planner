@@ -414,7 +414,7 @@ test("Overview media presentation handles zero, one, and multiple item media", (
     ...base,
     media: [googleImage, attachmentImage, attachmentPdf, { ...attachmentImage, id: "extra" }],
   });
-  assert.equal(rich.size, "rich");
+  assert.equal(rich.size, "media");
   assert.equal(rich.remainingMediaCount, 1);
   assert.deepEqual(
     orderedPublicItemMedia({ ...base, media: [googleImage, attachmentPdf] }).map(
@@ -469,7 +469,7 @@ test("Overview lays out a six-item mixed day in stable manual order with one fea
     layout.map(({ item }) => item.title),
     ["Train", "Temple", "Lunch", "Rental pickup", "Hotel", "Note"],
   );
-  assert.equal(layout.filter(({ featured }) => featured).length, 1);
+  assert.equal(layout.filter(({ featured }) => featured).length, 0);
   assert.equal(
     layout.flatMap(({ media }) => media).filter(({ kind }) => kind === "image").length,
     6,

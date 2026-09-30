@@ -24,6 +24,7 @@ const googlePlacePhotoResponseSchema = z
   .passthrough();
 
 const MAX_GOOGLE_PHOTO_LOOKUPS = 40;
+const inFlightPhotos = new Map<string, ReturnType<typeof fetchGooglePlacePhoto>>();
 
 function apiKey() {
   return process.env.GOOGLE_PLACES_API_KEY?.trim();
@@ -70,6 +71,7 @@ async function fetchGooglePlacePhoto(providerPlaceId: string) {
       `https://places.googleapis.com/v1/places/${encodeURIComponent(providerPlaceId)}`,
       {
         cache: "no-store",
+        signal: AbortSignal.timeout(8_000),
         headers: {
           "X-Goog-Api-Key": key,
           "X-Goog-FieldMask": "photos",
@@ -84,10 +86,21 @@ async function fetchGooglePlacePhoto(providerPlaceId: string) {
   }
 }
 
+function sharedGooglePlacePhoto(providerPlaceId: string) {
+  const scope = `google:${process.env.APP_REGION ?? "global"}:${providerPlaceId}`;
+  const existing = inFlightPhotos.get(scope);
+  if (existing) return existing;
+  const request = fetchGooglePlacePhoto(providerPlaceId).finally(() =>
+    inFlightPhotos.delete(scope),
+  );
+  inFlightPhotos.set(scope, request);
+  return request;
+}
+
 function googleMapsPlaceUrl(providerPlaceId: string, title: string) {
   const search = new URLSearchParams({
     api: "1",
-    query: title,
+    query: title.trim() || providerPlaceId,
     query_place_id: providerPlaceId,
   });
   return `https://www.google.com/maps/search/?${search.toString()}`;
@@ -120,7 +133,7 @@ export async function resolveGooglePlaceMedia(
     await mapWithConcurrency(
       uniqueProviderIds.map(
         (providerPlaceId) => async () =>
-          [providerPlaceId, await fetchGooglePlacePhoto(providerPlaceId)] as const,
+          [providerPlaceId, await sharedGooglePlacePhoto(providerPlaceId)] as const,
       ),
       4,
     ),
@@ -141,7 +154,11 @@ export async function resolveGooglePlaceMedia(
     const author = photo.authorAttributions?.[0];
     resolved.set(itemRef, [
       {
-        alt: `${item.title} place photo`,
+        ...(item.title.trim() && { alt: `${item.title} place photo` }),
+        attributions: (photo.authorAttributions ?? []).map((entry) => ({
+          label: entry.displayName,
+          ...(entry.uri && { url: entry.uri }),
+        })),
         ...(author && {
           attribution: { label: author.displayName, ...(author.uri && { url: author.uri }) },
         }),
@@ -163,14 +180,8 @@ export async function fetchGooglePhotoMedia(photoName: string, providerPlaceId: 
     const search = new URLSearchParams({ key, maxWidthPx: "1200" });
     const response = await fetch(
       `https://places.googleapis.com/v1/${photoName}/media?${search.toString()}`,
-      { cache: "no-store", redirect: "follow" },
+      { cache: "no-store", redirect: "follow", signal: AbortSignal.timeout(8_000) },
     );
-    if (
-      !response.ok ||
-      !response.body ||
-      !response.headers.get("content-type")?.startsWith("image/")
-    )
-      return null;
     return response;
   } catch {
     return null;

@@ -1,0 +1,83 @@
+.public-template-ethereal .edition-front {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 2rem;
+  align-items: center;
+}
+.public-template-ethereal .edition-cover {
+  background: #304d41;
+  color: #fffefa;
+  padding: clamp(1.5rem, 4cqw, 3.5rem);
+}
+.public-template-ethereal .edition-cover h2 {
+  font-family: var(--ethereal-serif);
+  font-weight: 400;
+}
+.public-template-ethereal .edition-contents {
+  padding: 1rem 0;
+}
+.public-template-ethereal .edition-contents button > span {
+  color: #a58b5d;
+  font-family: var(--ethereal-serif);
+  font-size: 1.5rem;
+}
+.public-template-ethereal .edition-day-number {
+  color: #a58b5d;
+  font-family: var(--ethereal-serif);
+}
+.public-template-ethereal .edition-day-heading h3 {
+  font-family: var(--ethereal-serif);
+  font-weight: 400;
+}
+.public-template-ethereal .ethereal-chapter {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 2rem;
+}
+.public-template-ethereal .ethereal-chapter-lead,
+.public-template-ethereal .ethereal-chapter-flow {
+  min-width: 0;
+}
+.public-template-ethereal .edition-plans {
+  padding-top: 0.5rem;
+}
+.public-template-ethereal .edition-plan {
+  position: relative;
+  border-left: 1px solid #bcc6ba;
+  padding-left: 1rem;
+}
+.public-template-ethereal .edition-plan::before {
+  position: absolute;
+  top: 1.3rem;
+  left: -3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #667169;
+  content: "";
+}
+.public-template-ethereal .edition-plan-button strong {
+  font-family: var(--ethereal-serif);
+  font-size: 1.3125rem;
+  font-weight: 400;
+}
+.public-template-ethereal .edition-transport {
+  margin: 0 0 1.25rem;
+}
+.public-template-ethereal .itinerary-edition .edition-chapters {
+  gap: 3.5rem;
+}
+@container public-content (max-width: 620px) {
+  .public-template-ethereal .ethereal-chapter-flow {
+    margin-top: 1.75rem;
+  }
+  .public-template-ethereal .edition-cover h2 {
+    font-size: clamp(2.5rem, 10cqw, 3.5rem);
+  }
+}
+.timeline-export-document.public-template-ethereal .edition-cover {
+  padding: 2rem;
+}
+.timeline-export-document.public-template-ethereal .ethereal-chapter-flow {
+  margin-top: 1rem;
+}

@@ -114,19 +114,19 @@ export async function prepareShareImageVersion(
     const parsedRenderConfig = longImageRenderConfigSchema.safeParse(rpcData.renderConfig);
     if (!parsedRenderConfig.success)
       return failPreparation("The image settings could not be read.");
-    const attachmentFreeSnapshot = enrichedSnapshot
+    const photoFreeSnapshot = enrichedSnapshot
       ? {
           ...enrichedSnapshot,
           days: enrichedSnapshot.days.map((day) => ({
             ...day,
             items: day.items.map((item) => {
-              const media = item.media?.filter(({ source }) => source !== "attachment");
+              const media = item.media?.filter(({ source }) => source === "attachment");
               return { ...item, media: media?.length ? media : undefined };
             }),
           })),
         }
       : rpcData.sourceSnapshot;
-    const parsedSnapshot = publicItinerarySchema.safeParse(attachmentFreeSnapshot);
+    const parsedSnapshot = publicItinerarySchema.safeParse(photoFreeSnapshot);
     if (!parsedSnapshot.success) return failPreparation("The image snapshot could not be read.");
     let sourceSnapshot;
     try {

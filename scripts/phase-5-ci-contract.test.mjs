@@ -408,3 +408,27 @@ test("live preflights distinguish provider schema and AMap key contracts", async
   assert.match(globalBrowserSmoke, /Global planner logout home/);
   assert.match(globalSmoke, /Publishing changed the source Plan version/);
 });
+
+test("Owner PR release gate requires exact-SHA CN dev deployment after regional live verification", async () => {
+  const [entry, deploy] = await Promise.all([
+    readFile(entryWorkflowUrl, "utf8"),
+    readFile(cnDeployUrl, "utf8"),
+  ]);
+  const job = entry.slice(
+    entry.indexOf("  pr-cn-deployment:"),
+    entry.indexOf("  verification-gate:"),
+  );
+  assert.match(job, /needs: \[static, pr-live-verification\]/);
+  assert.match(job, /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/);
+  assert.match(job, /github\.event\.pull_request\.user\.login == github\.repository_owner/);
+  assert.match(job, /candidate_sha: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
+  assert.match(entry, /test "\$CN_DEPLOY_RESULT" = "success"/);
+  assert.match(entry, /test "\$CN_DEPLOY_RESULT" = "skipped"/);
+  assert.match(deploy, /workflow_call:/);
+  assert.match(deploy, /environment: cloudbase-cn-dev/);
+  assert.match(deploy, /inputs\.candidate_sha == github\.event\.pull_request\.head\.sha/);
+  assert.match(deploy, /test "\$DEPLOY_SHA" = "\$SOURCE_SHA"/);
+  assert.match(deploy, /test "\$\(git rev-parse HEAD\)" = "\$DEPLOY_SHA"/);
+  assert.match(deploy, /test "\$APP_DEPLOYMENT_ID" = "\$DEPLOY_SHA"/);
+  assert.match(deploy, /verify-cloudbase-run-health/);
+});

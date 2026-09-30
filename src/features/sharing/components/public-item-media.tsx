@@ -3,13 +3,16 @@
 import { T, useI18n } from "@/features/i18n/i18n-provider";
 import Image from "next/image";
 import { FileImage, FileText, Film, Play } from "lucide-react";
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { PublicMediaExportContext } from "./public-media-export-context";
 
 import {
   AttachmentViewer,
   preloadAttachmentPdfViewer,
   type ViewerAttachment,
 } from "@/features/attachments/components/attachment-viewer";
+
+import { usePublicPlacePhoto } from "./public-photo-provider";
 
 import type { PublicItemMedia } from "../types";
 
@@ -30,18 +33,44 @@ function viewerAttachment(media: AttachmentMedia): ViewerAttachment {
 
 function GoogleImage({ media, prioritize }: { media: GoogleMedia; prioritize: boolean }) {
   const { t } = useI18n();
+  const { observerRef, photo } = usePublicPlacePhoto(media.id.replace(/^google-place:/, ""));
   return (
-    <div className="media-thumb-v4">
-      <Image
-        alt={media.alt ?? t("Itinerary place")}
-        className="object-cover"
-        fill
-        fetchPriority={prioritize ? "high" : undefined}
-        loading={prioritize ? "eager" : "lazy"}
-        sizes="(max-width: 639px) calc(100vw - 3rem), (max-width: 1199px) 34vw, 24vw"
-        src={media.thumbnailUrl ?? media.url}
-        unoptimized
-      />
+    <div ref={observerRef} className="media-thumb-v4">
+      {photo ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element -- session resource, no image processing. */}
+          <img
+            alt={media.alt ?? t("Itinerary place")}
+            style={{ width: "100%", height: "auto" }}
+            src={photo.displayUrl}
+            fetchPriority={prioritize ? "high" : undefined}
+          />
+          <span className="public-media-attribution">
+            {(
+              photo.media.attributions ?? (photo.media.attribution ? [photo.media.attribution] : [])
+            ).map((author, index) => (
+              <span key={`${author.label}:${index}`}>
+                <T message="Photo by" />{" "}
+                {author.url ? (
+                  <a href={author.url} target="_blank" rel="noopener noreferrer">
+                    {author.label}
+                  </a>
+                ) : (
+                  author.label
+                )}{" "}
+                ·{" "}
+              </span>
+            ))}
+            {photo.media.sourceUrl ? (
+              <a href={photo.media.sourceUrl}>
+                <T message="Google Maps" />
+              </a>
+            ) : (
+              <T message="Google Maps" />
+            )}
+          </span>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -138,6 +167,7 @@ export function PublicItemMediaGallery({
   prioritizeFirst?: boolean;
   variant?: "overview" | "table" | "timeline" | "transport";
 }) {
+  const exporting = useContext(PublicMediaExportContext);
   const [viewerId, setViewerId] = useState<string>();
   const [viewerTrigger, setViewerTrigger] = useState<HTMLElement | null>(null);
   if (!media.length) return null;
@@ -151,6 +181,13 @@ export function PublicItemMediaGallery({
   const showGoogleMedia =
     process.env.NEXT_PUBLIC_APP_REGION !== "cn" && variant === "overview" && googleMedia.length > 0;
   if (!showGoogleMedia && !attachmentMedia.length) return null;
+
+  if (exporting)
+    return attachmentMedia.length ? (
+      <p className="edition-attachment-names">
+        {attachmentMedia.map((entry) => entry.label).join(" · ")}
+      </p>
+    ) : null;
 
   function openAttachment(attachment: AttachmentMedia, trigger: HTMLElement) {
     setViewerTrigger(trigger);
@@ -171,44 +208,6 @@ export function PublicItemMediaGallery({
         </div>
       ) : null}
       <AttachmentButtons attachments={attachmentMedia} onOpen={openAttachment} variant={variant} />
-      {showGoogleMedia ? (
-        <div className="public-media-attribution">
-          {googleMedia.map((entry) => (
-            <span key={`${entry.id}:attribution`}>
-              {entry.attribution ? (
-                <>
-                  <T message={" Photo by"} />{" "}
-                  {entry.attribution.url ? (
-                    <a
-                      className="underline underline-offset-2 hover:text-foreground"
-                      href={entry.attribution.url}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      {entry.attribution.label}
-                    </a>
-                  ) : (
-                    entry.attribution.label
-                  )}
-                  {" · "}
-                </>
-              ) : null}
-              {entry.sourceUrl ? (
-                <a
-                  className="font-medium underline underline-offset-2 hover:text-foreground"
-                  href={entry.sourceUrl}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  <T message={" Google Maps "} />
-                </a>
-              ) : (
-                <T message="Google Maps" />
-              )}
-            </span>
-          ))}
-        </div>
-      ) : null}
       {attachmentMedia.length ? (
         <AttachmentViewer
           attachments={attachmentMedia.map(viewerAttachment)}

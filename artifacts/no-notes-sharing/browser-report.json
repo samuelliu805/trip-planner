@@ -1,0 +1,514 @@
+{
+  "cases": [
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "overview",
+      "width": 390,
+      "height": 844,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "timeline",
+      "width": 390,
+      "height": 844,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "overview",
+      "width": 430,
+      "height": 932,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "timeline",
+      "width": 430,
+      "height": 932,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "overview",
+      "width": 768,
+      "height": 1024,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "timeline",
+      "width": 768,
+      "height": 1024,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "overview",
+      "width": 820,
+      "height": 1180,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "timeline",
+      "width": 820,
+      "height": 1180,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "overview",
+      "width": 1024,
+      "height": 768,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "timeline",
+      "width": 1024,
+      "height": 768,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "overview",
+      "width": 1180,
+      "height": 820,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "timeline",
+      "width": 1180,
+      "height": 820,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "overview",
+      "width": 1440,
+      "height": 1000,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": false,
+      "view": "timeline",
+      "width": 1440,
+      "height": 1000,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "overview",
+      "width": 390,
+      "height": 844,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "timeline",
+      "width": 390,
+      "height": 844,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "overview",
+      "width": 430,
+      "height": 932,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "timeline",
+      "width": 430,
+      "height": 932,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "overview",
+      "width": 768,
+      "height": 1024,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "timeline",
+      "width": 768,
+      "height": 1024,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "overview",
+      "width": 820,
+      "height": 1180,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "timeline",
+      "width": 820,
+      "height": 1180,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "overview",
+      "width": 1024,
+      "height": 768,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "timeline",
+      "width": 1024,
+      "height": 768,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "overview",
+      "width": 1180,
+      "height": 820,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "timeline",
+      "width": 1180,
+      "height": 820,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "overview",
+      "width": 1440,
+      "height": 1000,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "journal",
+      "photos": true,
+      "view": "timeline",
+      "width": 1440,
+      "height": 1000,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "overview",
+      "width": 390,
+      "height": 844,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "timeline",
+      "width": 390,
+      "height": 844,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "overview",
+      "width": 430,
+      "height": 932,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "timeline",
+      "width": 430,
+      "height": 932,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "overview",
+      "width": 768,
+      "height": 1024,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "timeline",
+      "width": 768,
+      "height": 1024,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "overview",
+      "width": 820,
+      "height": 1180,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "timeline",
+      "width": 820,
+      "height": 1180,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "overview",
+      "width": 1024,
+      "height": 768,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "timeline",
+      "width": 1024,
+      "height": 768,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "overview",
+      "width": 1180,
+      "height": 820,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "timeline",
+      "width": 1180,
+      "height": 820,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "overview",
+      "width": 1440,
+      "height": 1000,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": false,
+      "view": "timeline",
+      "width": 1440,
+      "height": 1000,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "overview",
+      "width": 390,
+      "height": 844,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "timeline",
+      "width": 390,
+      "height": 844,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "overview",
+      "width": 430,
+      "height": 932,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "timeline",
+      "width": 430,
+      "height": 932,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "overview",
+      "width": 768,
+      "height": 1024,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "timeline",
+      "width": 768,
+      "height": 1024,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "overview",
+      "width": 820,
+      "height": 1180,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "timeline",
+      "width": 820,
+      "height": 1180,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "overview",
+      "width": 1024,
+      "height": 768,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "timeline",
+      "width": 1024,
+      "height": 768,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "overview",
+      "width": 1180,
+      "height": 820,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "timeline",
+      "width": 1180,
+      "height": 820,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "overview",
+      "width": 1440,
+      "height": 1000,
+      "frame": "pass",
+      "itemOrder": "pass"
+    },
+    {
+      "template": "ethereal",
+      "photos": true,
+      "view": "timeline",
+      "width": 1440,
+      "height": 1000,
+      "frame": "pass",
+      "itemOrder": "pass"
+    }
+  ],
+  "requests": {
+    "resolve": 19,
+    "media": 19,
+    "external": 0
+  },
+  "errors": []
+}

@@ -1,0 +1,278 @@
+@import "./ethereal.css";
+@import "./journal.css";
+@import "./export-responsive.css";
+
+:is(.public-template-ethereal, .public-template-journal) .itinerary-edition {
+  min-height: 100%;
+  padding: clamp(1rem, 3cqw, 2.75rem);
+  color: #304637;
+  overflow-wrap: anywhere;
+}
+.itinerary-edition .edition-front {
+  margin-bottom: 2.75rem;
+}
+.itinerary-edition .edition-kicker {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.itinerary-edition .edition-cover h2 {
+  margin: 1rem 0;
+  font-size: clamp(2.5rem, 7cqw, 5.5rem);
+  line-height: 1.04;
+  overflow-wrap: anywhere;
+}
+.itinerary-edition .edition-cover-dates {
+  font-size: 0.875rem;
+}
+.itinerary-edition .edition-counts {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+}
+.itinerary-edition .edition-contents {
+  min-width: 0;
+}
+.itinerary-edition .edition-contents h3 {
+  margin-bottom: 0.625rem;
+}
+.itinerary-edition .edition-contents button {
+  display: grid;
+  min-height: 44px;
+  width: 100%;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid #d9cfbc;
+  padding: 0.75rem 0;
+  text-align: left;
+}
+.itinerary-edition .edition-contents strong {
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+.itinerary-edition .edition-contents time {
+  font-size: 0.75rem;
+}
+:is(.public-template-ethereal, .public-template-journal) .itinerary-edition .edition-chapters {
+  display: grid;
+  gap: 3rem;
+}
+:is(.public-template-ethereal, .public-template-journal) .itinerary-edition .edition-day {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid #d9cfbc;
+  padding: 2rem 0 0;
+  background: none;
+  box-shadow: none;
+}
+.itinerary-edition .edition-day-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.itinerary-edition .edition-day-heading > div {
+  min-width: 0;
+}
+.itinerary-edition .edition-day-number {
+  flex: none;
+  font-size: 3.5rem;
+  line-height: 1;
+}
+.itinerary-edition .edition-day-heading h3 {
+  margin: 0.25rem 0 0.625rem;
+  font-size: clamp(1.5rem, 3.5cqw, 2.25rem);
+  line-height: 1.2;
+}
+.itinerary-edition .edition-day-heading p {
+  color: #657363;
+  font-size: 0.75rem;
+}
+.itinerary-edition .edition-photo-observer {
+  height: 1px;
+  width: 100%;
+  position: absolute;
+  pointer-events: none;
+}
+.itinerary-edition .edition-photo-slot {
+  min-width: 0;
+}
+.itinerary-edition .edition-photo {
+  margin: 0;
+  min-width: 0;
+}
+.itinerary-edition .edition-photo img {
+  display: block;
+  position: static;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  transform: none;
+  filter: none;
+  opacity: 1;
+}
+.itinerary-edition .edition-photo figcaption {
+  padding: 0.75rem 0 0;
+  color: #596655;
+  font-size: 0.6875rem;
+  line-height: 1.65;
+}
+.itinerary-edition .edition-photo a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.itinerary-edition .edition-plan-list {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  margin: 1rem 0 0;
+  list-style: none;
+}
+.itinerary-edition .edition-plan {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.75rem;
+  padding: 1rem 0;
+  min-width: 0;
+}
+.itinerary-edition .edition-plan-body {
+  min-width: 0;
+}
+.itinerary-edition .edition-plan-order {
+  padding-top: 0.3rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.itinerary-edition .edition-plan-button {
+  display: grid;
+  min-height: 44px;
+  width: 100%;
+  gap: 0.375rem;
+  text-align: left;
+}
+.itinerary-edition .edition-plan-button strong {
+  font-weight: 600;
+  font-size: 1.0625rem;
+  line-height: 1.4;
+}
+.itinerary-edition .edition-plan-category {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  color: #657363;
+}
+.itinerary-edition .edition-plan-category svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.itinerary-edition .edition-plan-meta {
+  display: block;
+  font-size: 0.8125rem;
+  color: #596655;
+  line-height: 1.6;
+}
+.itinerary-edition .edition-note {
+  height: auto;
+  min-height: 0;
+  margin: 0.75rem 0 0;
+  border-left: 2px solid #b98a67;
+  padding: 0.25rem 0 0.25rem 0.75rem;
+  background: none;
+  font-size: 0.875rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+.itinerary-edition .edition-note summary {
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.itinerary-edition .edition-note p {
+  margin-top: 0.5rem;
+}
+.itinerary-edition .edition-empty {
+  padding: 0.75rem 0;
+  color: #657363;
+  font-size: 0.875rem;
+}
+.itinerary-edition .edition-transport {
+  display: grid;
+  gap: 0;
+  margin: 1.5rem 0 0;
+  border-block: 1px solid #d9cfbc;
+}
+.itinerary-edition .edition-transfer {
+  min-width: 0;
+  padding: 0.625rem 0;
+}
+.itinerary-edition .edition-transfer + .edition-transfer {
+  border-top: 1px dashed #d9cfbc;
+}
+.itinerary-edition .edition-transfer-button {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem 0.625rem;
+  width: 100%;
+  text-align: left;
+  font-size: 0.8125rem;
+}
+.itinerary-edition .edition-transfer-button svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.itinerary-edition .edition-transfer-button strong {
+  white-space: nowrap;
+  flex: none;
+}
+.itinerary-edition .edition-transfer-button > span {
+  min-width: 0;
+  color: #596655;
+}
+.itinerary-edition .public-attachment-visual {
+  display: none;
+}
+.itinerary-edition .public-attachment-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.itinerary-edition .public-attachment-button {
+  display: flex;
+  min-height: 44px;
+  max-width: 100%;
+  width: auto;
+  border: 1px solid #d9cfbc;
+  border-radius: 3px;
+  padding: 0.375rem 0.75rem;
+  background: transparent;
+}
+.itinerary-edition .public-attachment-copy {
+  min-width: 0;
+}
+.itinerary-edition .public-attachment-name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+}
+.itinerary-edition .public-quick-actions a,
+.itinerary-edition .public-quick-actions summary {
+  min-height: 44px;
+}
+.itinerary-edition :is(button, a, summary):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.itinerary-edition .edition-plan.is-selected {
+  background: rgb(120 183 154 / 10%);
+}
