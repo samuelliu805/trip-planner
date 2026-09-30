@@ -22,15 +22,17 @@ export function publicPlaceMediaSources(itinerary: PublicItinerary): PublicPlace
       (item?.place?.googlePlaceId
         ? { ref: item.ref, googlePlaceId: item.place.googlePlaceId }
         : undefined);
-    return source
-      ? [
-          {
-            itemRef: source.ref,
-            provider: "google" as const,
-            providerPlaceId: source.googlePlaceId,
-          },
-        ]
-      : [];
+    return [source, day.cityPhotoSource].flatMap((entry) =>
+      entry
+        ? [
+            {
+              itemRef: entry.ref,
+              provider: "google" as const,
+              providerPlaceId: entry.googlePlaceId,
+            },
+          ]
+        : [],
+    );
   });
 }
 

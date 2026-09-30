@@ -88,16 +88,19 @@ export function TripCoverPhoto({ tripId, source }: { tripId: string; source?: Tr
   const photo = loaded?.session === session ? loaded.photo : undefined;
   if (!source) return null;
   return (
-    <div ref={root} className="trip-cover-photo relative pointer-events-none min-w-0">
+    <div
+      ref={root}
+      className="trip-cover-photo pointer-events-none absolute right-6 top-16 w-[28%] max-w-40 min-w-0"
+    >
       {photo ? (
-        <figure className="overflow-hidden rounded-t-xl border-b bg-background">
+        <figure className="rounded-sm border bg-background p-1 shadow-sm">
           {/* eslint-disable-next-line @next/next/no-img-element -- retain natural provider pixels and aspect ratio. */}
           <img
             className="block h-auto w-full object-contain"
             alt={source.name}
             src={photo.displayUrl}
           />
-          <figcaption className="pointer-events-auto relative z-10 px-4 py-2 text-[10px] leading-relaxed text-muted-foreground">
+          <figcaption className="pointer-events-auto relative z-10 py-1 text-[9px] leading-relaxed text-muted-foreground">
             {(photo.media.attributions ?? []).map((author, index) => (
               <span key={`${author.label}:${index}`}>
                 <T message="Photo by" />{" "}
@@ -131,7 +134,6 @@ export function TripCoverPhoto({ tripId, source }: { tripId: string; source?: Tr
           </figcaption>
         </figure>
       ) : null}
-      <p className="relative px-6 pt-4 text-xs font-medium text-muted-foreground">{source.name}</p>
     </div>
   );
 }

@@ -175,6 +175,14 @@ const publicDaySchema = z
       })
       .strict()
       .optional(),
+    cityPhotoSource: z
+      .object({
+        ref: z.string().length(64),
+        googlePlaceId: z.string().trim().min(1).max(300),
+        name: z.string().min(1).max(300),
+      })
+      .strict()
+      .optional(),
     title: z.string().max(200).nullable().optional(),
   })
   .strict();

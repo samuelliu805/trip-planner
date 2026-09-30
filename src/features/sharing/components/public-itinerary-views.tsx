@@ -1,4 +1,4 @@
-import { PagedItineraryEdition } from "./editorial/paged-itinerary-edition";
+import { ContinuousItineraryEdition } from "./editorial/continuous-itinerary-edition";
 import { OverviewEdition } from "./editorial/overview-edition";
 import { canonicalPublicViews } from "../schema";
 import type { PublicItinerary, PublicView } from "../types";
@@ -73,7 +73,7 @@ export function PublicItineraryViewPanel({
       role="tabpanel"
     >
       {editorial && option === "timeline" ? (
-        <PagedItineraryEdition {...viewProps} templateId={templateId} />
+        <ContinuousItineraryEdition {...viewProps} templateId={templateId} />
       ) : (
         <div
           className={`public-view-scroll h-full min-w-0 ${option === "table" ? "overflow-hidden" : "overflow-y-auto"}`}

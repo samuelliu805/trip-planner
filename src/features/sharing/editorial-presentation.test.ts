@@ -105,6 +105,11 @@ test("city covers use only saved published city sources, then POIs for repeat vi
     "A repeated city uses its already saved POI.",
   );
   assert.equal(selected.days[2].photoSource?.googlePlaceId, "saved-city-Versailles");
+  assert.equal(
+    selected.days[1].cityPhotoSource?.googlePlaceId,
+    "saved-city-Paris",
+    "A repeated-city POI does not replace the actual town source for the trip cover.",
+  );
   assert.ok(
     itinerary.days.every((day) => !day.photoSource),
     "Selection never mutates the published snapshot.",

@@ -174,6 +174,7 @@ export function PublicTemplateControllerProvider({
           day.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
         day.tabIndex = -1;
         day.focus({ preventScroll: true });
+        scroller.dispatchEvent(new CustomEvent("public-day-jump", { detail: dayRef }));
       }
     });
   }

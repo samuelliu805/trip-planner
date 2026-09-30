@@ -120,6 +120,7 @@ export async function prepareShareImageVersion(
           days: enrichedSnapshot.days.map((day) => ({
             ...day,
             photoSource: undefined,
+            cityPhotoSource: undefined,
             items: day.items.map((item) => {
               const media = item.media?.filter(({ source }) => source === "attachment");
               return { ...item, media: media?.length ? media : undefined };

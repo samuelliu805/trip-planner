@@ -73,3 +73,45 @@ test("public covers prefer the longest published city and the town strip exclude
   itinerary.days = [itinerary.days[2], itinerary.days[0], itinerary.days[1]];
   assert.equal(editionCoverDay(itinerary)?.ref, itinerary.days[1].ref);
 });
+
+test("a POI never impersonates the longest-stay town photo", () => {
+  assert.equal(selectTripCover([candidate("1", "Paris"), candidate("2", "Paris")]), undefined);
+  const rows = [
+    candidate("1", "Paris", "hotel"),
+    candidate("2", "Paris", "hotel"),
+    candidate("3", "Versailles", "location", "Versailles"),
+  ];
+  assert.equal(
+    selectTripCover(rows),
+    undefined,
+    "Do not substitute a shorter town when the correct saved town image is missing.",
+  );
+  rows.push(candidate("1", "Paris", "location", "Paris"));
+  assert.equal(selectTripCover(rows)?.googlePlaceId, "saved-Paris");
+});
+
+test("overnight towns determine the cover, not airport or activity day trips", () => {
+  const rows = [
+    candidate("1", "Paris", "hotel"),
+    candidate("2", "Paris", "hotel"),
+    candidate("1", "Versailles", "location", "Versailles"),
+    candidate("2", "Versailles", "activity"),
+    candidate("3", "Paris", "location", "Paris"),
+  ];
+  assert.equal(selectTripCover(rows)?.googlePlaceId, "saved-Paris");
+  assert.equal(selectTripCover(rows)?.dayCount, 3);
+});
+
+test("the location strip preserves return visits and uses overnight town changes", () => {
+  const itinerary = structuredClone(parisPublicItinerary);
+  itinerary.days = [
+    structuredClone(itinerary.days[0]),
+    structuredClone(itinerary.days[0]),
+    structuredClone(itinerary.days[2]),
+    structuredClone(itinerary.days[0]),
+  ];
+  itinerary.days[0].primaryLocality = "Airport town";
+  itinerary.days[0].items.find((item) => item.type === "activity")!.place!.localityName =
+    "Day trip town";
+  assert.deepEqual(editionTripTowns(itinerary), ["Paris", "Versailles", "Paris"]);
+});

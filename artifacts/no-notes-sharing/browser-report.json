@@ -506,8 +506,8 @@
     }
   ],
   "requests": {
-    "resolve": 31,
-    "media": 31,
+    "resolve": 35,
+    "media": 35,
     "external": 0
   },
   "tripPhotoRequests": {

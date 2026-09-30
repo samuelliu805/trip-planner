@@ -5,14 +5,12 @@ import { useI18n } from "@/features/i18n/i18n-provider";
 import { meaningfulText } from "../../editorial-presentation";
 import type { PublicItinerary } from "../../types";
 import { DayPhoto } from "./day-photo";
-import { EditionNavigation } from "./edition-navigation";
 import { publicDateSummary } from "../public-trip-header";
-import { editionCoverDay } from "../../edition-destinations";
+import { editionCoverDay, editionTownKey, editionTowns } from "../../edition-destinations";
 
 export function EditionCover({
   itinerary,
   templateId,
-  onSelectDay,
   timeline = false,
   exporting = false,
 }: {
@@ -29,7 +27,16 @@ export function EditionCover({
     : undefined;
   const dates = publicDateSummary(itinerary, locale);
   const coverDay = editionCoverDay(itinerary);
-  const photo = !exporting && coverDay ? <DayPhoto day={coverDay} /> : null;
+  const town = coverDay ? editionTowns(coverDay)[0] : undefined;
+  const cityPhotoSource = itinerary.days.find(
+    (day) =>
+      town &&
+      coverDay &&
+      editionTownKey(day) === editionTownKey(coverDay) &&
+      day.cityPhotoSource?.name.trim().toLocaleLowerCase() === town.toLocaleLowerCase(),
+  )?.cityPhotoSource;
+  const photo =
+    !exporting && coverDay ? <DayPhoto day={{ ...coverDay, cityPhotoSource }} townOnly /> : null;
   const title = (
     <div className="edition-cover-copy">
       <span className="edition-kicker">
@@ -60,17 +67,10 @@ export function EditionCover({
         {!timeline && !exporting ? (
           <div className="edition-journal-front-spread">
             {photo}
-            <aside className="edition-contents-paper">
-              <span className="edition-paper-tab">{t("Contents")}</span>
-              <EditionNavigation days={itinerary.days} onSelectDay={onSelectDay} />
-              <div
-                className="edition-journal-stamp"
-                aria-label={t("{count} shared days", { count })}
-              >
-                <strong>{String(count).padStart(2, "0")}</strong>
-                <span>{t("Shared pages")}</span>
-              </div>
-            </aside>
+            <div className="edition-journal-stamp" aria-label={t("{count} shared days", { count })}>
+              <strong>{String(count).padStart(2, "0")}</strong>
+              <span>{t("Shared pages")}</span>
+            </div>
           </div>
         ) : null}
       </header>

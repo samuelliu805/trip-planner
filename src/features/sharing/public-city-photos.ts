@@ -34,7 +34,10 @@ export function withPublicCityPhotos(
         city && (!repeated || !poi)
           ? { ref: city.ref, googlePlaceId: city.googlePlaceId, name: city.name }
           : undefined;
-      return { ...day, photoSource };
+      const cityPhotoSource = city
+        ? { ref: city.ref, googlePlaceId: city.googlePlaceId, name: city.name }
+        : undefined;
+      return { ...day, photoSource, cityPhotoSource };
     }),
   };
 }

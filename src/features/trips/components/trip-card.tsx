@@ -163,7 +163,8 @@ export function TripCard({
   return (
     <>
       <Card
-        className={`relative h-full transition-shadow focus-within:shadow-md hover:shadow-md ${status === "done" ? "bg-muted/40" : ""}`}
+        data-trip-card={trip.id}
+        className={`relative h-full [&:has(.trip-cover-photo_figure)_.trip-card-identity]:pr-[34%] [&:has(.trip-cover-photo_figure)_.trip-card-header]:min-h-[220px] transition-shadow focus-within:shadow-md hover:shadow-md ${status === "done" ? "bg-muted/40" : ""}`}
       >
         <TripCardArt id={trip.id} cityName={trip.coverSource?.name} />
         <TripCoverPhoto tripId={trip.id} source={trip.coverSource} />
@@ -176,8 +177,8 @@ export function TripCard({
             {trip.title}
           </span>
         </Link>
-        <CardHeader className="relative pointer-events-none flex-row items-start justify-between gap-4">
-          <div className="min-w-0">
+        <CardHeader className="trip-card-header relative pointer-events-none flex-row items-start justify-between gap-4">
+          <div className="trip-card-identity min-w-0 flex-1">
             <CardTitle className="break-words font-serif text-2xl leading-tight sm:text-3xl">
               {trip.title}
             </CardTitle>
@@ -258,7 +259,7 @@ export function TripCard({
             </DropdownMenuContent>
           </DropdownMenu>
         </CardHeader>
-        <CardContent className="pointer-events-none relative grid grid-cols-[1fr_auto] gap-4 border-t pt-4 text-sm">
+        <CardContent className="trip-card-footer pointer-events-none relative grid grid-cols-[1fr_auto] gap-4 border-t pt-4 text-sm">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <T message={" Currency "} />

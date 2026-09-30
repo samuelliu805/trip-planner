@@ -41,6 +41,16 @@ export async function checkPublicSharingExports(page, directory) {
     fixture.settings.showPlacePhotos = true;
     fixture.days.forEach((day) => {
       day.notes = "";
+      day.cityPhotoSource = {
+        ref: "9".repeat(64),
+        name: "Paris",
+        googlePlaceId: "must-not-be-exported-city",
+      };
+      day.photoSource = {
+        ref: "8".repeat(64),
+        name: "Paris POI",
+        googlePlaceId: "must-not-be-exported-poi",
+      };
       day.items.forEach((item) => {
         item.notes = "";
       });

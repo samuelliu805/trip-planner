@@ -7,7 +7,6 @@ import type { PublicItinerary, PublicItineraryDay } from "../../types";
 import { EditionCover } from "./edition-cover";
 import { EditionDate, editionDayTitle } from "./edition-navigation";
 import { DayPhoto } from "./day-photo";
-import { DayTransport } from "./day-plans";
 import { editionTripTowns } from "../../edition-destinations";
 
 function OverviewDayCard({
@@ -67,7 +66,6 @@ function OverviewDayCard({
 export function OverviewEdition({
   itinerary,
   onSelectDay,
-  onSelectItem,
   templateId,
 }: {
   itinerary: PublicItinerary;
@@ -82,7 +80,6 @@ export function OverviewEdition({
     (sum, day) => sum + editorialDaySections(day).plans.length,
     0,
   );
-  const transportDays = itinerary.days.filter((day) => editorialDaySections(day).transport.length);
   return (
     <section
       className={`itinerary-edition edition-overview edition-${templateId}`}
@@ -122,20 +119,6 @@ export function OverviewEdition({
             })}
           </p>
         </aside>
-      ) : null}
-      {transportDays.length ? (
-        <section className="edition-overview-transport">
-          <h2 className="edition-kicker">{t("Journey transport")}</h2>
-          {transportDays.map((day) => (
-            <div key={day.ref}>
-              <h3>{t("Day {day}", { day: day.dayNumber })}</h3>
-              <DayTransport
-                items={editorialDaySections(day).transport}
-                onSelect={(ref) => onSelectItem(ref, day.ref)}
-              />
-            </div>
-          ))}
-        </section>
       ) : null}
     </section>
   );

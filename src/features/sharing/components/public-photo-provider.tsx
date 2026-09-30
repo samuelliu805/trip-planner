@@ -29,13 +29,19 @@ export function PublicPhotoProvider({
   const fingerprint = JSON.stringify(
     itinerary.settings.showPlacePhotos === true && process.env.NEXT_PUBLIC_APP_REGION !== "cn"
       ? itinerary.days.flatMap((day) => {
+          const town = day.cityPhotoSource
+            ? [{ itemRef: day.cityPhotoSource.ref, placeId: day.cityPhotoSource.googlePlaceId }]
+            : [];
           if (day.photoSource)
-            return [{ itemRef: day.photoSource.ref, placeId: day.photoSource.googlePlaceId }];
+            return [
+              ...town,
+              { itemRef: day.photoSource.ref, placeId: day.photoSource.googlePlaceId },
+            ];
           const item = publicGoogleCoverItem(day);
           return item?.place?.googlePlaceId &&
             item.media?.some((media) => media.source === "google_place")
-            ? [{ itemRef: item.ref, placeId: item.place.googlePlaceId }]
-            : [];
+            ? [...town, { itemRef: item.ref, placeId: item.place.googlePlaceId }]
+            : town;
         })
       : [],
   );

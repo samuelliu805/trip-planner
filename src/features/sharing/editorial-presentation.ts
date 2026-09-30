@@ -23,6 +23,7 @@ export function publicDisplayItinerary(itinerary: PublicItinerary): PublicItiner
     ...itinerary,
     days: itinerary.days.map((day) => ({
       ...day,
+      cityPhotoSource: itinerary.settings.showPlacePhotos ? day.cityPhotoSource : undefined,
       photoSource: itinerary.settings.showPlacePhotos ? day.photoSource : undefined,
       notes: itinerary.settings.showNotes ? meaningfulText(day.notes) : undefined,
       items: day.items.map((item) => ({

@@ -1,0 +1,23 @@
+.edition-continuous-scroll.public-view-scroll {
+  overflow-anchor: auto;
+  overscroll-behavior: contain;
+}
+.edition-timeline-panel > div:first-child {
+  flex: none;
+  min-width: 0;
+}
+.edition-timeline-panel .edition-dates {
+  min-height: 52px;
+  padding-block: 4px;
+}
+.edition-timeline-panel .edition-dates button {
+  padding-block: 10px;
+}
+.public-template-journal .edition-journal-cover-photo {
+  max-width: 640px;
+  margin: 0 auto 32px;
+}
+
+.edition-continuous-scroll .edition-chapters > .edition-day:last-of-type {
+  min-height: var(--edition-reader-height);
+}

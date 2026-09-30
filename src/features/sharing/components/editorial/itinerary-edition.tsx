@@ -18,7 +18,6 @@ export function ItineraryEdition({
   exporting = false,
   includeCover = true,
   coverItinerary = itinerary,
-  paged = false,
 }: {
   itinerary: PublicItinerary;
   onSelectDay: (ref: string) => void;
@@ -30,13 +29,12 @@ export function ItineraryEdition({
   exporting?: boolean;
   includeCover?: boolean;
   coverItinerary?: PublicItinerary;
-  paged?: boolean;
 }) {
   const { t } = useI18n();
   const Day = templateId === "journal" ? JournalDay : EtherealDay;
   return (
     <section
-      className={`itinerary-edition edition-${templateId} ${overview ? "edition-overview" : "edition-timeline"} ${paged ? "edition-paged" : ""}`}
+      className={`itinerary-edition edition-${templateId} ${overview ? "edition-overview" : "edition-timeline"}`}
       aria-label={t(overview ? "Whole trip overview" : "Itinerary timeline")}
     >
       <div
@@ -51,7 +49,7 @@ export function ItineraryEdition({
             exporting={exporting}
           />
         ) : null}
-        {templateId === "journal" && !exporting && !paged ? (
+        {templateId === "journal" && !exporting ? (
           <EditionNavigation
             days={itinerary.days}
             onSelectDay={onSelectDay}

@@ -12,11 +12,6 @@
     grid-template-columns: 140px minmax(0, 1fr);
     gap: 26px;
   }
-  .public-template-journal
-    .itinerary-edition
-    .edition-journal-front-spread:has(> .edition-photo-slot) {
-    gap: 36px;
-  }
   .public-template-journal .itinerary-edition .journal-day-spread:has(> .edition-photo-slot) {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -56,28 +51,6 @@
   }
   .public-template-journal .itinerary-edition .edition-journal-book > .edition-front {
     margin-bottom: 30px;
-  }
-  .public-template-journal
-    .itinerary-edition
-    .edition-journal-front-spread:has(> .edition-photo-slot) {
-    grid-template-columns: minmax(0, 1fr);
-    max-width: 540px;
-    gap: 30px;
-  }
-  .public-template-journal
-    .itinerary-edition
-    .edition-journal-front-spread:not(:has(> .edition-photo-slot))
-    .edition-contents
-    ol {
-    display: block;
-  }
-  .public-template-journal
-    .itinerary-edition
-    .edition-journal-front-spread:not(:has(> .edition-photo-slot))
-    .edition-contents
-    li
-    + li {
-    border-top: 1px dashed var(--edition-border);
   }
   .itinerary-edition .edition-overview-cards {
     grid-template-columns: minmax(0, 1fr);

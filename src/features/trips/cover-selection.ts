@@ -21,29 +21,42 @@ export type TripCoverCandidate = {
 
 /** Prefer the town occupied on most distinct days; repeated stops never increase its weight. */
 export function selectTripCover(candidates: TripCoverCandidate[]): TripCoverSource | undefined {
-  const towns = new Map<string, { days: Set<string>; source: TripCoverCandidate["place"] }>();
-  for (const item of candidates.slice().sort((a, b) => a.sort_order - b.sort_order)) {
-    if (
-      !item.day_id ||
-      !item.place ||
-      !["location", "hotel", "activity", "meal"].includes(item.type)
-    )
-      continue;
-    const town = item.place.locality_name?.trim();
-    if (!town) continue;
-    const key = `${item.place.country_code ?? ""}:${town.toLocaleLowerCase()}`;
+  const towns = new Map<
+    string,
+    { days: Set<string>; source: TripCoverCandidate["place"]; name: string }
+  >();
+  const ordered = candidates.slice().sort((a, b) => a.sort_order - b.sort_order);
+  const days = new Set(ordered.flatMap((item) => (item.day_id ? [item.day_id] : [])));
+  for (const day of days) {
+    const stops = ordered.filter(
+      (item) =>
+        item.day_id === day &&
+        item.place?.locality_name?.trim() &&
+        ["location", "hotel", "activity", "meal"].includes(item.type),
+    );
+    const stop =
+      stops.findLast((item) => item.type === "hotel") ??
+      stops.find((item) => item.type === "location") ??
+      stops[0];
+    if (!stop?.place?.locality_name) continue;
+    const name = stop.place.locality_name.trim();
+    const key = `${stop.place.country_code ?? ""}:${name.toLocaleLowerCase()}`;
+    // Resolve only an actual saved town, including one saved on another day.
+    const source =
+      ordered.find(
+        (item) =>
+          item.type === "location" &&
+          item.place?.country_code === stop.place?.country_code &&
+          item.place?.locality_name?.trim().toLocaleLowerCase() === name.toLocaleLowerCase() &&
+          item.place.display_name.trim().toLocaleLowerCase() === name.toLocaleLowerCase(),
+      )?.place ?? null;
     const existing = towns.get(key);
-    if (existing) {
-      existing.days.add(item.day_id);
-      if (
-        item.type === "location" &&
-        item.place.display_name.trim().toLocaleLowerCase() === town.toLocaleLowerCase()
-      )
-        existing.source = item.place;
-    } else towns.set(key, { days: new Set([item.day_id]), source: item.place });
+    if (existing) existing.days.add(day);
+    else towns.set(key, { days: new Set([day]), source, name });
   }
   const best = [...towns.values()].sort((a, b) => b.days.size - a.days.size)[0];
-  if (!best?.source) {
+  if (best && !best.source) return undefined;
+  if (!best) {
     const countries = new Map<
       string,
       { days: Set<string>; source: NonNullable<TripCoverCandidate["place"]> }
@@ -84,8 +97,9 @@ export function selectTripCover(candidates: TripCoverCandidate[]): TripCoverSour
         : {}),
     };
   }
+  if (!best.source) return undefined;
   return {
-    name: best.source.locality_name!.trim(),
+    name: best.name,
     placeId: best.source.id,
     ...(best.source.source === "google" && best.source.google_place_id
       ? { googlePlaceId: best.source.google_place_id }
