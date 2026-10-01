@@ -70,15 +70,15 @@ export function PublicOverview({
                 <div className="overview-day-title-v4">
                   <strong>
                     <span className="overview-day-number-v4">
-                      {t("D{day}", { day: day.dayNumber })}
+                      {t(date ? "D{day}" : "Day {day}", { day: day.dayNumber })}
                     </span>
-                    <span className="overview-day-date-v4">
-                      {date
-                        ? format(date, locale === "zh-CN" ? "M月d日" : "MMM d", {
-                            locale: locale === "zh-CN" ? zhCN : undefined,
-                          })
-                        : t("Date TBD")}
-                    </span>
+                    {date ? (
+                      <span className="overview-day-date-v4">
+                        {format(date, locale === "zh-CN" ? "M月d日" : "MMM d", {
+                          locale: locale === "zh-CN" ? zhCN : undefined,
+                        })}
+                      </span>
+                    ) : null}
                   </strong>
                   {locality ? <span>{locality}</span> : null}
                 </div>

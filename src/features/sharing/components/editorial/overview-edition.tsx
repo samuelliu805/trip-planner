@@ -28,7 +28,7 @@ function OverviewDayCard({
           <span className="edition-overview-number">{String(day.dayNumber).padStart(2, "0")}</span>
           <div>
             <span className="edition-kicker">
-              {t(journal ? "Chapter" : "Day {day}", { day: day.dayNumber })}
+              {t(journal && day.date ? "Chapter" : "Day {day}", { day: day.dayNumber })}
             </span>
             <EditionDate day={day} />
           </div>

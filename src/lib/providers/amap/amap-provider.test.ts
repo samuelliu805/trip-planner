@@ -670,6 +670,112 @@ test("AMap Routes sends WGS-84 as GCJ-02 and normalizes returned geometry to WGS
   assert.equal(result.durationSeconds, 900);
 });
 
+test("AMap driving requests complete details and tolerates omitted optional duration", async () => {
+  const durations = ["900", [], null, undefined, ""];
+  for (const duration of durations) {
+    const result = await createAmapRoutesProvider({
+      apiKey: "server-web-key",
+      fetchImplementation: (async (input) => {
+        const url = new URL(String(input));
+        assert.equal(`${url.origin}${url.pathname}`, amapRoutesEndpoints.driving);
+        assert.equal(url.searchParams.get("extensions"), "all");
+        return Response.json({
+          status: "1",
+          route: {
+            paths: [
+              {
+                distance: "1200",
+                duration,
+                steps: [{ polyline: "116.403632,39.910125;116.405000,39.912000;" }],
+              },
+            ],
+          },
+        });
+      }) as typeof fetch,
+    }).calculateLeg(routeRequest("self_driving"));
+    assert.equal(result.geometry.source, "encoded");
+    assert.equal(result.distanceMeters, 1200);
+    assert.equal(result.durationSeconds, duration === "900" ? 900 : null);
+  }
+});
+
+test("AMap driving recovers duration from complete step timings without inventing missing values", async () => {
+  for (const [secondDuration, expected] of [
+    ["600", 900],
+    [[], null],
+  ] as const) {
+    const result = await createAmapRoutesProvider({
+      apiKey: "server-web-key",
+      fetchImplementation: (async () =>
+        Response.json({
+          status: "1",
+          route: {
+            paths: [
+              {
+                distance: "1200",
+                duration: [],
+                steps: [
+                  { duration: "300", polyline: "116.403632,39.910125;116.405000,39.912000" },
+                  {
+                    duration: secondDuration,
+                    polyline: "116.405000,39.912000;116.411000,39.916000",
+                  },
+                ],
+              },
+            ],
+          },
+        })) as typeof fetch,
+    }).calculateLeg(routeRequest("self_driving"));
+    assert.equal(result.durationSeconds, expected);
+  }
+});
+
+test("AMap successful responses without usable geometry use an explicit straight fallback", async () => {
+  for (const steps of [[], [{ polyline: [] }], [{ polyline: "116.403632,39.910125" }]]) {
+    const result = await createAmapRoutesProvider({
+      apiKey: "server-web-key",
+      fetchImplementation: (async () =>
+        Response.json({
+          status: "1",
+          route: { paths: [{ distance: "0", duration: [], steps }] },
+        })) as typeof fetch,
+    }).calculateLeg(routeRequest("self_driving"));
+    assert.equal(result.geometry.source, "straight");
+    assert.equal(result.fallbackReason, "no_route");
+    assert.equal(result.durationSeconds, null);
+    assert.ok(result.warnings.some((warning) => warning.code === "no_route"));
+  }
+});
+
+test("AMap driving still rejects malformed numeric data and coordinates", async () => {
+  for (const overrides of [
+    { duration: "unknown" },
+    { distance: "" },
+    { steps: [{ polyline: "invalid,39.910125;116.405000,39.912000" }] },
+  ]) {
+    await assert.rejects(
+      createAmapRoutesProvider({
+        apiKey: "server-web-key",
+        fetchImplementation: (async () =>
+          Response.json({
+            status: "1",
+            route: {
+              paths: [
+                {
+                  distance: "1200",
+                  duration: "900",
+                  steps: [{ polyline: "116.403632,39.910125;116.405000,39.912000" }],
+                  ...overrides,
+                },
+              ],
+            },
+          })) as typeof fetch,
+      }).calculateLeg(routeRequest("self_driving")),
+      (error) => error instanceof RouteProviderError && error.code === "invalid_response",
+    );
+  }
+});
+
 test("AMap Routes retries only transient transport and HTTP failures", async () => {
   let transportCalls = 0;
   const transportProvider = createAmapRoutesProvider({

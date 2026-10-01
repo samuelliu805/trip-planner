@@ -124,15 +124,17 @@ export function PublicTimelineDay({
       tabIndex={-1}
     >
       <header className="timeline-section-header-v4">
-        <span className="timeline-day-index-v4">{t("D{day}", { day: day.dayNumber })}</span>
+        <span className="timeline-day-index-v4">
+          {t(day.date ? "D{day}" : "Day {day}", { day: day.dayNumber })}
+        </span>
         <div className="timeline-day-copy-v4">
-          <strong>
-            {day.date
-              ? format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
-                  locale: locale === "zh-CN" ? zhCN : undefined,
-                })
-              : t("Date TBD")}
-          </strong>
+          {day.date ? (
+            <strong>
+              {format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
+                locale: locale === "zh-CN" ? zhCN : undefined,
+              })}
+            </strong>
+          ) : null}
           {locality ? <span>{locality}</span> : null}
         </div>
         <span className="timeline-day-count-v4">

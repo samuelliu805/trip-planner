@@ -131,6 +131,27 @@
 .public-template-ethereal .edition-ethereal-cover:not(:has(.edition-photo-slot)) {
   grid-template-columns: minmax(0, 1fr);
 }
+.public-template-ethereal .edition-overview .edition-ethereal-cover:not(:has(.edition-photo-slot)) {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+.public-template-ethereal
+  .edition-overview
+  .edition-ethereal-cover:not(:has(.edition-photo-slot))
+  .edition-journey-numeral {
+  padding: clamp(24px, 4cqw, 40px) clamp(18px, 4cqw, 42px) 24px 0;
+  font-size: clamp(48px, 10cqw, 112px);
+  text-align: right;
+}
+.public-template-ethereal
+  .edition-overview
+  .edition-ethereal-cover:not(:has(.edition-photo-slot))
+  .edition-journey-numeral
+  span {
+  display: block;
+  margin: 12px 0 0;
+  font-size: clamp(8px, 1cqw, 10px);
+}
 .public-template-ethereal .edition-cover-visual:has(.edition-photo-slot) .edition-journey-numeral {
   display: none;
 }

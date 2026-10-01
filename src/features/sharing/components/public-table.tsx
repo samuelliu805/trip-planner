@@ -83,16 +83,18 @@ export function PublicTable({
                 role="rowheader"
               >
                 <div className="matrix-frozen-content">
-                  <span className="block font-sans text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px] sm:hidden">
+                  <span
+                    className={`block font-sans text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px]${day.date ? " sm:hidden" : ""}`}
+                  >
                     <T message={"Day {day}"} values={{ day: day.dayNumber }} />
                   </span>
-                  <span className="block font-mono text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]">
-                    {day.date
-                      ? format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
-                          locale: locale === "zh-CN" ? zhCN : undefined,
-                        })
-                      : t("Date TBD")}
-                  </span>
+                  {day.date ? (
+                    <span className="block font-mono text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]">
+                      {format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
+                        locale: locale === "zh-CN" ? zhCN : undefined,
+                      })}
+                    </span>
+                  ) : null}
                   {day.date ? (
                     <span className="block text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px]">
                       {format(parseISO(day.date), "EEE", {

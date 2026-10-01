@@ -13,16 +13,14 @@ export function editionDayTitle(day: PublicItineraryDay, fallback: string) {
 }
 
 export function EditionDate({ day }: { day: PublicItineraryDay }) {
-  const { locale, t } = useI18n();
+  const { locale } = useI18n();
   return day.date ? (
     <time dateTime={day.date}>
       {format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
         locale: locale === "zh-CN" ? zhCN : undefined,
       })}
     </time>
-  ) : (
-    <span>{t("Date TBD")}</span>
-  );
+  ) : null;
 }
 
 export function EditionNavigation({

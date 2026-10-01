@@ -18,8 +18,8 @@ export function publicDateSummary(itinerary: PublicItinerary, locale: "en" | "zh
       return `${format(start, "yyyy年M月d日", { locale: zhCN })} – ${format(end, "yyyy年M月d日", { locale: zhCN })} · ${itinerary.trip.dayCount} 天`;
     return `${format(start, "MMM d")} – ${format(end, "MMM d, yyyy")} · ${itinerary.trip.dayCount} days`;
   }
-  if (locale === "zh-CN") return `${itinerary.trip.dayCount} 天 · 日期未定`;
-  return `${itinerary.trip.dayCount} ${itinerary.trip.dayCount === 1 ? "day" : "days"} · Dates not set`;
+  if (locale === "zh-CN") return `${itinerary.trip.dayCount} 天`;
+  return `${itinerary.trip.dayCount} ${itinerary.trip.dayCount === 1 ? "day" : "days"}`;
 }
 
 export function PublicTripHeader({

@@ -17,7 +17,7 @@ export const amapRoutesEndpoints: Record<AmapRouteMode, string> = {
 type AmapPath = {
   distance?: unknown;
   duration?: unknown;
-  steps?: Array<{ polyline?: unknown }>;
+  steps?: Array<{ duration?: unknown; polyline?: unknown }>;
 };
 
 type AmapV3Response = {
@@ -51,7 +51,11 @@ async function waitForRetry(delayMs: number) {
 
 function numberField(value: unknown) {
   const parsed =
-    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : NaN;
   if (!Number.isFinite(parsed) || parsed < 0) throw amapRouteProviderError("invalid_response");
   return Math.round(parsed);
 }
@@ -88,18 +92,33 @@ function routeUrl(request: RouteLegRequest, routeMode: AmapRouteMode, apiKey: st
   url.searchParams.set("destination", coordinateParameter(request, "destination"));
   url.searchParams.set("key", apiKey);
   url.searchParams.set("output", "json");
+  if (routeMode === "driving") url.searchParams.set("extensions", "all");
   return url;
+}
+
+function missingField(value: unknown) {
+  return value == null || value === "" || (Array.isArray(value) && value.length === 0);
+}
+
+function pathDuration(path: AmapPath) {
+  if (!missingField(path.duration)) return numberField(path.duration);
+  if (!path.steps?.length || path.steps.some((step) => missingField(step.duration))) return null;
+  return path.steps.reduce((total, step) => total + numberField(step.duration), 0);
 }
 
 function pathCoordinates(path: AmapPath) {
   const coordinates = (path.steps ?? []).flatMap(({ polyline }) => {
-    if (typeof polyline !== "string") return [];
-    return polyline.split(";").flatMap((point) => {
-      const [longitude, latitude] = point.split(",").map(Number);
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude))
-        throw amapRouteProviderError("invalid_response");
-      return [gcj02ToWgs84({ coordinateSystem: "gcj02", latitude, longitude })];
-    });
+    if (missingField(polyline)) return [];
+    if (typeof polyline !== "string") throw amapRouteProviderError("invalid_response");
+    return polyline
+      .split(";")
+      .filter((point) => point.trim())
+      .flatMap((point) => {
+        const [longitude, latitude] = point.split(",").map(Number);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude))
+          throw amapRouteProviderError("invalid_response");
+        return [gcj02ToWgs84({ coordinateSystem: "gcj02", latitude, longitude })];
+      });
   });
   return coordinates.filter(
     (coordinate, index) =>
@@ -170,11 +189,11 @@ export function createAmapRoutesProvider(options: AmapRoutesProviderOptions): Ro
       const path = responsePaths(payload, routeMode)[0];
       if (!path) return amapStraightFallbackLeg(request, "no_route", now());
       const coordinates = pathCoordinates(path);
-      if (coordinates.length < 2) throw amapRouteProviderError("invalid_response");
+      if (coordinates.length < 2) return amapStraightFallbackLeg(request, "no_route", now());
       return {
         computedAt: now(),
         distanceMeters: numberField(path.distance),
-        durationSeconds: numberField(path.duration),
+        durationSeconds: pathDuration(path),
         geometry: {
           coordinateSystem: "wgs84",
           encodedPolyline: encodePolyline5(coordinates),

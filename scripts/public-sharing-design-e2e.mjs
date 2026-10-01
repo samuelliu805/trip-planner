@@ -15,6 +15,7 @@ import { verifyFullScreenMap } from "./lib/public-sharing-fullscreen-map.mjs";
 import { verifyPhotoAnchoringAndFields } from "./lib/public-sharing-photo-anchoring.mjs";
 import { verifyPanelPolish } from "./lib/public-sharing-panel-polish.mjs";
 import { verifyEditorialPolish } from "./lib/public-sharing-editorial-polish.mjs";
+import { verifyUndatedSharing } from "./lib/public-sharing-undated.mjs";
 import {
   touchDrag,
   verifyContinuousReaderAndSheet,
@@ -37,6 +38,7 @@ assert.ok(
     "refinement2",
     "reader",
     "backgrounds",
+    "undated",
   ].includes(stage),
   "Unknown sharing design stage.",
 );
@@ -168,6 +170,7 @@ try {
     return route.fulfill({ contentType: "image/svg+xml", body: tripPhotoSvg });
   });
   const report = [];
+  if (runs("undated")) await verifyUndatedSharing({ page, app, token, directory });
   if (runs("polish"))
     await verifyEditorialPolish({
       page,

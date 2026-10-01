@@ -88,6 +88,18 @@ assert.equal(route.geometry.provider, "amap");
 assert.equal(route.geometry.coordinateSystem, "wgs84");
 assert.ok(route.distanceMeters > 0);
 
+// Cover the intercity self-driving path reported by CN users, alongside walking.
+const drivingRoute = await routeProvider.calculateLeg({
+  destination: wgs84Coordinates(36.6171, 101.7782),
+  legSignature: "phase-5-real-amap-lanzhou-xining-driving",
+  mode: "self_driving",
+  origin: wgs84Coordinates(36.0611, 103.8343),
+  position: 1,
+});
+assert.equal(drivingRoute.geometry.source, "encoded");
+assert.equal(drivingRoute.geometry.provider, "amap");
+assert.ok(drivingRoute.distanceMeters > 100_000);
+
 const tipsUrl = new URL("https://restapi.amap.com/v3/assistant/inputtips");
 tipsUrl.searchParams.set("key", key);
 tipsUrl.searchParams.set("keywords", "上海外滩");

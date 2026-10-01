@@ -17,22 +17,27 @@ export function DayHeading({ day }: { day: PublicItineraryDay }) {
       <div>
         <span className="edition-kicker">{t("Day {day}", { day: day.dayNumber })}</span>
         {title || city ? <h3>{title ?? city}</h3> : null}
-        <p>
-          {title && city ? <span>{city} · </span> : null}
-          {day.date ? (
-            <time dateTime={day.date}>
-              {format(
-                parseISO(day.date),
-                locale === "zh-CN" ? "yyyy年M月d日 EEEE" : "EEEE, MMM d, yyyy",
-                {
-                  locale: locale === "zh-CN" ? zhCN : undefined,
-                },
-              )}
-            </time>
-          ) : (
-            <span>{t("Date TBD")}</span>
-          )}
-        </p>
+        {day.date || (title && city) ? (
+          <p>
+            {title && city ? (
+              <span>
+                {city}
+                {day.date ? " · " : ""}
+              </span>
+            ) : null}
+            {day.date ? (
+              <time dateTime={day.date}>
+                {format(
+                  parseISO(day.date),
+                  locale === "zh-CN" ? "yyyy年M月d日 EEEE" : "EEEE, MMM d, yyyy",
+                  {
+                    locale: locale === "zh-CN" ? zhCN : undefined,
+                  },
+                )}
+              </time>
+            ) : null}
+          </p>
+        ) : null}
       </div>
     </header>
   );
