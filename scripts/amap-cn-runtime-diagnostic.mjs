@@ -36,8 +36,10 @@ export async function diagnoseCnRuntime(stages, seal) {
     console.log(JSON.stringify({ runtimeKeyMatchesWorkflow: runtimeKey === process.env.AMAP_WEB_SERVICE_KEY,
       siteUrlMatchesReported: environment.NEXT_PUBLIC_SITE_URL === 'https://cn.therewego.world',
       versions: detail.data.OnlineVersionInfos?.map(v => ({ name: v.VersionName, flow: v.FlowRatio })) }));
-    const health = await fetch('https://cn.therewego.world/api/health', {signal: AbortSignal.timeout(15_000)});
-    console.log(`Reported CN domain health: ${health.status}`);
+    try {
+      const health = await fetch('https://cn.therewego.world/api/health', {signal: AbortSignal.timeout(15_000)});
+      console.log(`Reported CN domain health: ${health.status}`);
+    } catch(error) { console.log(`Reported CN domain health probe: ${error.name}`); }
     await mkdir(join(cwd, 'functions', name), { recursive: true });
     const publicKey = await readFile('/tmp/amap-diagnostic-public.pem', 'utf8');
     await writeFile(join(cwd, 'cloudbaserc.json'), JSON.stringify({ version: '2.0', envId,
