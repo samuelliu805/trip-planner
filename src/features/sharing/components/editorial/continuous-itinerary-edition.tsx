@@ -117,8 +117,10 @@ export function ContinuousItineraryEdition({
         node &&
         explicitRef &&
         anchor &&
-        !resized &&
-        Math.abs(node.scrollTop - anchor.scrollTop) > 1
+        Math.abs(
+          node.scrollTop -
+            Math.min(anchor.scrollTop, Math.max(0, node.scrollHeight - node.clientHeight)),
+        ) > 1
       )
         readerMoved();
       schedule();
