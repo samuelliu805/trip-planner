@@ -623,6 +623,7 @@ test("AMap route modes are explicit and unsupported modes never call an upstream
   assert.equal(amapRouteMode("unknown"), null);
   let calls = 0;
   const fallback = await createAmapRoutesProvider({
+    requestIntervalMs: 0,
     apiKey: "",
     fetchImplementation: (async () => {
       calls += 1;
@@ -636,6 +637,7 @@ test("AMap route modes are explicit and unsupported modes never call an upstream
 test("AMap Routes sends WGS-84 as GCJ-02 and normalizes returned geometry to WGS-84", async () => {
   let requestUrl = "";
   const provider = createAmapRoutesProvider({
+    requestIntervalMs: 0,
     apiKey: "server-web-key",
     fetchImplementation: (async (input) => {
       requestUrl = String(input);
@@ -675,6 +677,7 @@ test("AMap driving requests complete details and tolerates omitted optional dura
   const durations = ["900", [], null, undefined, ""];
   for (const duration of durations) {
     const result = await createAmapRoutesProvider({
+      requestIntervalMs: 0,
       apiKey: "server-web-key",
       fetchImplementation: (async (input) => {
         const url = new URL(String(input));
@@ -706,6 +709,7 @@ test("AMap driving recovers duration from complete step timings without inventin
     [[], null],
   ] as const) {
     const result = await createAmapRoutesProvider({
+      requestIntervalMs: 0,
       apiKey: "server-web-key",
       fetchImplementation: (async () =>
         Response.json({
@@ -734,6 +738,7 @@ test("AMap driving recovers duration from complete step timings without inventin
 test("AMap successful responses without usable geometry use an explicit straight fallback", async () => {
   for (const steps of [[], [{ polyline: [] }], [{ polyline: "116.403632,39.910125" }]]) {
     const result = await createAmapRoutesProvider({
+      requestIntervalMs: 0,
       apiKey: "server-web-key",
       fetchImplementation: (async () =>
         Response.json({
@@ -756,6 +761,7 @@ test("AMap driving still rejects malformed numeric data and coordinates", async 
   ]) {
     await assert.rejects(
       createAmapRoutesProvider({
+        requestIntervalMs: 0,
         apiKey: "server-web-key",
         fetchImplementation: (async () =>
           Response.json({
@@ -780,6 +786,7 @@ test("AMap driving still rejects malformed numeric data and coordinates", async 
 test("Eight concurrent AMap driving legs recover from HTTP-200 QPS errors", async () => {
   const calls = new Map<string, number>();
   const provider = createAmapRoutesProvider({
+    requestIntervalMs: 0,
     apiKey: "server-web-key",
     retryDelayMs: 0,
     fetchImplementation: (async (input) => {
@@ -826,11 +833,57 @@ test("Eight concurrent AMap driving legs recover from HTTP-200 QPS errors", asyn
   assert.ok([...calls.values()].every((attempts) => attempts === 2));
 });
 
+test("Eight AMap legs avoid key-level QPS bursts across independent provider instances", async () => {
+  const starts: number[] = [];
+  const fetchImplementation = (async () => {
+    const started = Date.now();
+    const limited = starts.some((previous) => started - previous < 1_000);
+    starts.push(started);
+    return Response.json(
+      limited
+        ? { status: "0", infocode: "10021", info: "CUQPS_HAS_EXCEEDED_THE_LIMIT" }
+        : {
+            status: "1",
+            route: {
+              paths: [
+                {
+                  distance: "1200",
+                  duration: "900",
+                  steps: [{ polyline: "116.403632,39.910125;116.405000,39.912000" }],
+                },
+              ],
+            },
+          },
+    );
+  }) as typeof fetch;
+  const legs = await mapWithConcurrency(
+    Array.from(
+      { length: 8 },
+      (_, index) => () =>
+        createAmapRoutesProvider({
+          apiKey: "shared-qps-test-key",
+          fetchImplementation,
+        }).calculateLeg({
+          ...routeRequest("self_driving"),
+          position: index + 1,
+        }),
+    ),
+    3,
+  );
+  assert.equal(starts.length, 8, "Each leg succeeds on its first request");
+  assert.ok(legs.every((leg) => leg.geometry.source === "encoded"));
+  assert.deepEqual(
+    legs.map((leg) => leg.position),
+    [1, 2, 3, 4, 5, 6, 7, 8],
+  );
+});
+
 test("AMap payload retries are bounded and daily quotas are not retried", async () => {
   for (const [infocode, attempts, code] of [
     ["10014", 3, "quota"],
     ["10018", 3, "quota"],
     ["10020", 3, "quota"],
+    ["10021", 3, "quota"],
     ["10015", 3, "timeout"],
     ["10016", 3, "provider_unavailable"],
     ["10003", 1, "quota"],
@@ -839,6 +892,7 @@ test("AMap payload retries are bounded and daily quotas are not retried", async 
     let calls = 0;
     await assert.rejects(
       createAmapRoutesProvider({
+        requestIntervalMs: 0,
         apiKey: "server-web-key",
         retryDelayMs: 0,
         fetchImplementation: (async () => {
@@ -855,6 +909,7 @@ test("AMap payload retries are bounded and daily quotas are not retried", async 
 test("AMap Routes retries only transient transport and HTTP failures", async () => {
   let transportCalls = 0;
   const transportProvider = createAmapRoutesProvider({
+    requestIntervalMs: 0,
     apiKey: "server-web-key",
     fetchImplementation: (async () => {
       transportCalls += 1;
@@ -881,6 +936,7 @@ test("AMap Routes retries only transient transport and HTTP failures", async () 
   let authenticationCalls = 0;
   await assert.rejects(
     createAmapRoutesProvider({
+      requestIntervalMs: 0,
       apiKey: "server-web-key",
       fetchImplementation: (async () => {
         authenticationCalls += 1;
@@ -900,6 +956,7 @@ test("AMap route errors are normalized, bounded, and abort-safe", async () => {
   );
   await assert.rejects(
     createAmapRoutesProvider({
+      requestIntervalMs: 0,
       apiKey: "secret",
       fetchImplementation: (async () =>
         Response.json({ infocode: "10003", info: "sensitive", status: "0" })) as typeof fetch,
@@ -913,6 +970,7 @@ test("AMap route errors are normalized, bounded, and abort-safe", async () => {
   );
   await assert.rejects(
     createAmapRoutesProvider({
+      requestIntervalMs: 0,
       apiKey: "secret",
       fetchImplementation: (async () => {
         const error = new Error("aborted with secret");

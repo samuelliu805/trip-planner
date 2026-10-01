@@ -82,7 +82,7 @@ export function PlannerItemRow({
       data-item-row={item.id}
     >
       <button
-        className="flex min-h-8 min-w-0 flex-col justify-center rounded px-1.5 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-8 min-w-0 flex-col rounded px-1.5 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         data-edit-item={item.id}
         aria-pressed={selected}
         onClick={(event) => {

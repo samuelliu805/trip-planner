@@ -14,6 +14,7 @@ import {
 } from "./lib/cloudbase-pg-live.mjs";
 import { runCloudBaseSdkCall } from "./lib/cloudbase-phase-4-live-requests.mjs";
 import { verifyCrossVariantClipboard } from "./lib/cross-variant-clipboard-browser.mjs";
+import { measureMatrixContentAlignment } from "./lib/public-sharing-table-content.mjs";
 import { stopChild } from "./lib/child-process.mjs";
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { googleFlightsBookingSample } from "./lib/idea-provider-samples.mjs";
@@ -4811,6 +4812,14 @@ async function verifyTabletMatrixViewport(browser, options) {
       })()`,
       `${surface} ${viewport.label} layout`,
       45_000,
+    );
+    const alignment = await evaluate(
+      browser,
+      `(${measureMatrixContentAlignment.toString()})(document.querySelector(${JSON.stringify(matrixSelector)}))`,
+    );
+    assert(
+      alignment.length > 0 && alignment.every(({ delta }) => Math.abs(delta) <= 1),
+      `${surface} Matrix first-line alignment: ${JSON.stringify(alignment)}`,
     );
     const result = await evaluate(
       browser,

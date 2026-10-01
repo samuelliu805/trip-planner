@@ -16,6 +16,7 @@ import { verifyPhotoAnchoringAndFields } from "./lib/public-sharing-photo-anchor
 import { verifyPanelPolish } from "./lib/public-sharing-panel-polish.mjs";
 import { verifyEditorialPolish } from "./lib/public-sharing-editorial-polish.mjs";
 import { verifyUndatedSharing } from "./lib/public-sharing-undated.mjs";
+import { verifyPublicTableContent } from "./lib/public-sharing-table-content.mjs";
 import {
   touchDrag,
   verifyContinuousReaderAndSheet,
@@ -39,6 +40,7 @@ assert.ok(
     "reader",
     "backgrounds",
     "undated",
+    "table-content",
   ].includes(stage),
   "Unknown sharing design stage.",
 );
@@ -171,6 +173,7 @@ try {
   });
   const report = [];
   if (runs("undated")) await verifyUndatedSharing({ page, app, token, directory });
+  if (runs("table-content")) await verifyPublicTableContent({ page, app, token });
   if (runs("polish"))
     await verifyEditorialPolish({
       page,

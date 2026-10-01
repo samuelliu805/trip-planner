@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { createGlobalClipboardFixture } from "./lib/global-clipboard-fixture.mjs";
+import { verifyPublicTransportSnapshot } from "./lib/public-transport-snapshot-live.mjs";
 import { boundedRetryFetch } from "./lib/bounded-fetch-retry.mjs";
 import { runGlobalBrowserSmoke } from "./lib/phase-5-global-browser-smoke.mjs";
 import { signInWithAdminMagicLink } from "./lib/supabase-test-auth.mjs";
@@ -302,6 +303,9 @@ async function run() {
     const variantLimitTrip = await createTrip(userA.client, `${runLabel}-variant-limit`);
     tripIds.push(variantLimitTrip);
     await verifyRouteVariantLimit(userA.client, variantLimitTrip);
+    const transportTrip = await createTrip(userA.client, `${runLabel}-transport-modes`);
+    tripIds.push(transportTrip);
+    await verifyPublicTransportSnapshot(userA.client, transportTrip);
     const privateTitle = `${runLabel}-private-after-publish`;
     const collaboratorTitle = `${runLabel}-collaborator-edit`;
     const aTrip = await createTrip(userA.client, `${runLabel}-a`);

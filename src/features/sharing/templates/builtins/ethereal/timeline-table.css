@@ -289,17 +289,14 @@
 }
 
 .public-template-ethereal .public-matrix [role="row"]:not(.matrix-grid-header) {
-  min-height: 6.5rem;
   border-color: var(--border);
   background: rgb(255 255 255 / 16%);
 }
 
 .public-template-ethereal .public-matrix [role="columnheader"] {
-  height: 2.75rem;
   border-color: var(--border);
   background: rgb(239 237 231 / 98%);
   color: #77766f;
-  font-size: 0.625rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -308,9 +305,6 @@
 .public-template-ethereal .public-matrix [role="rowheader"] {
   border-color: var(--border);
   background: rgb(255 255 255 / 16%);
-  padding: 0.8125rem 0.75rem;
-  font-size: 0.75rem;
-  line-height: 1.45;
 }
 
 .public-template-ethereal .public-matrix .matrix-date-column,
@@ -320,8 +314,5 @@
 }
 
 .public-template-ethereal .public-matrix .public-item-focus {
-  min-height: 2.75rem;
-  padding: 0.5625rem;
   font-family: var(--ethereal-serif);
-  font-size: 0.8125rem;
 }

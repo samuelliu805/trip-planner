@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { verifyCrossVariantClipboard } from "./cross-variant-clipboard-browser.mjs";
+import { measureMatrixContentAlignment } from "./public-sharing-table-content.mjs";
 import { stopChild } from "./child-process.mjs";
 import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
 import { startLoopbackTlsProxy } from "./loopback-tls-proxy.mjs";
@@ -1792,6 +1793,14 @@ async function verifyGuestTabletLayout(browser) {
       browser,
       `innerWidth === ${viewport.width} && Boolean(document.querySelector('.trip-app-bar-inner'))`,
       `guest ${viewport.width}px tablet layout`,
+    );
+    const alignment = await evaluate(
+      browser,
+      `(${measureMatrixContentAlignment.toString()})(document.querySelector('.planner-matrix'))`,
+    );
+    assert(
+      alignment.length > 0 && alignment.every(({ delta }) => Math.abs(delta) <= 1),
+      `Owner Matrix first-line alignment: ${JSON.stringify(alignment)}`,
     );
     const evidence = await evaluate(
       browser,

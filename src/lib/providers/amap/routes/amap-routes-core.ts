@@ -5,6 +5,7 @@ import { gcj02ToWgs84, wgs84ToGcj02 } from "../coordinates.ts";
 
 import { amapRouteProviderError } from "./errors.ts";
 import { amapStraightFallbackLeg } from "./fallback.ts";
+import { waitForAmapRouteSlot } from "./request-pacing.ts";
 import { amapRouteMode, type AmapRouteMode } from "./mode-mapping.ts";
 import { encodePolyline5 } from "./polyline.ts";
 
@@ -35,6 +36,7 @@ type AmapRoutesProviderOptions = {
   apiKey: string;
   fetchImplementation?: typeof fetch;
   now?: () => string;
+  requestIntervalMs?: number;
   retryDelayMs?: number;
   timeoutMs?: number;
 };
@@ -49,6 +51,7 @@ const transientInfoCodes = new Set([
   "10018",
   "10019",
   "10020",
+  "10021",
 ]);
 
 function retryableStatus(status: number) {
@@ -86,7 +89,9 @@ function providerErrorForInfoCode(value: unknown): RouteProviderError {
   if (["10001", "10005", "10006", "10007"].includes(infoCode)) code = "authentication";
   else if (["10002", "10009", "10012", "10013"].includes(infoCode)) code = "permission";
   else if (
-    ["10003", "10004", "10008", "10010", "10014", "10018", "10019", "10020"].includes(infoCode)
+    ["10003", "10004", "10008", "10010", "10014", "10018", "10019", "10020", "10021"].includes(
+      infoCode,
+    )
   )
     code = "quota";
   else if (infoCode === "10015") code = "timeout";
@@ -182,6 +187,7 @@ export function createAmapRoutesProvider(options: AmapRoutesProviderOptions): Ro
       let response: Response | undefined;
       let payload: unknown;
       for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+        await waitForAmapRouteSlot(options.apiKey, options.requestIntervalMs);
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), timeoutMs);
         try {

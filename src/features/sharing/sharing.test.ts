@@ -54,6 +54,35 @@ import {
   publicViewSchema,
 } from "./schema.ts";
 import type { PublicItemMedia, PublicItinerary, PublicItineraryItem } from "./types.ts";
+import { publicTransportMode } from "./public-transport-mode.ts";
+import { transportModes, transportModeLabels } from "../itinerary/types.ts";
+
+test("published transfer modes survive custom titles and legacy labels", () => {
+  const item: PublicItineraryItem = {
+    ref: "d".repeat(64),
+    title: "Custom transfer",
+    sortOrder: 1,
+    type: "transport",
+  };
+  for (const mode of transportModes) {
+    const explicit = { ...item, transport: { mode } };
+    assert.equal(publicTransportMode(explicit), mode === "rideshare" ? "taxi" : mode);
+    assert.equal(publicTransportShortLabel(explicit), transportModeLabels[mode]);
+    assert.equal(publicTransportSupportingTitle(explicit), item.title);
+  }
+  for (const title of ["Drive", " drive ", "驾车", "self_driving", "自驾"]) {
+    assert.equal(publicTransportMode({ ...item, title }), "self_driving");
+    assert.equal(publicTransportShortLabel({ ...item, title }), "Drive");
+  }
+  assert.equal(publicTransportMode({ ...item, title: "Walk" }), "walk");
+  assert.equal(publicTransportMode({ ...item, title: "Bike" }), "bike");
+  assert.equal(publicTransportMode(item), null);
+  const parsed = publicItinerarySchema.parse({
+    ...itinerary,
+    days: [{ ...itinerary.days[0], items: [{ ...item, transport: { mode: "self_driving" } }] }],
+  });
+  assert.equal(parsed.days[0].items[0].transport?.mode, "self_driving");
+});
 import { defaultShareSettings } from "./components/public-share-settings.ts";
 import {
   paginateTimelineDayHeights,

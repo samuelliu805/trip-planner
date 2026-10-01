@@ -91,8 +91,7 @@
 }
 
 .public-template-bento .public-matrix .public-item-focus {
-  margin-bottom: 0.3125rem;
-  border: 1px solid #24362b;
+  box-shadow: inset 0 0 0 1px #24362b;
   border-radius: 0.5rem;
   background: #101f16;
 }

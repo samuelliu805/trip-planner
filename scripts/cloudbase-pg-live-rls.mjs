@@ -4,6 +4,7 @@ import {
   loadLiveConfig,
   signIn,
 } from "./lib/cloudbase-pg-live.mjs";
+import { verifyPublicTransportSnapshot } from "./lib/public-transport-snapshot-live.mjs";
 
 const userA = "19900000101";
 const userB = "19900000102";
@@ -217,6 +218,8 @@ async function runAssertions(auth, db, config) {
     const aId = await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
     await assertSessionLifecycle(auth, aId);
     aTrip = await createTrip(db, `${runLabel}-a`);
+    const transportTrip = await createTrip(db, `${runLabel}-transport-modes`);
+    await verifyPublicTransportSnapshot(db, transportTrip);
     const initialTrip = rows(
       await db.from("trips").select("content_version").eq("id", aTrip),
       "A trip content version",

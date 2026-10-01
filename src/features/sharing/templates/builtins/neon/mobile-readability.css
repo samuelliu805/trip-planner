@@ -85,9 +85,4 @@
     summary {
     font-size: 0.75rem;
   }
-
-  .public-template-neon[data-public-template-key="neon@1"] .public-matrix [role="gridcell"],
-  .public-template-neon[data-public-template-key="neon@1"] .public-matrix [role="rowheader"] {
-    font-size: 0.8125rem;
-  }
 }

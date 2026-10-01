@@ -26,7 +26,7 @@ export function PlannerDayHeaderCell({
   return (
     <div
       aria-selected={selected}
-      className={`sticky left-0 z-20 flex w-28 shrink-0 cursor-pointer flex-col border-r px-2 py-1 font-mono text-[13px] leading-[1.35] min-[1200px]:text-[11px] ${selected ? "matrix-frozen-selected shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
+      className={`sticky left-0 z-20 flex w-28 shrink-0 cursor-pointer flex-col border-r p-0.5 font-mono text-[13px] leading-[1.35] min-[1200px]:text-[11px] ${selected ? "matrix-frozen-selected shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
       data-day-header=""
       data-day-number={day.day_number}
       onClick={onSelect}
@@ -39,7 +39,7 @@ export function PlannerDayHeaderCell({
       role="rowheader"
       tabIndex={0}
     >
-      <div className="matrix-frozen-content flex h-full flex-col">
+      <div className="matrix-frozen-content flex h-full flex-col px-1.5 py-1">
         <span className="block font-sans text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px] sm:hidden">
           <T message={"Day {day}"} values={{ day: day.day_number }} />
         </span>

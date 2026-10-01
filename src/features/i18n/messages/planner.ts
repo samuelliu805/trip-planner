@@ -20,6 +20,7 @@ export const plannerZhCN: Record<string, string> = {
   "Arrange Day": "安排当天顺序",
   Arrival: "抵达",
   Bus: "大巴",
+  "Day / Date": "天数 / 日期",
   "Car rental": "租车",
   "Choose position": "选择位置",
   "Clear selected cells": "清除所选单元格",

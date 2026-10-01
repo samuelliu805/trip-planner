@@ -89,16 +89,28 @@ assert.equal(route.geometry.provider, "amap");
 assert.equal(route.geometry.coordinateSystem, "wgs84");
 assert.ok(route.distanceMeters > 0);
 
-// Cover the intercity self-driving path reported by CN users, alongside walking.
+// Public city/POI anchors cover the varied eight-leg northwest-China circuit, including
+// the long Chaka–Dunhuang and Zhangye–Tianshui legs. Repeating one city pair misses it.
+const circuit = [
+  [36.0611, 103.8343], // Lanzhou
+  [36.585, 100.4938], // Qinghai Lake
+  [36.6171, 101.7782], // Xining
+  [36.7897, 99.0807], // Chaka
+  [40.1421, 94.6619], // Dunhuang
+  [38.9329, 100.4524], // Zhangye
+  [34.5809, 105.724], // Tianshui
+  [37.9283, 102.638], // Wuwei
+  [36.0611, 103.8343], // Lanzhou
+];
 const drivingRoutes = await mapWithConcurrency(
   Array.from(
     { length: 8 },
     (_, index) => () =>
       routeProvider.calculateLeg({
-        destination: wgs84Coordinates(36.6171, 101.7782),
-        legSignature: `phase-5-real-amap-lanzhou-xining-driving-${index + 1}`,
+        destination: wgs84Coordinates(...circuit[index + 1]),
+        legSignature: `phase-5-real-amap-northwest-circuit-${index + 1}`,
         mode: "self_driving",
-        origin: wgs84Coordinates(36.0611, 103.8343),
+        origin: wgs84Coordinates(...circuit[index]),
         position: index + 1,
       }),
   ),
@@ -108,6 +120,8 @@ for (const drivingRoute of drivingRoutes) {
   assert.equal(drivingRoute.geometry.source, "encoded");
   assert.equal(drivingRoute.geometry.provider, "amap");
   assert.ok(drivingRoute.distanceMeters > 100_000);
+  assert.ok(drivingRoute.durationSeconds > 0);
+  assert.ok(drivingRoute.geometry.encodedPolyline.length > 100);
 }
 
 const tipsUrl = new URL("https://restapi.amap.com/v3/assistant/inputtips");

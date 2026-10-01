@@ -85,9 +85,4 @@
     summary {
     font-size: 0.75rem;
   }
-
-  .public-template-bento[data-public-template-key="bento@2"] .public-matrix [role="gridcell"],
-  .public-template-bento[data-public-template-key="bento@2"] .public-matrix [role="rowheader"] {
-    font-size: 0.8125rem;
-  }
 }

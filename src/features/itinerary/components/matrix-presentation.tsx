@@ -7,6 +7,7 @@ import {
   CarTaxiFront,
   Footprints,
   Plane,
+  Route,
   Ship,
   TrainFront,
   TramFront,
@@ -28,7 +29,8 @@ const transportModeIcons: Partial<Record<TransportMode, LucideIcon>> = {
   ferry: Ship,
   flight: Plane,
   motorcycle: Bike,
-  rideshare: CarFront,
+  other: Route,
+  rideshare: CarTaxiFront,
   self_driving: CarFront,
   shuttle: BusFront,
   subway: TrainFront,
@@ -51,7 +53,15 @@ export function MatrixItemSummary({
   transportMode?: TransportMode | null;
   type?: ItineraryItemType;
 }) {
-  const ModeIcon = transportMode ? (transportModeIcons[transportMode] ?? CarFront) : null;
+  const isTransport =
+    transportMode || type === "transport" || type === "flight" || type === "train";
+  const ModeIcon = transportMode
+    ? (transportModeIcons[transportMode] ?? Route)
+    : type === "car_rental"
+      ? CarFront
+      : isTransport
+        ? Route
+        : null;
   return (
     <>
       <span
@@ -74,6 +84,8 @@ export function MatrixItemSummary({
         >
           {transportMode ? (
             <Localized value={transportModeLabels[transportMode]} />
+          ) : type === "transport" ? (
+            <Localized value={title} />
           ) : type === "car_rental" ? (
             <Localized value={title} />
           ) : (
