@@ -112,9 +112,11 @@ export async function verifyPublicTableContent({ page, app, token }) {
       }
     }
   }
-  await page.context().addCookies([
-    { name: "trip-planner-locale", value: originalLocale?.value ?? "en", url: app.baseUrl },
-  ]);
+  await page
+    .context()
+    .addCookies([
+      { name: "trip-planner-locale", value: originalLocale?.value ?? "en", url: app.baseUrl },
+    ]);
   console.log(
     "Public Table modes, translations, icons and compact alignment passed for six templates and six widths in both locales.",
   );

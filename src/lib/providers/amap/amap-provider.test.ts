@@ -857,11 +857,16 @@ test("Eight AMap legs avoid key-level QPS bursts across independent provider ins
     );
   }) as typeof fetch;
   const legs = await mapWithConcurrency(
-    Array.from({ length: 8 }, (_, index) => () =>
-      createAmapRoutesProvider({ apiKey: "shared-qps-test-key", fetchImplementation }).calculateLeg({
-        ...routeRequest("self_driving"),
-        position: index + 1,
-      }),
+    Array.from(
+      { length: 8 },
+      (_, index) => () =>
+        createAmapRoutesProvider({
+          apiKey: "shared-qps-test-key",
+          fetchImplementation,
+        }).calculateLeg({
+          ...routeRequest("self_driving"),
+          position: index + 1,
+        }),
     ),
     3,
   );
