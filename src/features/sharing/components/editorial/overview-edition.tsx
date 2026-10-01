@@ -6,6 +6,7 @@ import { editorialDaySections } from "../../editorial-presentation";
 import type { PublicItinerary, PublicItineraryDay } from "../../types";
 import { EditionCover } from "./edition-cover";
 import { EditionDate, editionDayTitle } from "./edition-navigation";
+import { OptionalNote } from "./day-plans";
 import { DayPhoto } from "./day-photo";
 import { editionTripTowns } from "../../edition-destinations";
 
@@ -43,6 +44,7 @@ function OverviewDayCard({
               ))
             : t("No shared plans for this day.")}
         </p>
+        {journal ? <OptionalNote text={day.notes} /> : null}
         <button
           className="edition-overview-open"
           type="button"

@@ -22,8 +22,13 @@ export function createPublicPhotoSession({
     if (!canonical.has(source.placeId)) canonical.set(source.placeId, source.itemRef);
   const pending = new Map<string, Promise<LoadedPlacePhoto | null>>();
   const urls = new Set<string>();
+  const decoded = new Map<string, LoadedPlacePhoto>();
   let disposed = false;
   return {
+    peek(itemRef: string) {
+      const source = byRef.get(itemRef);
+      return !disposed && source ? decoded.get(source.placeId) : undefined;
+    },
     get(itemRef: string) {
       const source = byRef.get(itemRef);
       if (!source || disposed) return Promise.resolve(null);
@@ -40,7 +45,9 @@ export function createPublicPhotoSession({
               return null;
             }
             urls.add(image.displayUrl);
-            return { media, displayUrl: image.displayUrl };
+            const photo = { media, displayUrl: image.displayUrl };
+            decoded.set(source.placeId, photo);
+            return photo;
           }
           // Only confirmed expiry gets a single source repair. Quota/auth/outages never retry.
           if (image.status !== 410) return null;
@@ -55,6 +62,7 @@ export function createPublicPhotoSession({
       for (const url of urls) release(url);
       urls.clear();
       pending.clear();
+      decoded.clear();
     },
   };
 }

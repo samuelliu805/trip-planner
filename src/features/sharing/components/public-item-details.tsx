@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, MapPin } from "lucide-react";
+import { Building2, Clock, MapPin, NotebookText } from "lucide-react";
 import { useI18n } from "@/features/i18n/i18n-provider";
 import { meaningfulText, publicItemAttachments } from "../editorial-presentation";
 import { publicTransportShortLabel } from "../presentation";
@@ -34,29 +34,39 @@ export function PublicItemDetails({ item }: { item: PublicItineraryItem }) {
   return (
     <article className="public-item-detail space-y-5 pb-3 text-sm">
       {!transfer ? (
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="public-item-detail-field text-muted-foreground">
           <PublicItemIcon type={item.flightEndpoint ? "flight" : item.type} />
           <span>{t(category)}</span>
         </div>
       ) : null}
       {transfer ? <PublicTransportDetails item={item} /> : null}
       {!transfer && schedule ? (
-        <div className="flex items-start gap-3">
-          <Clock aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <div className="public-item-detail-field">
+          <Clock aria-hidden="true" className="text-muted-foreground" />
           <p className="min-w-0 break-words font-medium">{schedule}</p>
         </div>
       ) : null}
       {showPlace || showAddress ? (
-        <div className="flex items-start gap-3">
-          <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <div className="public-item-detail-field">
+          <MapPin aria-hidden="true" className="text-muted-foreground" />
           <div className="min-w-0 space-y-1 break-words">
             {showPlace ? <p className="font-medium">{place}</p> : null}
             {showAddress ? <p>{address}</p> : null}
           </div>
         </div>
       ) : null}
-      {company && company !== item.title ? <p className="break-words">{company}</p> : null}
-      {notes ? <p className="whitespace-pre-wrap break-words leading-relaxed">{notes}</p> : null}
+      {company && company !== item.title ? (
+        <div className="public-item-detail-field">
+          <Building2 aria-hidden="true" className="text-muted-foreground" />
+          <p className="break-words">{company}</p>
+        </div>
+      ) : null}
+      {notes ? (
+        <div className="public-item-detail-field">
+          <NotebookText aria-hidden="true" className="text-muted-foreground" />
+          <p className="whitespace-pre-wrap break-words">{notes}</p>
+        </div>
+      ) : null}
       <PublicItemMediaGallery media={publicItemAttachments(item)} variant="table" />
       {transfer ? <PublicInlineLinks item={item} /> : <PublicQuickActions item={item} quiet />}
     </article>

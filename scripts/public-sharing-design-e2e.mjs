@@ -6,11 +6,18 @@ import {
   designSessionCookie,
 } from "./lib/public-sharing-design-runtime.mjs";
 import assert from "node:assert/strict";
+import { installGoogleMapsMock } from "./lib/public-sharing-google-sdk.mjs";
+import { bufferDevelopmentScripts } from "./lib/public-sharing-static-responses.mjs";
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import { parisPublicItinerary } from "../src/features/landing/landing-public-fixture.ts";
+import { verifyFullScreenMap } from "./lib/public-sharing-fullscreen-map.mjs";
+import { verifyPhotoAnchoringAndFields } from "./lib/public-sharing-photo-anchoring.mjs";
 import { verifyEditorialPolish } from "./lib/public-sharing-editorial-polish.mjs";
-import { verifyContinuousReaderAndSheet } from "./lib/public-sharing-mobile-gestures.mjs";
+import {
+  touchDrag,
+  verifyContinuousReaderAndSheet,
+} from "./lib/public-sharing-mobile-gestures.mjs";
 const stage = process.env.PUBLIC_SHARING_DESIGN_STAGE ?? "all";
 assert.ok(
   [
@@ -23,14 +30,24 @@ assert.ok(
     "trips",
     "touch",
     "polish",
+    "refinement",
+    "presentation",
+    "maps",
+    "refinement2",
+    "reader",
   ].includes(stage),
   "Unknown sharing design stage.",
 );
-const runs = (name) => stage === "all" || stage === name;
+const runs = (name) =>
+  stage === "all" ||
+  stage === name ||
+  (stage === "refinement2" && ["maps", "refinement", "polish", "longtrip"].includes(name)) ||
+  (stage === "reader" && ["maps", "refinement", "longtrip"].includes(name)) ||
+  (stage === "presentation" && ["longtrip", "gestures"].includes(name));
 const token = "11111111-1111-4111-8111-111111111111";
 const directory = process.env.PUBLIC_SHARING_DESIGN_ARTIFACT_DIR;
 if (directory) await mkdir(directory, { recursive: true });
-const app = await startPublicSharingDesignRuntime();
+const app = await startPublicSharingDesignRuntime({ enableMockMap: true });
 const executablePath = [
   process.env.CHROME_PATH,
   "/usr/bin/chromium",
@@ -39,6 +56,7 @@ const executablePath = [
 ].find((path) => path && existsSync(path));
 assert.ok(executablePath, "Chromium is required.");
 const errors = [];
+let scriptResponses;
 const browser = await chromium.launch({ executablePath, args: ["--no-sandbox"] });
 try {
   if (stage === "all") {
@@ -50,7 +68,20 @@ try {
     console.log(auth.stdout.trim());
   }
   const page = await browser.newPage({ hasTouch: true });
+  scriptResponses = await bufferDevelopmentScripts(page);
+  await page.addInitScript(installGoogleMapsMock);
   page.setDefaultNavigationTimeout(90_000);
+  await page.addInitScript(() => {
+    window.sharingScriptErrors = [];
+    window.addEventListener("error", (event) => {
+      window.sharingScriptErrors.push({
+        message: event.message,
+        file: event.filename,
+        line: event.lineno,
+        column: event.colno,
+      });
+    });
+  });
   page.on("pageerror", (e) => errors.push({ message: e.message, stack: e.stack, url: page.url() }));
   const requests = { resolve: 0, media: 0, external: 0 };
   const resolvedRefs = [];
@@ -61,6 +92,25 @@ try {
   const svg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#b4c9c0"/><path d="M0 410L240 250 470 420 620 220 800 390V600H0" fill="#527368"/><circle cx="650" cy="140" r="60" fill="#eee5d4"/><text x="30" y="560" font-family="sans-serif" font-size="22" fill="white">Controlled place photo · test only</text></svg>';
   let publicPhotoDelay = 0;
+  let photoBarrier;
+  let heldPhotos = 0;
+  const photoGate = {
+    hold() {
+      heldPhotos = 0;
+      let release;
+      const promise = new Promise((resolve) => {
+        release = resolve;
+      });
+      photoBarrier = { promise, release };
+    },
+    release() {
+      photoBarrier?.release();
+      photoBarrier = undefined;
+    },
+    held() {
+      return heldPhotos;
+    },
+  };
   let tripPhotoSvg = svg;
   let tripPhotoAuthors = [{ label: "Test author", url: "https://example.invalid/author" }];
   await page.route("**/api/public-place-photo/**", async (route) => {
@@ -81,8 +131,18 @@ try {
       });
     } else {
       requests.media++;
+      // A portrait fallback forces genuine height growth even in a wide two-column chapter.
+      // Keep both mock rendition dimensions within the existing 800px provider limit.
+      const mediaSvg = photoBarrier
+        ? svg.replace('width="800" height="600"', 'width="400" height="800"')
+        : svg;
+      if (photoBarrier) {
+        const barrier = photoBarrier;
+        heldPhotos++;
+        await barrier.promise;
+      }
       if (publicPhotoDelay) await new Promise((resolve) => setTimeout(resolve, publicPhotoDelay));
-      await route.fulfill({ contentType: "image/svg+xml", body: svg });
+      await route.fulfill({ contentType: "image/svg+xml", body: mediaSvg });
     }
   });
   await page.route("**/api/trips/*/cover-photo**", async (route) => {
@@ -464,6 +524,18 @@ try {
       })),
     }));
     longJournal.trip.dayCount = 12;
+    // The teaser should reveal rich chapters from the middle, with omissions on both ends.
+    for (const index of [1, 4, 7]) {
+      const day = longJournal.days[index];
+      const activity = day.items.find((item) => item.type === "activity");
+      day.items.push(
+        ...Array.from({ length: 3 }, (_, extra) => ({
+          ...structuredClone(activity),
+          ref: (9000 + index * 10 + extra).toString(16).padStart(64, "0"),
+          sortOrder: 20 + extra,
+        })),
+      );
+    }
     longJournal.cityPhotoSources = longJournal.days.map((day) => ({
       dayRef: day.ref,
       ref: "9".repeat(64),
@@ -484,8 +556,18 @@ try {
       );
       assert.equal(
         await front.locator(".journal-quick-overview button").count(),
-        12,
-        "Quick overview retains every shared day without a tall cover column.",
+        3,
+        "The contents card previews three chapters; the full itinerary stays below.",
+      );
+      assert.deepEqual(await front.locator(".journal-contents-number").allTextContents(), [
+        "02",
+        "05",
+        "08",
+      ]);
+      assert.equal(
+        await front.locator(".journal-contents-continuation").count(),
+        4,
+        "Omissions before, between and after the teaser remain visible.",
       );
       assert.equal(
         await page.locator("#public-overview-panel .edition-overview-day-card").count(),
@@ -496,6 +578,8 @@ try {
         photoHeight: node.querySelector(".edition-photo img").getBoundingClientRect().height,
         photoBottom: node.querySelector(".edition-photo").getBoundingClientRect().bottom,
         stampTop: node.querySelector(".edition-journal-stamp").getBoundingClientRect().top,
+        stampLeft: node.querySelector(".edition-journal-stamp").getBoundingClientRect().left,
+        photoRight: node.querySelector(".edition-photo").getBoundingClientRect().right,
         listTop: node.parentElement.querySelector(".edition-overview-cards").getBoundingClientRect()
           .top,
         width: node.scrollWidth,
@@ -503,7 +587,7 @@ try {
       }));
       assert.ok(layout.photoHeight > 100);
       assert.ok(
-        layout.stampTop > layout.photoBottom,
+        layout.stampTop > layout.photoBottom || layout.stampLeft >= layout.photoRight,
         "The page stamp never covers provider pixels or attribution.",
       );
       assert.ok(
@@ -652,6 +736,9 @@ try {
     assert.ok(await page.locator("[role=dialog]").isVisible());
     await page.keyboard.press("Escape");
   }
+  if (runs("refinement")) await verifyPhotoAnchoringAndFields({ page, app, token, photoGate });
+  if (runs("gestures") || runs("maps"))
+    await verifyFullScreenMap({ page, app, token, directory, requests });
   if (runs("gestures")) {
     // Blank, notes-only, long-text, and failed-photo states never create an empty photo column.
     for (const templateId of ["ethereal", "journal"]) {
@@ -707,73 +794,46 @@ try {
           );
         }
         await page.getByRole("button", { name: "Open map and routes", exact: true }).click();
-        const panel = page.locator(".public-map-pull-up");
-        try {
-          await panel.waitFor();
-        } catch (error) {
-          console.error(
-            "Map open diagnostic",
-            JSON.stringify({
-              templateId,
-              scenario,
-              errors,
-              surface: await page.evaluate(() => ({
-                timelineSelected: document
-                  .querySelector("#public-timeline-tab")
-                  ?.getAttribute("aria-selected"),
-                trigger: document.querySelector(".public-mobile-map-control")?.outerHTML,
-                bodyPointerEvents: getComputedStyle(document.body).pointerEvents,
-                dialogs: [...document.querySelectorAll("[role=dialog]")].map((node) => ({
-                  state: node.getAttribute("data-state"),
-                  className: node.className,
-                  rect: node.getBoundingClientRect().toJSON(),
-                })),
-              })),
-            }),
-          );
-          throw error;
-        }
+        const panel = page.locator(".public-mobile-map");
+        await panel.waitFor();
         await panel.evaluate((node) =>
           Promise.all(
             node.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
           ),
         );
-        const handle = panel.locator("[data-pull-up-handle]");
-        const box = await handle.boundingBox();
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 30, { steps: 5 });
-        await handle.dispatchEvent("pointercancel", { pointerType: "mouse" });
-        await page.mouse.up();
-        await panel.waitFor();
-        await page.waitForFunction(
-          () =>
-            !document.querySelector(".public-map-pull-up")?.hasAttribute("data-pull-up-dragging"),
+        const full = await panel.boundingBox();
+        assert.ok(
+          Math.abs(full.y) <= 1 && Math.abs(full.height - 844) <= 1,
+          "The map fills the viewport.",
         );
+        assert.equal(await panel.locator(":scope > [data-pull-up-handle]").count(), 0);
+        // Downward map pan stays outside the drawer's drag surface.
+        const canvas = await panel.locator(".public-map-canvas").boundingBox();
+        await touchDrag(
+          page,
+          { x: canvas.x + 40, y: canvas.y + 100 },
+          { x: canvas.x + 40, y: canvas.y + 300 },
+        );
+        assert.ok(await panel.isVisible(), "Panning the map never dismisses it.");
         assert.equal(await panel.getAttribute("data-pull-up-dragging"), null);
-        // The sheet follows a downward content drag immediately and dismisses on release.
-        const content = await panel.locator(".public-map-workspace").boundingBox();
-        await page.mouse.move(content.x + 40, content.y + 40);
+        await panel.getByRole("button", { name: "Open route panel", exact: true }).click();
+        const drawer = panel.locator(".public-map-panel");
+        const handle = drawer.locator("[data-pull-up-handle]");
+        const box = await handle.boundingBox();
+        await page.mouse.move(box.x + box.width / 2, box.y + 10);
         await page.mouse.down();
-        await page.mouse.move(content.x + 40, content.y + 240, { steps: 5 });
-        const offset = await panel.evaluate(
-          (node) => new DOMMatrix(getComputedStyle(node).transform).m42,
-        );
-        assert.ok(offset >= 190, "Dragging content moves the whole sheet with the pointer.");
-        await page.mouse.up();
-        await panel.waitFor({ state: "hidden" });
-        await page.getByRole("button", { name: "Open map and routes", exact: true }).click();
-        await panel.waitFor();
-        await panel.evaluate((node) =>
-          Promise.all(
-            node.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+        await page.mouse.move(box.x + box.width / 2, box.y + 90, { steps: 6 });
+        assert.ok(
+          await drawer.evaluate(
+            (node) => new DOMMatrix(getComputedStyle(node).transform).m42 >= 70,
           ),
+          "Only the route drawer follows the pointer.",
         );
-        const closeBox = await handle.boundingBox();
-        await page.mouse.move(closeBox.x + closeBox.width / 2, closeBox.y + 10);
-        await page.mouse.down();
-        await page.mouse.move(closeBox.x + closeBox.width / 2, closeBox.y + 310, { steps: 10 });
+        await page.mouse.move(box.x + box.width / 2, box.y + 310, { steps: 10 });
         await page.mouse.up();
+        await handle.waitFor({ state: "hidden" });
+        assert.ok(await panel.isVisible(), "Closing routes keeps the map open.");
+        await panel.getByRole("button", { name: "Back", exact: true }).click();
         await panel.waitFor({ state: "hidden" });
         await page.waitForFunction(
           () => document.activeElement?.getAttribute("aria-label") === "Open map and routes",
@@ -1066,11 +1126,21 @@ try {
     `PASS sharing ${stage}: ${report.length} responsive cases, no external provider requests`,
   );
 } catch (error) {
+  console.error(
+    "Last layout responses:",
+    scriptResponses?.filter((row) => row.url.endsWith("/app/layout.js")).slice(-4),
+  );
   console.error("Browser errors:", JSON.stringify(errors));
+
   const active = browser
     .contexts()
     .flatMap((context) => context.pages())
     .at(-1);
+  if (active)
+    console.error(
+      "Script error locations:",
+      await active.evaluate(() => window.sharingScriptErrors).catch(() => null),
+    );
   if (active)
     console.error(
       "Failed page:",

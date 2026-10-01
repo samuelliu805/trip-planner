@@ -44,6 +44,12 @@ export function EditionCover({
             : "A journey, beautifully kept",
         )}
       </span>
+      {timeline && templateId === "ethereal" ? (
+        <span className="edition-cover-count">
+          {String(count).padStart(2, "0")}
+          <small>{t("Shared days")}</small>
+        </span>
+      ) : null}
       <h2>{itinerary.trip.title}</h2>
       <p className="edition-cover-dates">
         {dates || t("Date TBD")} · {itinerary.variant.name}
@@ -64,14 +70,8 @@ export function EditionCover({
         {!timeline && !exporting ? (
           <div className="edition-journal-front-spread">
             {photo}
-            <div className="edition-journal-stamp" aria-label={t("{count} shared days", { count })}>
-              <strong>{String(count).padStart(2, "0")}</strong>
-              <span>{t("Shared pages")}</span>
-            </div>
+            <JournalQuickOverview itinerary={itinerary} onSelectDay={onSelectDay} />
           </div>
-        ) : null}
-        {!timeline && !exporting ? (
-          <JournalQuickOverview itinerary={itinerary} onSelectDay={onSelectDay} />
         ) : null}
       </header>
     );
@@ -87,12 +87,7 @@ export function EditionCover({
             <span>{t("Shared days")}</span>
           </div>
         </div>
-      ) : (
-        <span className="edition-cover-count">
-          {String(count).padStart(2, "0")}
-          <small>{t("Shared days")}</small>
-        </span>
-      )}
+      ) : null}
     </header>
   );
 }

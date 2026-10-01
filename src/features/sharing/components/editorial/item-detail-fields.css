@@ -1,0 +1,24 @@
+.public-item-detail .public-item-detail-field {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  line-height: 1.6;
+}
+.public-item-detail .public-item-detail-field > svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin-top: calc((1em * 1.6 - 20px) / 2);
+}
+.public-item-detail .public-item-detail-field p {
+  margin: 0;
+  line-height: inherit;
+}
+.public-item-detail .public-transport-facts > span {
+  align-items: start;
+}
+.public-item-detail .public-transport-facts svg {
+  align-self: start;
+  margin-top: calc((1em * 1.6 - 14px) / 2);
+}

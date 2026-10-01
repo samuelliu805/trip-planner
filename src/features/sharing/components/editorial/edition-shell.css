@@ -175,3 +175,15 @@
     display: none;
   }
 }
+
+:is(.public-template-ethereal, .public-template-journal) .public-map-panel {
+  background: var(--background);
+}
+.public-template-ethereal .public-map-panel {
+  --background: #f6f5ef;
+  background: var(--background);
+}
+.public-template-journal .public-map-panel {
+  --background: #f5f1e5;
+  background: var(--background);
+}

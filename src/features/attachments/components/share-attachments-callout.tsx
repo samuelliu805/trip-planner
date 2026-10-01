@@ -19,7 +19,7 @@ export function ShareAttachmentsCallout({ onOpen }: { onOpen: () => void }) {
         type="button"
         variant="ghost"
       >
-        <T message={" Share settings "} />
+        <T message={" Share "} />
       </Button>
     </div>
   );

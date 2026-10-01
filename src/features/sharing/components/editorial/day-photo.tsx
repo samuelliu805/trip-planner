@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect } from "react";
 import { T, useI18n } from "@/features/i18n/i18n-provider";
 import type { PublicItineraryDay } from "../../types";
 import { publicGoogleCoverItem } from "../../public-media-presentation";
@@ -16,6 +17,12 @@ export function DayPhoto({
   const item = townOnly ? undefined : publicGoogleCoverItem(day);
   const source = townOnly ? day.cityPhotoSource : day.photoSource;
   const { observerRef, photo } = usePublicPlacePhoto(source?.ref ?? item?.ref);
+  useLayoutEffect(() => {
+    if (!photo) return;
+    // The decoded image has just entered the DOM. Let a continuous reader
+    // restore its explicit chapter anchor before this commit can be painted.
+    observerRef.current?.dispatchEvent(new Event("public-photo-ready", { bubbles: true }));
+  }, [observerRef, photo]);
   return (
     <div ref={observerRef} className={photo ? "edition-photo-slot" : "edition-photo-observer"}>
       {photo ? (

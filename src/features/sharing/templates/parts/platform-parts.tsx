@@ -4,7 +4,7 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { Map, PanelRightClose, PanelRightOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { PullUpPanel, useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
+import { PublicMobileMap } from "../../components/public-mobile-map";
 
 import {
   PublicItineraryViewPanel,
@@ -174,22 +174,16 @@ function MobileMapTriggerPart() {
 function MobileMapSheetPart() {
   const { mapSheetOpen, mapTrigger, setMapSheetOpen, showMap, template } =
     usePublicTemplateController();
-  useExclusivePullUpPanel("public-map", mapSheetOpen, setMapSheetOpen);
   if (!showMap) return null;
   return (
-    <PullUpPanel
-      id="public-map"
+    <PublicMobileMap
       onOpenChange={setMapSheetOpen}
       open={mapSheetOpen}
       trigger={mapTrigger}
-      title="Map & routes"
-      dragMode="all"
-      className={`public-map-pull-up public-share-surface public-template-${template.id} h-[85dvh] max-h-[85dvh] p-0`}
+      templateId={template.id}
     >
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <PlatformMapWorkspace />
-      </div>
-    </PullUpPanel>
+      <PlatformMapWorkspace />
+    </PublicMobileMap>
   );
 }
 

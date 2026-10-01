@@ -32,7 +32,8 @@ function GoogleMapReadyContent({
     return () => listener.remove();
   }, [map]);
 
-  return readyMap === map ? children : null;
+  // A reused map already has its projection; it may not emit another tile-load event.
+  return map && (readyMap === map || map.getProjection()) ? children : null;
 }
 
 function GoogleMapViewport({
@@ -176,6 +177,7 @@ export function GooglePlannerMapCanvas({
         id={mapInstanceId}
         mapId={mapId}
         mapTypeControl={false}
+        reuseMaps
         streetViewControl={false}
       >
         <GoogleMapReadyContent mapInstanceId={mapInstanceId}>

@@ -45,10 +45,13 @@ export async function getPublicPlaceMediaSources(token: string): Promise<PublicP
   if (error) return [];
   const parsed = publicItinerarySchema.safeParse(data);
   if (!parsed.success || !parsed.data.settings.showPlacePhotos) return [];
-  const current = await database.rpc("get_public_itinerary_v4", { shared_token: token });
+  // Keep the snapshot gate first; current permissions and the city whitelist are independent.
+  const [current, cities] = await Promise.all([
+    database.rpc("get_public_itinerary_v4", { shared_token: token }),
+    database.rpc("get_public_city_photo_sources_v1", { shared_token: token }),
+  ]);
   const permissions = publicItinerarySchema.safeParse(current.data);
   if (!permissions.success || !permissions.data.settings.showPlacePhotos) return [];
-  const cities = await database.rpc("get_public_city_photo_sources_v1", { shared_token: token });
   const sources = publicCityPhotoSourcesSchema.safeParse(cities.data);
   const citiesByRef = new Map(
     (sources.success ? sources.data : []).map((source) => [source.ref, source.googlePlaceId]),

@@ -81,7 +81,7 @@ export function designSessionCookie() {
   };
 }
 
-export async function startPublicSharingDesignRuntime() {
+export async function startPublicSharingDesignRuntime({ enableMockMap = false } = {}) {
   const directory = await mkdtemp(join(tmpdir(), "trip-planner-design-"));
   let fixture = structuredClone(parisPublicItinerary);
   const backend = createServer(async (request, response) => {
@@ -158,6 +158,7 @@ export async function startPublicSharingDesignRuntime() {
     "GOOGLE_PLACES_API_KEY",
     "GOOGLE_ROUTES_API_KEY",
     "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
+    "NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID",
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
     "GOOGLE_GENERATIVE_AI_API_KEY",
@@ -165,6 +166,11 @@ export async function startPublicSharingDesignRuntime() {
     delete env[name];
   // Candidate availability only. Every photo request is intercepted by the browser fixture.
   env.GOOGLE_PLACES_API_KEY = "local-design-test-only";
+  // Only callers installing the SDK double opt in; exports retain zero map/media requests.
+  if (enableMockMap) {
+    env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = "local-design-test-only";
+    env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID = "local-design-map";
+  }
   const child = spawn(
     process.execPath,
     ["node_modules/next/dist/bin/next", "dev", "--webpack", "-p", String(port)],
