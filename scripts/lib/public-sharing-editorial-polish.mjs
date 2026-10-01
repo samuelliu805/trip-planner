@@ -128,10 +128,14 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
           await page.screenshot({ path: `${directory}/ethereal-timeline-${width}.png` });
       }
       // A jump stays selected while late images insert content above the chapter.
-      await panel.locator(".edition-dates button").nth(4).click();
+      const targetDate = panel.locator(".edition-dates button").nth(4);
+      await targetDate.evaluate((node) =>
+        node.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" }),
+      );
       const stripOffset = await panel
         .locator(".edition-dates ol")
         .evaluate((node) => node.scrollLeft);
+      await targetDate.click();
       const sampled = await panel.evaluate(async (node) => {
         const values = [];
         for (let index = 0; index < 35; index++) {

@@ -18,6 +18,7 @@ export function ContinuousItineraryEdition({
   templateId: "ethereal" | "journal";
 }) {
   const scroller = useRef<HTMLDivElement>(null);
+  const navigation = useRef<HTMLDivElement>(null);
   const [readingDayRef, setReadingDayRef] = useState<string | undefined>(itinerary.days[0]?.ref);
   useEffect(() => {
     const node = scroller.current;
@@ -156,9 +157,19 @@ export function ContinuousItineraryEdition({
       node.removeEventListener("public-photo-ready", photoReady);
     };
   }, [itinerary.days]);
+  useEffect(() => {
+    // Reveal clipped dates at the nearest edge; never recenter a visible day.
+    const current = navigation.current?.querySelector<HTMLElement>("[aria-current=date]");
+    const strip = current?.closest("ol");
+    if (!current || !strip) return;
+    const date = current.getBoundingClientRect();
+    const viewport = strip.getBoundingClientRect();
+    if (date.right > viewport.right) strip.scrollLeft += date.right - viewport.right;
+    else if (date.left < viewport.left) strip.scrollLeft += date.left - viewport.left;
+  }, [readingDayRef]);
   return (
     <>
-      <div>
+      <div ref={navigation}>
         <EditionNavigation
           days={itinerary.days}
           selectedDayRef={readingDayRef}
