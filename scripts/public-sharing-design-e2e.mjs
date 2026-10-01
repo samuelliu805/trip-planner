@@ -9,12 +9,21 @@ import assert from "node:assert/strict";
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import { parisPublicItinerary } from "../src/features/landing/landing-public-fixture.ts";
+import { verifyEditorialPolish } from "./lib/public-sharing-editorial-polish.mjs";
 import { verifyContinuousReaderAndSheet } from "./lib/public-sharing-mobile-gestures.mjs";
 const stage = process.env.PUBLIC_SHARING_DESIGN_STAGE ?? "all";
 assert.ok(
-  ["all", "responsive", "chapters", "longtrip", "gestures", "classic", "trips", "touch"].includes(
-    stage,
-  ),
+  [
+    "all",
+    "responsive",
+    "chapters",
+    "longtrip",
+    "gestures",
+    "classic",
+    "trips",
+    "touch",
+    "polish",
+  ].includes(stage),
   "Unknown sharing design stage.",
 );
 const runs = (name) => stage === "all" || stage === name;
@@ -29,6 +38,7 @@ const executablePath = [
   "/usr/bin/google-chrome-stable",
 ].find((path) => path && existsSync(path));
 assert.ok(executablePath, "Chromium is required.");
+const errors = [];
 const browser = await chromium.launch({ executablePath, args: ["--no-sandbox"] });
 try {
   if (stage === "all") {
@@ -41,7 +51,6 @@ try {
   }
   const page = await browser.newPage({ hasTouch: true });
   page.setDefaultNavigationTimeout(90_000);
-  const errors = [];
   page.on("pageerror", (e) => errors.push({ message: e.message, stack: e.stack, url: page.url() }));
   const requests = { resolve: 0, media: 0, external: 0 };
   const resolvedRefs = [];
@@ -51,6 +60,7 @@ try {
   });
   const svg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#b4c9c0"/><path d="M0 410L240 250 470 420 620 220 800 390V600H0" fill="#527368"/><circle cx="650" cy="140" r="60" fill="#eee5d4"/><text x="30" y="560" font-family="sans-serif" font-size="22" fill="white">Controlled place photo · test only</text></svg>';
+  let publicPhotoDelay = 0;
   let tripPhotoSvg = svg;
   let tripPhotoAuthors = [{ label: "Test author", url: "https://example.invalid/author" }];
   await page.route("**/api/public-place-photo/**", async (route) => {
@@ -71,6 +81,7 @@ try {
       });
     } else {
       requests.media++;
+      if (publicPhotoDelay) await new Promise((resolve) => setTimeout(resolve, publicPhotoDelay));
       await route.fulfill({ contentType: "image/svg+xml", body: svg });
     }
   });
@@ -93,6 +104,16 @@ try {
     return route.fulfill({ contentType: "image/svg+xml", body: tripPhotoSvg });
   });
   const report = [];
+  if (runs("polish"))
+    await verifyEditorialPolish({
+      page,
+      app,
+      token,
+      directory,
+      photoDelay: (value) => {
+        publicPhotoDelay = value;
+      },
+    });
   if (runs("responsive")) {
     for (const template of ["journal", "ethereal"])
       for (const photos of [false, true]) {
@@ -204,12 +225,42 @@ try {
                 fixture.days.length,
                 "Every chapter remains mounted for continuous reading.",
               );
+              if (photos) {
+                // Establish all intrinsic photo sizes before measuring scroll geometry.
+                // The polish stage separately tests explicit jumps while pixels arrive late.
+                for (const day of fixture.days) {
+                  const chapter = page.locator(
+                    selector + ` .edition-day[data-public-day-ref="${day.ref}"]`,
+                  );
+                  await page.locator(selector + " .public-view-scroll").evaluate((node, ref) => {
+                    const chapter = node.querySelector(`[data-public-day-ref="${ref}"]`);
+                    node.scrollTop +=
+                      chapter.getBoundingClientRect().top - node.getBoundingClientRect().top;
+                  }, day.ref);
+                  await chapter.locator(".edition-photo img").waitFor();
+                }
+              }
               for (const day of fixture.days) {
-                await page.locator(selector + " .public-view-scroll").evaluate((node, ref) => {
-                  const chapter = node.querySelector(`[data-public-day-ref="${ref}"]`);
-                  node.scrollTop +=
-                    chapter.getBoundingClientRect().top - node.getBoundingClientRect().top;
-                }, day.ref);
+                const clamped = await page
+                  .locator(selector + " .public-view-scroll")
+                  .evaluate((node, ref) => {
+                    node.dispatchEvent(new WheelEvent("wheel"));
+                    const chapter = node.querySelector(`[data-public-day-ref="${ref}"]`);
+                    const desired =
+                      node.scrollTop +
+                      chapter.getBoundingClientRect().top -
+                      node.getBoundingClientRect().top;
+                    node.scrollTop = desired;
+                    return desired > node.scrollHeight - node.clientHeight + 1;
+                  }, day.ref);
+                // Short final chapters cannot all reach the top without artificial blank space.
+                // Verify the explicit date jump without adding an empty viewport to the reader.
+                if (clamped) {
+                  await page
+                    .locator(selector + " .edition-dates button")
+                    .nth(fixture.days.indexOf(day))
+                    .click();
+                }
                 await page
                   .waitForFunction(
                     (ref) =>
@@ -430,6 +481,11 @@ try {
         await front.locator(".edition-navigation").count(),
         0,
         "No full day list runs beside the cover photo.",
+      );
+      assert.equal(
+        await front.locator(".journal-quick-overview button").count(),
+        12,
+        "Quick overview retains every shared day without a tall cover column.",
       );
       assert.equal(
         await page.locator("#public-overview-panel .edition-overview-day-card").count(),
@@ -877,6 +933,20 @@ try {
     await page.getByRole("button", { name: "Actions for Paris Trip" }).waitFor();
     await page.locator(".trip-cover-photo img").first().waitFor();
     assert.equal(await page.locator(".trip-cover-photo img").first().getAttribute("alt"), "Paris");
+    const tripFonts = await page
+      .locator(".trip-card-identity")
+      .first()
+      .evaluate((node) => ({
+        title: getComputedStyle(node.children[0]).fontFamily,
+        description: getComputedStyle(node.children[1]).fontFamily,
+        size: parseFloat(getComputedStyle(node.children[0]).fontSize),
+      }));
+    assert.equal(
+      tripFonts.title,
+      tripFonts.description,
+      "Trips retains the original sans-serif title font.",
+    );
+    assert.ok(tripFonts.size >= 18 && tripFonts.size <= 20);
     const tripGeometry = await page
       .locator(".trip-cover-photo")
       .first()
@@ -995,6 +1065,20 @@ try {
   console.log(
     `PASS sharing ${stage}: ${report.length} responsive cases, no external provider requests`,
   );
+} catch (error) {
+  console.error("Browser errors:", JSON.stringify(errors));
+  const active = browser
+    .contexts()
+    .flatMap((context) => context.pages())
+    .at(-1);
+  if (active)
+    console.error(
+      "Failed page:",
+      await active
+        .evaluate(() => ({ url: location.href, text: document.body.innerText.slice(0, 1500) }))
+        .catch(() => null),
+    );
+  throw error;
 } finally {
   await browser.close();
   await app.close();

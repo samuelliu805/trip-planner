@@ -41,7 +41,7 @@ export function PublicAttachmentsTrigger() {
         dragMode="all"
         trigger={trigger}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 pb-5">
           {items.map((item) => (
             <section key={item.ref} className="mb-5">
               <h3 className="break-words font-semibold">{item.title}</h3>
@@ -71,7 +71,7 @@ export function PublicItemDetailsPanel() {
       trigger={detailTrigger}
       className={`public-template-${template.id}`}
     >
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 pb-5">
         {item ? <PublicItemDetails item={item} /> : <T message="No shared plans for this day." />}
       </div>
     </PullUpPanel>

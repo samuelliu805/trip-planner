@@ -39,6 +39,7 @@
 }
 .itinerary-edition .edition-chapters {
   min-width: 0;
+  display: block;
 }
 .itinerary-edition .edition-day {
   min-width: 0;

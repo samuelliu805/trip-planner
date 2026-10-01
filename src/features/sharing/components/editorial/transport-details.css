@@ -1,0 +1,97 @@
+:is(.itinerary-edition, .public-item-detail) .public-transport-details {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+}
+:is(.itinerary-edition, .public-item-detail) .public-transport-route {
+  display: grid;
+  gap: 4px;
+}
+:is(.itinerary-edition, .public-item-detail) .public-transport-route > span {
+  display: grid;
+  grid-template-columns: 3.5em minmax(0, 1fr);
+  gap: 10px;
+}
+:is(.itinerary-edition, .public-item-detail) .public-transport-route > span > span:first-child {
+  color: #788174;
+}
+:is(.itinerary-edition, .public-item-detail) .public-transport-route > span > span:last-child {
+  overflow-wrap: anywhere;
+}
+:is(.itinerary-edition, .public-item-detail) .public-transport-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 18px;
+  color: #667160;
+}
+:is(.itinerary-edition, .public-item-detail) .public-transport-facts > span {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+:is(.itinerary-edition, .public-item-detail) .public-transport-facts svg {
+  flex: none;
+  align-self: center;
+  width: 14px;
+  height: 14px;
+}
+:is(.itinerary-edition, .public-item-detail) .public-inline-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 18px;
+  margin-top: 4px;
+}
+:is(.itinerary-edition, .public-item-detail) .public-inline-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  min-width: 44px;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+:is(.itinerary-edition, .public-item-detail) .public-inline-links svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.public-item-detail .public-transport-details {
+  font-size: 14px;
+  gap: 18px;
+}
+.itinerary-edition .edition-transfer-headline {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.itinerary-edition .edition-transfer-headline > span {
+  overflow-wrap: anywhere;
+}
+.itinerary-edition .edition-transfer-content {
+  min-width: 0;
+}
+
+.itinerary-edition .edition-transfer-headline {
+  color: var(--edition-ink);
+  margin-bottom: 6px;
+}
+.itinerary-edition
+  .edition-transfer-content:not(:has(.public-transport-route, .public-transport-facts))
+  .edition-transfer-headline {
+  margin-bottom: 0;
+}
+.itinerary-edition
+  .edition-transfer
+  > :is(.public-inline-links, .edition-note, .public-item-attachments) {
+  margin-left: 30px;
+}

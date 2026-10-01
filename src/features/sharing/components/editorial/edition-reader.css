@@ -17,7 +17,3 @@
   max-width: 640px;
   margin: 0 auto 32px;
 }
-
-.edition-continuous-scroll .edition-chapters > .edition-day:last-of-type {
-  min-height: var(--edition-reader-height);
-}

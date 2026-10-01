@@ -126,3 +126,25 @@ test("city covers use only saved published city sources, then POIs for repeat vi
   itinerary.settings.showPlacePhotos = false;
   assert.equal(withPublicCityPhotos(itinerary, sources), itinerary);
 });
+
+test("published accommodation cities supply photos while hotels and airport POIs cannot", async () => {
+  const { withPublicCityPhotos } = await import("./public-city-photos.ts");
+  const itinerary = publicItinerarySchema.parse(structuredClone(parisPublicItinerary));
+  itinerary.settings.showPlacePhotos = true;
+  const hotel = itinerary.days[0].items.find((item) => item.type === "hotel")!;
+  hotel.place!.displayName = hotel.place!.localityName = "Paris";
+  hotel.place!.googlePlaceId = "saved-overnight-city";
+  assert.equal(
+    withPublicCityPhotos(itinerary, []).days[0].cityPhotoSource?.googlePlaceId,
+    "saved-overnight-city",
+  );
+  assert.equal(withPublicCityPhotos(itinerary, []).days[0].photoSource?.ref, hotel.ref);
+  hotel.place!.displayName = "A specific hotel";
+  assert.equal(withPublicCityPhotos(itinerary, []).days[0].cityPhotoSource, undefined);
+  hotel.place!.displayName = "Paris";
+  hotel.type = "activity";
+  assert.equal(withPublicCityPhotos(itinerary, []).days[0].cityPhotoSource, undefined);
+  hotel.type = "hotel";
+  itinerary.settings.showPlacePhotos = false;
+  assert.equal(withPublicCityPhotos(itinerary, []).days[0].cityPhotoSource, undefined);
+});

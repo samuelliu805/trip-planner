@@ -98,6 +98,9 @@ test("Google photo request chain coalesces only in flight, uses saved IDs, and b
     const media = await provider.fetchGooglePhotoMedia(photo, "saved-place");
     assert.equal(media.status, 410, "Expiry is preserved for the bounded browser repair.");
     assert.equal(calls.length, 3);
+    const rendition = new URL(calls[2].url);
+    assert.equal(rendition.searchParams.get("maxWidthPx"), "800");
+    assert.equal(rendition.searchParams.get("maxHeightPx"), "800");
     assert.equal(await provider.fetchGooglePhotoMedia(photo, "another-place"), null);
     assert.equal(calls.length, 3);
     delete process.env.GOOGLE_PLACES_API_KEY;

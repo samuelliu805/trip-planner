@@ -3,15 +3,24 @@
   background: #304d41;
   color: #fffefa;
 }
-.public-template-ethereal .edition-overview .edition-ethereal-cover {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr);
-  align-items: center;
+.public-template-ethereal .itinerary-edition {
+  --edition-inline-padding: 38px;
+  max-width: none;
+  padding-top: 0;
+}
+.public-template-ethereal .itinerary-edition .edition-ethereal-cover {
+  display: block;
+  margin-inline: calc(-1 * var(--edition-inline-padding));
   margin-bottom: 32px;
 }
-.public-template-ethereal .edition-overview .edition-ethereal-cover:not(:has(.edition-photo-slot)) {
-  grid-template-columns: minmax(0, 1fr) 240px;
-  min-height: 320px;
+.public-template-ethereal .edition-ethereal-cover > .edition-photo-slot,
+.public-template-ethereal .edition-cover-visual > .edition-photo-slot {
+  max-width: 800px;
+  margin: 0 auto;
+}
+.public-template-ethereal .ethereal-day-photo:has(.edition-photo-slot) {
+  max-width: 560px;
+  margin: 0 auto 24px;
 }
 .public-template-ethereal .itinerary-edition .edition-cover-copy {
   padding: 40px 42px;
@@ -25,41 +34,16 @@
   color: #d8dfcf;
 }
 .public-template-ethereal .edition-editorial-spread {
-  display: grid;
-  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr);
-  gap: 48px;
-  align-items: start;
-}
-.public-template-ethereal .itinerary-edition .edition-ethereal-cover.is-timeline {
-  position: sticky;
-  top: 0;
-}
-.public-template-ethereal .itinerary-edition .is-timeline .edition-cover-copy {
-  padding: 34px 32px 24px;
-}
-.public-template-ethereal .itinerary-edition .is-timeline .edition-cover-copy h2 {
-  font-size: clamp(38px, 4.4cqw, 61px);
-}
-.public-template-ethereal .itinerary-edition .is-timeline .edition-cover-copy > .edition-kicker {
-  padding-right: 74px;
-  line-height: 1.9;
+  display: block;
 }
 .public-template-ethereal .itinerary-edition .edition-cover-count {
-  position: absolute;
-  right: 26px;
-  top: 34px;
-  color: #d8dbc1;
-  font: italic 40px/1 var(--edition-serif);
-  text-align: center;
-}
-.public-template-ethereal
-  .itinerary-edition
-  .is-timeline:has(.edition-photo-slot)
-  .edition-cover-count {
   position: static;
-  display: block;
-  text-align: left;
-  padding: 0 32px 24px;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 20px 32px 26px;
+  color: #d8dbc1;
+  font: italic 36px/1 var(--edition-serif);
 }
 .public-template-ethereal .itinerary-edition .edition-cover-count small {
   display: block;

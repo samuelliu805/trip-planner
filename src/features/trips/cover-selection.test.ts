@@ -115,3 +115,16 @@ test("the location strip preserves return visits and uses overnight town changes
     "Day trip town";
   assert.deepEqual(editionTripTowns(itinerary), ["Paris", "Versailles", "Paris"]);
 });
+
+test("a saved city attached to accommodation supplies the town cover without using a hotel POI", () => {
+  const rows = [
+    candidate("1", "基督城", "hotel", "基督城"),
+    candidate("2", "基督城", "hotel", "基督城"),
+  ];
+  assert.equal(selectTripCover(rows)?.googlePlaceId, "saved-基督城");
+  assert.equal(selectTripCover(rows)?.dayCount, 2);
+  rows.forEach((row) => {
+    row.place!.display_name = "Specific Christchurch Hotel";
+  });
+  assert.equal(selectTripCover(rows), undefined);
+});

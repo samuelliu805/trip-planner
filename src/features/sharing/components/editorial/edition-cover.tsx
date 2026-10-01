@@ -2,8 +2,8 @@
 
 import { Route } from "lucide-react";
 import { useI18n } from "@/features/i18n/i18n-provider";
-import { meaningfulText } from "../../editorial-presentation";
 import type { PublicItinerary } from "../../types";
+import { JournalQuickOverview } from "./journal-quick-overview";
 import { DayPhoto } from "./day-photo";
 import { publicDateSummary } from "../public-trip-header";
 import { editionCoverDay, editionTownKey, editionTowns } from "../../edition-destinations";
@@ -13,6 +13,7 @@ export function EditionCover({
   templateId,
   timeline = false,
   exporting = false,
+  onSelectDay,
 }: {
   itinerary: PublicItinerary;
   templateId: "ethereal" | "journal";
@@ -22,9 +23,6 @@ export function EditionCover({
 }) {
   const { t, locale } = useI18n();
   const count = new Set(itinerary.days.map((day) => day.dayNumber)).size;
-  const description = itinerary.settings.showNotes
-    ? meaningfulText(itinerary.metadata.description)
-    : undefined;
   const dates = publicDateSummary(itinerary, locale);
   const coverDay = editionCoverDay(itinerary);
   const town = coverDay ? editionTowns(coverDay)[0] : undefined;
@@ -47,7 +45,6 @@ export function EditionCover({
         )}
       </span>
       <h2>{itinerary.trip.title}</h2>
-      {description ? <p className="edition-cover-description">{description}</p> : null}
       <p className="edition-cover-dates">
         {dates || t("Date TBD")} · {itinerary.variant.name}
       </p>
@@ -72,6 +69,9 @@ export function EditionCover({
               <span>{t("Shared pages")}</span>
             </div>
           </div>
+        ) : null}
+        {!timeline && !exporting ? (
+          <JournalQuickOverview itinerary={itinerary} onSelectDay={onSelectDay} />
         ) : null}
       </header>
     );

@@ -45,7 +45,7 @@ export function selectTripCover(candidates: TripCoverCandidate[]): TripCoverSour
     const source =
       ordered.find(
         (item) =>
-          item.type === "location" &&
+          ["location", "hotel"].includes(item.type) &&
           item.place?.country_code === stop.place?.country_code &&
           item.place?.locality_name?.trim().toLocaleLowerCase() === name.toLocaleLowerCase() &&
           item.place.display_name.trim().toLocaleLowerCase() === name.toLocaleLowerCase(),

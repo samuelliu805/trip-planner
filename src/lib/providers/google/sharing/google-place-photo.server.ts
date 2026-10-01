@@ -177,7 +177,8 @@ export async function fetchGooglePhotoMedia(photoName: string, providerPlaceId: 
   const key = apiKey();
   if (!key || !photoName.startsWith(`places/${providerPlaceId}/photos/`)) return null;
   try {
-    const search = new URLSearchParams({ key, maxWidthPx: "1200" });
+    // Bound both dimensions of the provider rendition; preserve its complete aspect ratio.
+    const search = new URLSearchParams({ key, maxWidthPx: "800", maxHeightPx: "800" });
     const response = await fetch(
       `https://places.googleapis.com/v1/${photoName}/media?${search.toString()}`,
       { cache: "no-store", redirect: "follow", signal: AbortSignal.timeout(8_000) },

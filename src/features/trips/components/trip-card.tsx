@@ -178,9 +178,7 @@ export function TripCard({
         </Link>
         <CardHeader className="trip-card-header relative pointer-events-none grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
           <div className="trip-card-identity min-w-0 pr-10">
-            <CardTitle className="break-words font-serif text-2xl leading-tight sm:text-3xl">
-              {trip.title}
-            </CardTitle>
+            <CardTitle className="break-words text-lg sm:text-xl">{trip.title}</CardTitle>
             <CardDescription className="mt-1 flex items-center gap-2">
               <CalendarDays aria-hidden="true" className="size-4 shrink-0" />
               {tripDateSummary(trip, locale)}
