@@ -35,6 +35,7 @@ assert.ok(
     "maps",
     "refinement2",
     "reader",
+    "backgrounds",
   ].includes(stage),
   "Unknown sharing design stage.",
 );
@@ -42,6 +43,8 @@ const runs = (name) =>
   stage === "all" ||
   stage === name ||
   (stage === "refinement2" && ["maps", "refinement", "polish", "longtrip"].includes(name)) ||
+  (stage === "backgrounds" &&
+    ["maps", "refinement", "polish", "longtrip", "trips"].includes(name)) ||
   (stage === "reader" && ["maps", "refinement", "longtrip"].includes(name)) ||
   (stage === "presentation" && ["longtrip", "gestures"].includes(name));
 const token = "11111111-1111-4111-8111-111111111111";
@@ -59,7 +62,7 @@ const errors = [];
 let scriptResponses;
 const browser = await chromium.launch({ executablePath, args: ["--no-sandbox"] });
 try {
-  if (stage === "all") {
+  if (stage === "all" || stage === "backgrounds") {
     const auth = await promisify(execFile)(
       process.execPath,
       ["scripts/check-auth-routes.mjs", app.baseUrl],
@@ -260,7 +263,7 @@ try {
               ),
             );
             assert.equal(data.refs.length, new Set(data.refs).size);
-            if (photos && view === "timeline" && width >= 768) {
+            if (photos && template === "ethereal" && view === "timeline" && width >= 768) {
               const cover = page.locator(selector + " .edition-front");
               await cover.locator(".edition-photo").waitFor();
               const geometry = await cover.evaluate((node) => ({
@@ -285,7 +288,7 @@ try {
                 fixture.days.length,
                 "Every chapter remains mounted for continuous reading.",
               );
-              if (photos) {
+              if (photos && template === "journal") {
                 // Establish all intrinsic photo sizes before measuring scroll geometry.
                 // The polish stage separately tests explicit jumps while pixels arrive late.
                 for (const day of fixture.days) {
@@ -576,6 +579,15 @@ try {
       const layout = await front.evaluate((node) => ({
         bottom: node.getBoundingClientRect().bottom,
         photoHeight: node.querySelector(".edition-photo img").getBoundingClientRect().height,
+        photoCardHeight: node.querySelector(".edition-photo").getBoundingClientRect().height,
+        previewHeight: node.querySelector(".journal-quick-overview").getBoundingClientRect().height,
+        stampInside: node
+          .querySelector(".journal-quick-overview")
+          .contains(node.querySelector(".edition-journal-stamp")),
+        connectors: [...node.querySelectorAll(".journal-contents-continuation svg")].map((svg) => ({
+          width: svg.getBoundingClientRect().width,
+          height: svg.getBoundingClientRect().height,
+        })),
         photoBottom: node.querySelector(".edition-photo").getBoundingClientRect().bottom,
         stampTop: node.querySelector(".edition-journal-stamp").getBoundingClientRect().top,
         stampLeft: node.querySelector(".edition-journal-stamp").getBoundingClientRect().left,
@@ -586,6 +598,18 @@ try {
         availableWidth: node.clientWidth,
       }));
       assert.ok(layout.photoHeight > 100);
+      assert.equal(layout.stampInside, false, "The stamp sits outside the chapter card.");
+      assert.ok(
+        layout.connectors.every(
+          ({ width, height }) => height > width && height >= 24 && height <= 40,
+        ),
+        "Visible, short vertical chapter connectors.",
+      );
+      if (width >= 1024)
+        assert.ok(
+          Math.abs(layout.photoCardHeight - layout.previewHeight) <= 130,
+          `Balanced Journal photo and preview heights: ${JSON.stringify(layout)}`,
+        );
       assert.ok(
         layout.stampTop > layout.photoBottom || layout.stampLeft >= layout.photoRight,
         "The page stamp never covers provider pixels or attribution.",
@@ -740,7 +764,7 @@ try {
   if (runs("gestures") || runs("maps"))
     await verifyFullScreenMap({ page, app, token, directory, requests });
   if (runs("gestures")) {
-    // Blank, notes-only, long-text, and failed-photo states never create an empty photo column.
+    // No-source states omit photos; Journal keeps a stable paper frame on provider failure.
     for (const templateId of ["ethereal", "journal"]) {
       for (const scenario of ["blank", "notes-only", "long-text", "failed-photo"]) {
         const fixture = structuredClone(parisPublicItinerary);
@@ -786,6 +810,21 @@ try {
               .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length),
             1,
           );
+        if (templateId === "journal" && scenario === "failed-photo") {
+          const fallback = page
+            .locator('#public-timeline-panel .edition-photo-slot[data-photo-state="unavailable"]')
+            .first();
+          await fallback.waitFor();
+          assert.ok((await fallback.boundingBox()).height > 100);
+          assert.equal(await fallback.locator("img").count(), 0);
+          assert.ok(await fallback.locator(".edition-photo-placeholder").isVisible());
+        } else if (scenario !== "failed-photo") {
+          assert.equal(
+            await page.locator(".edition-photo-reserved").count(),
+            0,
+            "Disabled or unavailable photo sources reserve no empty frames.",
+          );
+        }
         if (scenario === "long-text") {
           await page.locator("#public-timeline-panel .edition-note summary").click();
           assert.equal(
@@ -1007,29 +1046,11 @@ try {
       "Trips retains the original sans-serif title font.",
     );
     assert.ok(tripFonts.size >= 18 && tripFonts.size <= 20);
-    const tripGeometry = await page
-      .locator(".trip-cover-photo")
-      .first()
-      .evaluate((photo) => {
-        const card = photo.closest("[data-trip-card]");
-        const identity = card.querySelector(".trip-card-identity");
-        return {
-          column: getComputedStyle(photo).gridColumnStart,
-          inHeader: photo.parentElement.classList.contains("trip-card-header"),
-          image: photo.querySelector("img").getBoundingClientRect().toJSON(),
-          identity: identity.getBoundingClientRect().toJSON(),
-          card: card.getBoundingClientRect().toJSON(),
-          footer: card.querySelector(".trip-card-footer").getBoundingClientRect().toJSON(),
-        };
-      });
     assert.equal(
-      tripGeometry.column,
-      "2",
-      "City artwork belongs in the card background, not a separate image row.",
+      await page.locator(".trip-card-header .trip-cover-photo").count(),
+      0,
+      "The town photo is a full-card background, not a header thumbnail.",
     );
-    assert.ok(tripGeometry.inHeader);
-    assert.ok(tripGeometry.image.top < tripGeometry.identity.bottom);
-    assert.ok(tripGeometry.image.bottom < tripGeometry.footer.top);
     for (const width of [390, 430, 820, 1440]) {
       await page.setViewportSize({ width, height: 1000 });
       const cardLayout = await page
@@ -1038,20 +1059,54 @@ try {
         .evaluate((photo) => {
           const card = photo.closest("[data-trip-card]");
           return {
-            photo: photo.getBoundingClientRect().toJSON(),
+            image: photo.querySelector("img").getBoundingClientRect().toJSON(),
+            card: card.getBoundingClientRect().toJSON(),
+            filter: getComputedStyle(photo.querySelector(".trip-cover-photo-filter"))
+              .backgroundColor,
+            fit: getComputedStyle(photo.querySelector("img")).objectFit,
+            attribution: photo.querySelector("figcaption").getBoundingClientRect().toJSON(),
             footer: card.querySelector(".trip-card-footer").getBoundingClientRect().toJSON(),
             bodyWidth: document.documentElement.scrollWidth,
             width: innerWidth,
           };
         });
       assert.ok(
-        cardLayout.photo.bottom <= cardLayout.footer.top,
-        `Town photo and attribution never cover the footer: ${JSON.stringify({ width, cardLayout })}`,
+        ["top", "bottom", "left", "right"].every(
+          (edge) => Math.abs(cardLayout.image[edge] - cardLayout.card[edge]) <= 2,
+        ),
+        `Town photo fills the entire card: ${JSON.stringify({ width, cardLayout })}`,
+      );
+      assert.equal(cardLayout.fit, "cover");
+      assert.ok(
+        cardLayout.filter.includes("0.86"),
+        "A translucent paper filter keeps the original trip text readable.",
+      );
+      assert.ok(
+        cardLayout.attribution.top >= cardLayout.footer.bottom,
+        "Photo attribution stays outside title, footer and action targets.",
       );
       assert.ok(cardLayout.bodyWidth <= cardLayout.width);
       if (directory)
         await page.screenshot({ path: `${directory}/trips-city-background-${width}.png` });
     }
+
+    const glassCard = page.locator("[data-trip-card]").first();
+    await glassCard.hover();
+    await page.waitForTimeout(320);
+    const glass = await glassCard.locator(".trip-cover-photo-filter").evaluate((node) => ({
+      blur: getComputedStyle(node).backdropFilter,
+      easing: getComputedStyle(node).transitionTimingFunction,
+      filter: getComputedStyle(node).backgroundColor,
+    }));
+    assert.ok(
+      glass.blur.includes("12px") &&
+        glass.easing.includes("ease-in-out") &&
+        glass.filter.includes("0.8"),
+      `Trips uses the same frosted-glass hover: ${JSON.stringify(glass)}`,
+    );
+    if (directory) await glassCard.screenshot({ path: `${directory}/trips-background-hover.png` });
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(320);
 
     tripPhotoSvg =
       '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="800"><rect width="400" height="800" fill="#b4c9c0"/><text x="20" y="400" font-size="20">Portrait town photo · test only</text></svg>';
@@ -1074,8 +1129,10 @@ try {
             rect = image.getBoundingClientRect(),
             card = photo.closest("[data-trip-card]");
           return {
-            ratio: rect.width / rect.height,
-            natural: image.naturalWidth / image.naturalHeight,
+            fit: getComputedStyle(image).objectFit,
+            card: card.getBoundingClientRect().toJSON(),
+            image: rect.toJSON(),
+            caption: photo.querySelector("figcaption").getBoundingClientRect().toJSON(),
             height: rect.height,
             photoBottom: photo.getBoundingClientRect().bottom,
             footerTop: card.querySelector(".trip-card-footer").getBoundingClientRect().top,
@@ -1083,13 +1140,16 @@ try {
           };
         });
       assert.ok(
-        Math.abs(portrait.ratio - portrait.natural) < 0.01,
-        "Portrait town photos preserve their natural aspect ratio.",
+        ["top", "bottom", "left", "right"].every(
+          (edge) => Math.abs(portrait.image[edge] - portrait.card[edge]) <= 2,
+        ),
+        "Portrait town photos also fill the card without adding a thumbnail row.",
       );
-      assert.ok(portrait.height <= 160);
+      assert.equal(portrait.fit, "cover");
       assert.ok(
-        portrait.photoBottom <= portrait.footerTop,
-        "Every attribution remains clear of the trip footer.",
+        portrait.caption.bottom <= portrait.card.bottom &&
+          portrait.caption.top >= portrait.footerTop,
+        "Long photo attributions remain completely visible inside the card.",
       );
       assert.ok(portrait.attribution.includes(tripPhotoAuthors[0].label));
     }
@@ -1120,7 +1180,7 @@ try {
   if (directory)
     await writeFile(
       `${directory}/browser-report.json`,
-      JSON.stringify({ cases: report, requests, tripPhotoRequests, errors }, null, 2) + "\n",
+      JSON.stringify({ stage, cases: report, requests, tripPhotoRequests, errors }, null, 2) + "\n",
     );
   console.log(
     `PASS sharing ${stage}: ${report.length} responsive cases, no external provider requests`,

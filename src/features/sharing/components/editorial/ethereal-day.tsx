@@ -4,7 +4,6 @@ import { editorialDaySections } from "../../editorial-presentation";
 import { DayHeading } from "./day-heading";
 import { DayPlans, DayTransport, OptionalNote } from "./day-plans";
 import type { EditorialDayProps } from "./journal-day";
-import { DayPhoto } from "./day-photo";
 
 export function EtherealDay({
   day,
@@ -23,11 +22,6 @@ export function EtherealDay({
         <DayHeading day={day} />
         <OptionalNote text={day.notes} exporting={exporting} />
       </div>
-      {!exporting ? (
-        <div className="ethereal-day-photo">
-          <DayPhoto day={day} />
-        </div>
-      ) : null}
       <div className="ethereal-chapter-flow">
         <DayPlans
           items={plans}

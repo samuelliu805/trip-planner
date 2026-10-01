@@ -28,26 +28,16 @@ export async function verifyPhotoAnchoringAndFields({ page, app, token, photoGat
     for (const width of [390, 430, 820, 1440]) {
       app.setFixture(fixture);
       await page.setViewportSize({ width, height: 844 });
+      if (template === "ethereal") photoGate.hold();
       await page.goto(`${app.baseUrl}/share/${token}?view=timeline`);
       const panel = page.locator("#public-timeline-panel");
-      await panel.locator(".edition-front .edition-photo img").waitFor();
-      if (template === "ethereal") {
-        const edges = await panel.locator(".edition-front").evaluate((node) => {
-          const card = node.getBoundingClientRect();
-          const image = node.querySelector(".edition-photo img").getBoundingClientRect();
-          const column = node.querySelector(".edition-photo-slot").getBoundingClientRect();
-          return {
-            left: image.left - column.left,
-            right: image.right - column.right,
-            contained: image.left >= card.left - 1 && image.right <= card.right + 1,
-          };
-        });
-        assert.ok(
-          Math.abs(edges.left) <= 1 && Math.abs(edges.right) <= 1 && edges.contained,
-          `Cover pixels fill their column: ${JSON.stringify(edges)}`,
-        );
+      await page.locator('.public-itinerary-shell[data-public-reader-ready="true"]').waitFor();
+      if (template === "journal")
+        await panel.locator(".edition-day .edition-photo img").first().waitFor();
+      else {
+        assert.equal(await panel.locator(".edition-day .edition-photo").count(), 0);
       }
-      photoGate.hold();
+      if (template === "journal") photoGate.hold();
       try {
         await panel.locator(".edition-dates button").nth(2).click();
         await page.waitForFunction(() =>
@@ -69,6 +59,19 @@ export async function verifyPhotoAnchoringAndFields({ page, app, token, photoGat
             ?.textContent.includes("Day 8"),
         );
         const target = panel.locator(".edition-day").nth(7);
+        const pendingPhoto =
+          template === "journal"
+            ? panel.locator(".edition-day").nth(2).locator(".edition-photo-slot")
+            : null;
+        const placeholderBefore = pendingPhoto ? await pendingPhoto.boundingBox() : null;
+        if (pendingPhoto) {
+          assert.equal(await pendingPhoto.getAttribute("data-photo-state"), "pending");
+          assert.ok(
+            placeholderBefore.height > 100,
+            "Pending Journal photos reserve their full frame.",
+          );
+          assert.ok(await pendingPhoto.locator(".edition-photo-placeholder").isVisible());
+        }
         const before = await target.evaluate((node) => ({
           top: node.getBoundingClientRect().top,
           offset: node.offsetTop,
@@ -93,15 +96,42 @@ export async function verifyPhotoAnchoringAndFields({ page, app, token, photoGat
         await page.waitForFunction(() => window.photoAnchorSampling);
         photoGate.release();
         const samples = await sampling;
-        await panel.locator(".edition-day").nth(2).locator(".edition-photo img").waitFor();
+        await (
+          template === "ethereal"
+            ? panel.locator(".edition-front .edition-photo img")
+            : panel.locator(".edition-day").nth(2).locator(".edition-photo img")
+        ).waitFor();
         const after = await target.evaluate((node) => ({
           top: node.getBoundingClientRect().top,
           offset: node.offsetTop,
         }));
-        assert.ok(
-          after.offset - before.offset > 100,
-          "An above-target photo genuinely increased preceding content height.",
-        );
+        if (template === "ethereal" && width < 720)
+          assert.ok(
+            after.offset - before.offset > 100,
+            "An above-target photo genuinely increased preceding content height.",
+          );
+        else
+          assert.ok(
+            Math.abs(after.offset - before.offset) <= 2,
+            template === "journal"
+              ? "Journal placeholders prevent preceding content from changing height."
+              : "The desktop cover grows independently of the chapter column.",
+          );
+        if (pendingPhoto) {
+          const loadedPhoto = await pendingPhoto.boundingBox();
+          assert.ok(
+            Math.abs(loadedPhoto.height - placeholderBefore.height) <= 1,
+            "Journal's placeholder and loaded photo occupy the same height.",
+          );
+          assert.equal(await pendingPhoto.locator(".edition-photo-placeholder").count(), 0);
+          const credits = await pendingPhoto
+            .locator("figcaption a")
+            .evaluateAll((links) => links.map((link) => link.getBoundingClientRect().height));
+          assert.ok(
+            credits.every((height) => height >= 44),
+            "Photo credits retain touch targets.",
+          );
+        }
         const drift = Math.max(
           ...samples.map(({ top }) => Math.abs(top - before.top)),
           Math.abs(after.top - before.top),
@@ -117,6 +147,24 @@ export async function verifyPhotoAnchoringAndFields({ page, app, token, photoGat
       } finally {
         photoGate.release();
       }
+      if (template === "ethereal") {
+        const edges = await panel.locator(".edition-front").evaluate((node) => {
+          const card = node.getBoundingClientRect();
+          const image = node.querySelector(".edition-photo img").getBoundingClientRect();
+          const column = node.querySelector(".edition-photo-slot").getBoundingClientRect();
+          return {
+            left: image.left - column.left,
+            right: image.right - column.right,
+            contained: image.left >= card.left - 1 && image.right <= card.right + 1,
+          };
+        });
+        assert.ok(
+          Math.abs(edges.left) <= 1 && Math.abs(edges.right) <= 1 && edges.contained,
+          `Cover pixels fill their column: ${JSON.stringify(edges)}`,
+        );
+      }
+      if (template === "journal")
+        assert.equal(await panel.locator(".edition-front .edition-photo").count(), 0);
       await panel.locator(".edition-dates button").first().click();
       await panel.locator(".edition-plan-button").first().click();
       const sheet = page.getByRole("dialog");

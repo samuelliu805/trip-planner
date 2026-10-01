@@ -21,7 +21,7 @@ function SheetContent({
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   overlayClassName?: string;
   showCloseButton?: boolean;
-  side?: "right" | "bottom";
+  side?: "right" | "bottom" | "adaptive";
 }) {
   return (
     <SheetPrimitive.Portal>
@@ -38,6 +38,8 @@ function SheetContent({
           side === "right"
             ? "inset-y-0 right-0 w-full max-w-md border-l data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right"
             : "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-xl border-t data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom",
+          side === "adaptive" &&
+            "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-[var(--dialog-viewport-center,50svh)] sm:w-[calc(100%-2rem)] sm:max-w-xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:zoom-out-95",
           className,
         )}
         {...props}

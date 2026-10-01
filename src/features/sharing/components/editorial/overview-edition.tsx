@@ -60,7 +60,7 @@ function OverviewDayCard({
           </span>
         </button>
       </div>
-      {journal ? <DayPhoto day={day} /> : null}
+      <DayPhoto day={day} backdrop={!journal} reserveSpace={journal} />
     </article>
   );
 }

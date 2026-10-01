@@ -5,9 +5,11 @@
 @import "./transport-details.css";
 @import "./overview.css";
 @import "./ethereal.css";
+@import "./ethereal-overview-photos.css";
 @import "./journal.css";
 @import "./journal-overview.css";
 @import "./journal-paper.css";
+@import "./journal-photos.css";
 @import "./item-detail-fields.css";
 @import "./export-responsive.css";
 @import "../public-provider-photo.css";

@@ -1725,7 +1725,7 @@ test("Ideas keeps sorting, comparison, and manual entry in one compact top toolb
   assert.match(categorySelector, /hidden w-28 min-w-0 sm:block lg:hidden/);
   assert.match(categorySelector, /hidden grid-cols-5 gap-1 rounded-xl bg-muted\/70 p-1 lg:grid/);
   assert.doesNotMatch(categorySelector, /grid-cols-2/);
-  assert.match(mobileCategoryPicker, /SheetContent[\s\S]*side="bottom"/);
+  assert.match(mobileCategoryPicker, /SheetContent[\s\S]*side="adaptive"/);
   assert.match(mobileCategoryPicker, /min-h-16/);
   assert.match(mobileCategoryPicker, /Mobile price categories/);
   assert.match(mobileCategoryPicker, /safe-area-inset-bottom/);

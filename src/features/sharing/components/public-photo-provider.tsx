@@ -106,7 +106,7 @@ export function usePublicPlacePhoto<ElementType extends HTMLElement = HTMLDivEle
   const [loaded, setLoaded] = useState<{
     session: typeof session;
     ref: string;
-    photo: LoadedPlacePhoto;
+    photo: LoadedPlacePhoto | null;
   }>();
   useEffect(() => {
     const element = observerRef.current;
@@ -116,7 +116,7 @@ export function usePublicPlacePhoto<ElementType extends HTMLElement = HTMLDivEle
       if (!entries.some((entry) => entry.isIntersecting)) return;
       observer.disconnect();
       void session.get(itemRef).then((photo) => {
-        if (photo && !cancelled) setLoaded({ session, ref: itemRef, photo });
+        if (!cancelled) setLoaded({ session, ref: itemRef, photo });
       });
     });
     observer.observe(element);
@@ -127,6 +127,8 @@ export function usePublicPlacePhoto<ElementType extends HTMLElement = HTMLDivEle
   }, [itemRef, session]);
   return {
     observerRef,
+    canLoad: Boolean(itemRef && session?.has(itemRef)),
+    failed: loaded?.session === session && loaded?.ref === itemRef && loaded?.photo === null,
     photo:
       (itemRef ? session?.peek(itemRef) : undefined) ??
       (loaded?.session === session && loaded?.ref === itemRef ? loaded.photo : undefined),

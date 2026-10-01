@@ -25,7 +25,7 @@ export function JournalDay({
     <article className="edition-day journal-page timeline-section-v4" data-public-day-ref={day.ref}>
       <DayHeading day={day} />
       <div className="journal-day-spread">
-        {!exporting ? <DayPhoto day={day} /> : null}
+        {!exporting ? <DayPhoto day={day} reserveSpace /> : null}
         <div className={`journal-day-paper ${plans.length ? "has-plans" : ""}`}>
           <DayPlans
             items={plans}

@@ -8,6 +8,7 @@ import {
 } from "@/features/sharing/public-photo-session";
 import { publicItemMediaSchema } from "@/features/sharing/schema";
 import type { TripCoverSource } from "../cover-selection";
+import "./trip-cover-photo.css";
 
 export function TripCoverPhoto({ tripId, source }: { tripId: string; source?: TripCoverSource }) {
   const root = useRef<HTMLDivElement>(null);
@@ -92,25 +93,26 @@ export function TripCoverPhoto({ tripId, source }: { tripId: string; source?: Tr
       ref={root}
       className={
         photo
-          ? "trip-cover-photo pointer-events-none col-start-2 row-start-1 mt-10 w-28 min-w-0 sm:w-36"
+          ? "trip-cover-photo pointer-events-none"
           : "trip-cover-photo-observer pointer-events-none absolute right-6 top-16 size-px"
       }
     >
       {photo ? (
-        <figure className="rounded-sm border bg-background p-1 shadow-sm">
-          {/* eslint-disable-next-line @next/next/no-img-element -- retain natural provider pixels and aspect ratio. */}
+        <figure>
+          {/* eslint-disable-next-line @next/next/no-img-element -- decoded session photo reused as the card backdrop. */}
           <img
-            className="mx-auto block h-auto max-h-40 w-auto max-w-full"
+            className="absolute inset-0 -z-10 h-full w-full rounded-xl object-cover"
             alt={source.name}
             src={photo.displayUrl}
           />
-          <figcaption className="pointer-events-auto relative z-10 py-1 break-words text-[9px] leading-relaxed text-muted-foreground">
+          <div aria-hidden="true" className="trip-cover-photo-filter" />
+          <figcaption className="relative z-10 mx-6 mb-3 break-words text-[10px] leading-relaxed text-foreground/80">
             {(photo.media.attributions ?? []).map((author, index) => (
               <span key={`${author.label}:${index}`}>
                 <T message="Photo by" />{" "}
                 {author.url ? (
                   <a
-                    className="underline"
+                    className="pointer-events-auto inline-flex min-h-11 min-w-11 items-center underline"
                     href={author.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -125,7 +127,7 @@ export function TripCoverPhoto({ tripId, source }: { tripId: string; source?: Tr
             ))}
             {photo.media.sourceUrl ? (
               <a
-                className="underline"
+                className="pointer-events-auto inline-flex min-h-11 min-w-11 items-center underline"
                 href={photo.media.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"

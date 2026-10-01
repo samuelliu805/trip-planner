@@ -59,7 +59,24 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
       await page.goto(`${app.baseUrl}/share/${token}?view=timeline`);
       const panel = page.locator("#public-timeline-panel");
       await panel.waitFor({ state: "visible" });
-      await panel.locator(".edition-front .edition-photo img").waitFor();
+      await panel
+        .locator(
+          template === "ethereal"
+            ? ".edition-front .edition-photo img"
+            : ".edition-day .edition-photo img",
+        )
+        .first()
+        .waitFor();
+      assert.equal(
+        await panel
+          .locator(
+            template === "ethereal"
+              ? ".edition-day .edition-photo"
+              : ".edition-front .edition-photo",
+          )
+          .count(),
+        0,
+      );
       assert.equal(await panel.locator(".edition-cover-description").count(), 0);
       if (template === "ethereal") {
         const geometry = await panel.evaluate((node) => {
@@ -76,14 +93,31 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
               .gridTemplateColumns,
             chaptersLeft: node.querySelector(".edition-chapters").getBoundingClientRect().left,
             coverRight: cover.right,
+            copyBottom: node.querySelector(".edition-cover-copy").getBoundingClientRect().bottom,
+            imageTop: node.querySelector(".edition-front img").getBoundingClientRect().top,
+            imageWidth: node.querySelector(".edition-front img").getBoundingClientRect().width,
+            coverWidth: cover.width,
+            copyHeight: node.querySelector(".edition-cover-copy").getBoundingClientRect().height,
+            photoHeight: node
+              .querySelector(".edition-front .edition-photo-slot")
+              .getBoundingClientRect().height,
           };
         });
-        if (width < 720)
+        if (width < 720) {
+          assert.ok(
+            Math.abs(geometry.copyHeight - geometry.photoHeight) <= 2,
+            `Mobile photo and text panels have balanced heights: ${JSON.stringify(geometry)}`,
+          );
+          assert.ok(
+            geometry.imageTop >= geometry.copyBottom &&
+              Math.abs(geometry.imageWidth - geometry.coverWidth) <= 1,
+            "Mobile copy sits above a full-width photo.",
+          );
           assert.ok(
             Math.abs(geometry.left) <= 1 && Math.abs(geometry.right) <= 1,
             JSON.stringify(geometry),
           );
-        else
+        } else
           assert.ok(
             geometry.chaptersLeft > geometry.coverRight + 20,
             "Desktop cover and continuous chapters form separate columns.",
@@ -108,7 +142,8 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
         `Date jump flickered: ${JSON.stringify(sampled)}`,
       );
       await panel.locator(".edition-dates button").last().click();
-      await panel.locator(".edition-day").last().locator(".edition-photo img").waitFor();
+      if (template === "journal")
+        await panel.locator(".edition-day").last().locator(".edition-photo img").waitFor();
       await panel.locator(".public-view-scroll").evaluate((node) => {
         node.dispatchEvent(new WheelEvent("wheel"));
         node.scrollTop = node.scrollHeight;
@@ -130,7 +165,8 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
       assert.ok(tail.gap <= 45, `No artificial final viewport: ${JSON.stringify(tail)}`);
       assert.equal(tail.minHeight, "0px");
       await panel.locator(".edition-dates button").first().click();
-      await panel.locator(".edition-day").first().locator(".edition-photo img").waitFor();
+      if (template === "journal")
+        await panel.locator(".edition-day").first().locator(".edition-photo img").waitFor();
       const transfers = panel.locator(".edition-transfer");
       assert.equal(await transfers.count(), 4);
       for (const transfer of await transfers.all()) {
@@ -149,6 +185,23 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
           node.getAnimations().map((animation) => animation.finished.catch(() => {})),
         );
       });
+      if (width >= 640) {
+        const modal = await sheet.evaluate((node) => {
+          const rect = node.getBoundingClientRect();
+          return {
+            x: (rect.left + rect.right) / 2,
+            y: (rect.top + rect.bottom) / 2,
+            handle: Boolean(node.querySelector("[data-pull-up-handle]").getClientRects().length),
+            position: getComputedStyle(node).position,
+          };
+        });
+        assert.ok(
+          Math.abs(modal.x - width / 2) <= 2 && Math.abs(modal.y - 500) <= 2,
+          `Desktop details use a centered modal: ${JSON.stringify(modal)}`,
+        );
+        assert.equal(modal.handle, false);
+        assert.equal(modal.position, "fixed");
+      }
       const detail = sheet.locator(".public-item-detail");
       assert.ok(!(await detail.textContent()).includes("Flight"));
       const layout = await sheet.evaluate((node) => {
@@ -186,6 +239,37 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
         );
         await page.getByRole("tab", { name: "Overview", exact: false }).click();
       } else {
+        const card = overview.locator(".edition-overview-day-card").first();
+        await card.locator(".edition-photo-backdrop img").waitFor();
+        const backdrop = await card.evaluate((node) => {
+          const article = node.getBoundingClientRect();
+          const img = node.querySelector("img").getBoundingClientRect();
+          return {
+            fills: ["top", "bottom", "left", "right"].every(
+              (edge) => Math.abs(article[edge] - img[edge]) <= 2,
+            ),
+            filter: getComputedStyle(node.querySelector(".edition-overview-day-copy"))
+              .backgroundColor,
+          };
+        });
+        assert.ok(backdrop.fills, "Ethereal overview photography fills the day card background.");
+        assert.ok(
+          backdrop.filter.includes("0.88"),
+          "An opaque paper filter protects text readability.",
+        );
+        await card.hover();
+        await page.waitForTimeout(320);
+        const hover = await card.locator(".edition-overview-day-copy").evaluate((node) => ({
+          blur: getComputedStyle(node).backdropFilter,
+          easing: getComputedStyle(node).transitionTimingFunction,
+        }));
+        assert.ok(
+          hover.blur.includes("12px") && hover.easing.includes("ease-in-out"),
+          `Frosted overview hover: ${JSON.stringify(hover)}`,
+        );
+        if (directory)
+          await card.screenshot({ path: `${directory}/ethereal-day-backdrop-${width}.png` });
+        await page.mouse.move(0, 0);
         const geometry = await overview.evaluate((node) => {
           const cover = node.querySelector(".edition-front").getBoundingClientRect();
           const reader = node.querySelector(".public-view-scroll").getBoundingClientRect();
@@ -247,7 +331,7 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
       );
     }
     console.log(
-      `PASS ${template} city cover, daily photos, date stability, compact transport, sheet layout and overview`,
+      `PASS ${template} city cover, template-specific photo placement, date stability, compact transport, sheet layout and overview`,
     );
   }
 }
