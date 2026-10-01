@@ -120,14 +120,4 @@
     border: 1px solid var(--border);
     border-radius: 999px;
   }
-
-  .public-template-ethereal .public-matrix [role="row"]:not(.matrix-grid-header) {
-    min-height: 7.25rem;
-  }
-
-  .public-template-ethereal .public-matrix [role="gridcell"],
-  .public-template-ethereal .public-matrix [role="rowheader"] {
-    padding: 1rem 0.875rem;
-    font-size: 0.8125rem;
-  }
 }

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { MAX_IMAGE_BYTES, MAX_PDF_BYTES, MAX_VIDEO_BYTES } from "../attachments/config.ts";
 import { itineraryItemTypes } from "../itinerary/item-schema.ts";
+import { transportModes } from "../itinerary/types.ts";
 import { publicSavedRouteSchema } from "./public-route-schema.ts";
 import { publicTemplateIdSchema, publicTemplateVersionSchema } from "./templates/schema.ts";
 
@@ -125,6 +126,7 @@ const publicCarRentalSchema = z
   .strict();
 const publicTransportSchema = z
   .object({
+    mode: z.enum(transportModes).optional(),
     destination: z.string().trim().min(1).max(200).optional(),
     origin: z.string().trim().min(1).max(200).optional(),
     serviceNumber: z.string().trim().min(1).max(80).optional(),

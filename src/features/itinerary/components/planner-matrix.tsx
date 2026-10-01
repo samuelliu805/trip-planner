@@ -132,10 +132,10 @@ export function PlannerMatrix({
                   selected={selectedDayRow === row}
                 />
                 <div
-                  className="sticky left-28 z-20 w-16 shrink-0 border-r bg-background px-2 py-1 text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]"
+                  className="sticky left-28 z-20 w-16 shrink-0 border-r bg-background p-0.5 text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]"
                   role="rowheader"
                 >
-                  <span className="matrix-frozen-content">{day.day_number}</span>
+                  <span className="matrix-frozen-content block px-1.5 py-1">{day.day_number}</span>
                 </div>
                 {categories.map((category, column) => {
                   const coordinate = { row, column };

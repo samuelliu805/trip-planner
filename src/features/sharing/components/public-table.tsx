@@ -10,26 +10,13 @@ import {
 } from "@/features/itinerary/components/matrix-presentation";
 import { MatrixCityList } from "@/features/itinerary/components/matrix-city-list";
 import { matrixCategoryColumns } from "@/features/itinerary/components/matrix-columns";
-import { transportModeLabels, type TransportMode } from "@/features/itinerary/types";
+import { publicTransportMode } from "../public-transport-mode";
 
 import { orderedPublicItemMedia } from "../public-media-presentation";
-import type { PublicItinerary, PublicItineraryItem } from "../types";
+import type { PublicItinerary } from "../types";
 import { PublicItemMediaGallery } from "./public-item-media";
 import { PublicQuickActions } from "./public-quick-actions";
 import { useContainedPublicMatrix } from "./use-contained-public-matrix";
-
-function publicTransportMode(item: PublicItineraryItem): TransportMode | null {
-  if (item.type === "flight") return "flight";
-  if (item.type === "train") return "train";
-  if (item.type === "transport") {
-    const normalizedTitle = item.title.trim().toLocaleLowerCase();
-    const matchingMode = Object.entries(transportModeLabels).find(
-      ([, label]) => label.toLocaleLowerCase() === normalizedTitle,
-    );
-    return (matchingMode?.[0] as TransportMode | undefined) ?? null;
-  }
-  return null;
-}
 
 export function PublicTable({
   itinerary,
@@ -66,7 +53,7 @@ export function PublicTable({
         className="min-w-max"
         role="grid"
       >
-        <MatrixGridHeader columns={columns} mobileDateLabel="Day / Date" />
+        <MatrixGridHeader columns={columns} mobileDateLabel={t("Day / Date")} />
         {itinerary.days.map((day, rowIndex) => {
           return (
             <div
@@ -79,10 +66,10 @@ export function PublicTable({
               tabIndex={-1}
             >
               <div
-                className="matrix-date-column sticky left-0 z-30 w-24 shrink-0 border-r bg-background px-2 py-1 text-[13px] leading-[1.35] min-[1200px]:text-[11px]"
+                className="matrix-date-column sticky left-0 z-30 w-24 shrink-0 border-r bg-background p-0.5 text-[13px] leading-[1.35] min-[1200px]:text-[11px]"
                 role="rowheader"
               >
-                <div className="matrix-frozen-content">
+                <div className="matrix-frozen-content px-1.5 py-1">
                   <span
                     className={`block font-sans text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px]${day.date ? " sm:hidden" : ""}`}
                   >
@@ -105,10 +92,10 @@ export function PublicTable({
                 </div>
               </div>
               <div
-                className="matrix-day-column sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-1 text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px]"
+                className="matrix-day-column sticky left-24 z-20 w-16 shrink-0 border-r bg-background p-0.5 text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px]"
                 role="rowheader"
               >
-                <span className="matrix-frozen-content">
+                <span className="matrix-frozen-content block px-1.5 py-1">
                   {locale === "zh-CN" ? t("Day {day}", { day: day.dayNumber }) : day.dayNumber}
                 </span>
               </div>
@@ -142,7 +129,7 @@ export function PublicTable({
                       {items.map((item) => (
                         <div
                           aria-current={selectedItemRef === item.ref ? "true" : undefined}
-                          className={`public-item-focus min-h-11 cursor-default px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring min-[1200px]:min-h-8 ${selectedItemRef === item.ref ? "bg-primary/5" : ""}`}
+                          className={`public-item-focus flex min-h-11 flex-col cursor-default px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring min-[1200px]:min-h-8 ${selectedItemRef === item.ref ? "bg-primary/5" : ""}`}
                           data-public-item-ref={item.ref}
                           key={item.ref}
                           onClick={(event) => {
