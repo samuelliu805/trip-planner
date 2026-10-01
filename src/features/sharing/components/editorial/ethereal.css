@@ -9,7 +9,9 @@
   padding-top: 0;
 }
 .public-template-ethereal .itinerary-edition .edition-ethereal-cover {
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  align-items: center;
   margin-inline: calc(-1 * var(--edition-inline-padding));
   margin-bottom: 32px;
 }
@@ -25,6 +27,7 @@
 }
 .public-template-ethereal .itinerary-edition .edition-cover-copy {
   padding: 40px 42px;
+  min-width: 0;
 }
 .public-template-ethereal .itinerary-edition .edition-cover-copy > .edition-kicker {
   color: #d3d7b9;
@@ -42,7 +45,7 @@
   display: flex;
   align-items: baseline;
   gap: 14px;
-  padding: 20px 32px 26px;
+  padding: 18px 0 0;
   color: #d8dbc1;
   font: italic 36px/1 var(--edition-serif);
 }
@@ -102,4 +105,74 @@
 }
 .public-template-ethereal .itinerary-edition .edition-plan-button strong {
   padding-top: 4px;
+}
+
+.public-template-ethereal .edition-ethereal-cover:not(:has(.edition-photo-slot)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.public-template-ethereal .edition-cover-visual:has(.edition-photo-slot) .edition-journey-numeral {
+  display: none;
+}
+.public-template-ethereal .edition-timeline .edition-ethereal-cover {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+@container public-content (min-width:720px) {
+  .public-template-ethereal .edition-timeline.itinerary-edition {
+    padding-top: 28px;
+  }
+  .public-template-ethereal .edition-timeline .edition-editorial-spread {
+    display: grid;
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr);
+    gap: clamp(24px, 4cqw, 49px);
+    align-items: start;
+  }
+  .public-template-ethereal .edition-timeline .edition-ethereal-cover {
+    position: sticky;
+    top: 0;
+    margin: 0;
+  }
+  .public-template-ethereal .edition-timeline .edition-cover-copy h2 {
+    font-size: clamp(32px, 4.1cqw, 61px);
+  }
+}
+@container public-content (max-width:719px) {
+  .public-template-ethereal .edition-timeline .edition-ethereal-cover:has(> .edition-photo-slot) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    align-items: center;
+  }
+  .public-template-ethereal .edition-timeline .edition-ethereal-cover > .edition-photo-slot {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .public-template-ethereal .edition-timeline .edition-cover-copy {
+    grid-column: 2;
+    padding: 20px 18px;
+  }
+  .public-template-ethereal .edition-timeline .edition-cover-copy h2 {
+    font-size: clamp(26px, 5.5cqw, 38px);
+    margin: 16px 0;
+  }
+  .public-template-ethereal .edition-timeline .edition-cover-signature {
+    display: none;
+  }
+  .public-template-ethereal .edition-timeline .edition-cover-count {
+    font-size: 25px;
+    gap: 8px;
+  }
+}
+@container public-content (max-width:579px) {
+  .public-template-ethereal .edition-overview.itinerary-edition .edition-cover-copy {
+    padding: 24px 18px;
+  }
+  .public-template-ethereal .edition-overview .edition-cover-copy h2 {
+    font-size: clamp(28px, 7cqw, 40px);
+    margin-block: 20px;
+  }
+  .public-template-ethereal .edition-overview .edition-cover-dates {
+    margin-top: 16px;
+    font-size: 10px;
+  }
 }

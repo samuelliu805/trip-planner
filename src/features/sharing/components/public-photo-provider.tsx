@@ -127,6 +127,8 @@ export function usePublicPlacePhoto<ElementType extends HTMLElement = HTMLDivEle
   }, [itemRef, session]);
   return {
     observerRef,
-    photo: loaded?.session === session && loaded?.ref === itemRef ? loaded.photo : undefined,
+    photo:
+      (itemRef ? session?.peek(itemRef) : undefined) ??
+      (loaded?.session === session && loaded?.ref === itemRef ? loaded.photo : undefined),
   };
 }

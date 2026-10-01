@@ -179,7 +179,7 @@ export function PublicDayRoutePanel({
         )
       ) : (
         <PublicSharedRouteSummary
-          canExplore={allowExplore && candidates.length >= 2}
+          canExplore={showCalculateAction && allowExplore && candidates.length >= 2}
           omittedActivityCount={omittedActivityCount}
           onExplore={onExplore}
           route={route}

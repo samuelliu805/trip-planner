@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { parisPublicItinerary } from "../../src/features/landing/landing-public-fixture.ts";
+import { journalPreviewIndexes } from "../../src/features/sharing/journal-chapters.ts";
 
 export async function verifyEditorialPolish({ page, app, token, directory, photoDelay }) {
   for (const template of ["ethereal", "journal"]) {
@@ -71,14 +72,26 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
             position: getComputedStyle(count).position,
             coverBottom: cover.bottom,
             countBottom: count.getBoundingClientRect().bottom,
+            columns: getComputedStyle(node.querySelector(".edition-editorial-spread"))
+              .gridTemplateColumns,
+            chaptersLeft: node.querySelector(".edition-chapters").getBoundingClientRect().left,
+            coverRight: cover.right,
           };
         });
-        assert.ok(
-          Math.abs(geometry.left) <= 1 && Math.abs(geometry.right) <= 1,
-          JSON.stringify(geometry),
-        );
+        if (width < 720)
+          assert.ok(
+            Math.abs(geometry.left) <= 1 && Math.abs(geometry.right) <= 1,
+            JSON.stringify(geometry),
+          );
+        else
+          assert.ok(
+            geometry.chaptersLeft > geometry.coverRight + 20,
+            "Desktop cover and continuous chapters form separate columns.",
+          );
         assert.equal(geometry.position, "static");
         assert.ok(geometry.countBottom <= geometry.coverBottom);
+        if (directory)
+          await page.screenshot({ path: `${directory}/ethereal-timeline-${width}.png` });
       }
       // A jump stays selected while late images insert content above the chapter.
       await panel.locator(".edition-dates button").nth(4).click();
@@ -162,20 +175,37 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
       await overview.locator(".edition-front .edition-photo img").waitFor();
       if (template === "journal") {
         assert.equal(await overview.locator(".journal-quick-overview button").count(), 3);
+        const previewDay = fixture.days[journalPreviewIndexes(fixture.days)[1]].dayNumber;
         await overview.locator(".journal-quick-overview button").nth(1).click();
-        await page.waitForFunction(() =>
-          document
-            .querySelector("#public-timeline-panel .edition-dates [aria-current=date]")
-            ?.textContent.includes("Day 3"),
+        await page.waitForFunction(
+          (previewDay) =>
+            document
+              .querySelector("#public-timeline-panel .edition-dates [aria-current=date]")
+              ?.textContent.includes(`Day ${previewDay}`),
+          previewDay,
         );
         await page.getByRole("tab", { name: "Overview", exact: false }).click();
       } else {
         const geometry = await overview.evaluate((node) => {
           const cover = node.querySelector(".edition-front").getBoundingClientRect();
           const reader = node.querySelector(".public-view-scroll").getBoundingClientRect();
-          return { left: cover.left - reader.left, right: cover.right - reader.right };
+          const copy = node.querySelector(".edition-cover-copy").getBoundingClientRect();
+          const visual = node.querySelector(".edition-cover-visual").getBoundingClientRect();
+          const image = node.querySelector(".edition-front img").getBoundingClientRect();
+          return {
+            left: cover.left - reader.left,
+            right: cover.right - reader.right,
+            columns: copy.right <= visual.left + 1,
+            aligned: Math.abs((copy.top + copy.bottom - visual.top - visual.bottom) / 2) <= 1,
+            photoFillsColumn:
+              Math.abs(image.left - visual.left) <= 1 && Math.abs(image.right - cover.right) <= 1,
+          };
         });
         assert.ok(Math.abs(geometry.left) <= 1 && Math.abs(geometry.right) <= 1);
+        assert.ok(
+          geometry.columns && geometry.aligned && geometry.photoFillsColumn,
+          `Aligned full-width overview with side-by-side copy and photo: ${JSON.stringify(geometry)}`,
+        );
       }
       await overview.locator(".public-view-scroll").evaluate((node) => {
         node.scrollTop = 0;

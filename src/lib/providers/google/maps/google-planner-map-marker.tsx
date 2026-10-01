@@ -1,10 +1,9 @@
 "use client";
 
-import { Pin } from "@vis.gl/react-google-maps";
-
 import type { MarkerKind, PlannerMapMarker } from "@/lib/providers/maps/contracts";
 
 import { GoogleStableAdvancedMarker } from "./google-stable-advanced-marker";
+import { GoogleStablePin } from "./google-stable-pin";
 
 const markerStyles: Record<MarkerKind, { background: string; glyph: string; label: string }> = {
   activity: { background: "#d97706", glyph: "A", label: "activity" },
@@ -79,7 +78,7 @@ export function GooglePlannerMapMarkerOverlay({
       zIndex={marker.zIndex ?? (selected ? 40 : 20)}
     >
       {comparison ? (
-        <Pin
+        <GoogleStablePin
           background={marker.variantColor}
           borderColor="#ffffff"
           glyph={marker.label ?? String(marker.stageNumber ?? "")}
@@ -112,7 +111,7 @@ export function GooglePlannerMapMarkerOverlay({
                 : `translate(${markerOffsets[entry.kind][0]}px, ${markerOffsets[entry.kind][1]}px)`,
           }}
         >
-          <Pin
+          <GoogleStablePin
             background={planned ? "#166534" : routeMarker ? "#64748b" : themedBackground}
             borderColor={selected ? "#ffffff" : routeMarker ? "#f8fafc" : "#ffffff"}
             glyph={glyph}

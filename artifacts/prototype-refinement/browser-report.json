@@ -1,8 +1,8 @@
 {
   "cases": [],
   "requests": {
-    "resolve": 0,
-    "media": 0,
+    "resolve": 35,
+    "media": 35,
     "external": 0
   },
   "tripPhotoRequests": {

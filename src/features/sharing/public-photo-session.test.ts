@@ -29,6 +29,12 @@ test("one page lifetime shares resolutions and loaded images across days and con
   });
   const [first, second] = await Promise.all([session.get("first"), session.get("second")]);
   assert.equal(first, second);
+  assert.equal(
+    session.peek("second"),
+    first,
+    "A remounted consumer can read decoded pixels synchronously.",
+  );
+  assert.equal(session.peek("unshared"), undefined);
   await session.get("first");
   assert.deepEqual(resolutions, ["first"]);
   assert.equal(loads, 1);
@@ -37,6 +43,7 @@ test("one page lifetime shares resolutions and loaded images across days and con
   session.dispose();
   assert.deepEqual(released, ["blob:1", "blob:2"]);
   assert.equal(await session.get("first"), null);
+  assert.equal(session.peek("first"), undefined);
 });
 
 test("only an expired resource repairs once and leaves other place resources intact", async () => {

@@ -39,7 +39,7 @@
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 32px;
-  max-width: 1000px;
+  max-width: 880px;
   margin: 0 auto 38px;
   padding: 0 16px;
   text-align: left;
@@ -116,7 +116,7 @@
   .public-template-journal
     .itinerary-edition
     .edition-journal-front-spread:has(> .edition-photo-slot) {
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
     gap: 40px;
   }
 }

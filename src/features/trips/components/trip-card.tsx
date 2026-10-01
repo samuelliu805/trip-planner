@@ -227,8 +227,7 @@ export function TripCard({
               {sharingEnabled ? (
                 <DropdownMenuItem asChild>
                   <Link href={`/trips/${trip.id}?share=1`}>
-                    <Share2 aria-hidden="true" className="size-4" />{" "}
-                    <T message={" Share settings "} />
+                    <Share2 aria-hidden="true" className="size-4" /> <T message={" Share "} />
                   </Link>
                 </DropdownMenuItem>
               ) : null}

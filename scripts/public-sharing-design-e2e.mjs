@@ -6,6 +6,8 @@ import {
   designSessionCookie,
 } from "./lib/public-sharing-design-runtime.mjs";
 import assert from "node:assert/strict";
+import { installGoogleMapsMock } from "./lib/public-sharing-google-sdk.mjs";
+import { bufferDevelopmentScripts } from "./lib/public-sharing-static-responses.mjs";
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import { parisPublicItinerary } from "../src/features/landing/landing-public-fixture.ts";
@@ -30,12 +32,17 @@ assert.ok(
     "polish",
     "refinement",
     "presentation",
+    "maps",
+    "refinement2",
+    "reader",
   ].includes(stage),
   "Unknown sharing design stage.",
 );
 const runs = (name) =>
   stage === "all" ||
   stage === name ||
+  (stage === "refinement2" && ["maps", "refinement", "polish", "longtrip"].includes(name)) ||
+  (stage === "reader" && ["maps", "refinement", "longtrip"].includes(name)) ||
   (stage === "presentation" && ["longtrip", "gestures"].includes(name));
 const token = "11111111-1111-4111-8111-111111111111";
 const directory = process.env.PUBLIC_SHARING_DESIGN_ARTIFACT_DIR;
@@ -49,6 +56,7 @@ const executablePath = [
 ].find((path) => path && existsSync(path));
 assert.ok(executablePath, "Chromium is required.");
 const errors = [];
+let scriptResponses;
 const browser = await chromium.launch({ executablePath, args: ["--no-sandbox"] });
 try {
   if (stage === "all") {
@@ -60,6 +68,8 @@ try {
     console.log(auth.stdout.trim());
   }
   const page = await browser.newPage({ hasTouch: true });
+  scriptResponses = await bufferDevelopmentScripts(page);
+  await page.addInitScript(installGoogleMapsMock);
   page.setDefaultNavigationTimeout(90_000);
   await page.addInitScript(() => {
     window.sharingScriptErrors = [];
@@ -514,6 +524,18 @@ try {
       })),
     }));
     longJournal.trip.dayCount = 12;
+    // The teaser should reveal rich chapters from the middle, with omissions on both ends.
+    for (const index of [1, 4, 7]) {
+      const day = longJournal.days[index];
+      const activity = day.items.find((item) => item.type === "activity");
+      day.items.push(
+        ...Array.from({ length: 3 }, (_, extra) => ({
+          ...structuredClone(activity),
+          ref: (9000 + index * 10 + extra).toString(16).padStart(64, "0"),
+          sortOrder: 20 + extra,
+        })),
+      );
+    }
     longJournal.cityPhotoSources = longJournal.days.map((day) => ({
       dayRef: day.ref,
       ref: "9".repeat(64),
@@ -536,6 +558,16 @@ try {
         await front.locator(".journal-quick-overview button").count(),
         3,
         "The contents card previews three chapters; the full itinerary stays below.",
+      );
+      assert.deepEqual(await front.locator(".journal-contents-number").allTextContents(), [
+        "02",
+        "05",
+        "08",
+      ]);
+      assert.equal(
+        await front.locator(".journal-contents-continuation").count(),
+        4,
+        "Omissions before, between and after the teaser remain visible.",
       );
       assert.equal(
         await page.locator("#public-overview-panel .edition-overview-day-card").count(),
@@ -705,8 +737,9 @@ try {
     await page.keyboard.press("Escape");
   }
   if (runs("refinement")) await verifyPhotoAnchoringAndFields({ page, app, token, photoGate });
+  if (runs("gestures") || runs("maps"))
+    await verifyFullScreenMap({ page, app, token, directory, requests });
   if (runs("gestures")) {
-    await verifyFullScreenMap({ page, app, token, directory });
     // Blank, notes-only, long-text, and failed-photo states never create an empty photo column.
     for (const templateId of ["ethereal", "journal"]) {
       for (const scenario of ["blank", "notes-only", "long-text", "failed-photo"]) {
@@ -1093,6 +1126,10 @@ try {
     `PASS sharing ${stage}: ${report.length} responsive cases, no external provider requests`,
   );
 } catch (error) {
+  console.error(
+    "Last layout responses:",
+    scriptResponses?.filter((row) => row.url.endsWith("/app/layout.js")).slice(-4),
+  );
   console.error("Browser errors:", JSON.stringify(errors));
 
   const active = browser

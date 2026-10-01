@@ -23,7 +23,7 @@
   list-style: none;
 }
 .public-template-journal .journal-quick-overview li + li {
-  border-top: 1px dashed #d6ccba;
+  border-top: 0;
 }
 .public-template-journal .journal-quick-overview button {
   display: grid;
@@ -56,7 +56,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding-bottom: 8px;
+  padding-block: 8px;
   color: #b28b6d;
 }
 .public-template-journal .journal-contents-continuation svg {

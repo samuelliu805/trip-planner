@@ -7,13 +7,7 @@ import { usePublicMapWorkspaceController } from "./use-public-map-workspace-cont
 
 type Controller = ReturnType<typeof usePublicMapWorkspaceController>;
 
-export function PublicMapCalculateAction({
-  controller,
-  onOpenPanel,
-}: {
-  controller: Controller;
-  onOpenPanel: () => void;
-}) {
+export function PublicMapCalculateAction({ controller }: { controller: Controller }) {
   const overview = controller.routeScope === "overview";
   const panel = overview ? controller.overviewPanel : controller.dayPanel;
   if (!panel.allowExplore) return null;
@@ -32,17 +26,18 @@ export function PublicMapCalculateAction({
     : editing
       ? " Edit route "
       : settingUp
-        ? "Explore route"
+        ? day.route
+          ? " Edit route "
+          : "Explore route"
         : overview
           ? "Calculate whole trip"
           : "Calculate";
   return (
     <Button
       aria-busy={panel.pending}
-      className="public-map-calculate absolute right-3 top-3 z-20 min-h-11 max-w-[calc(100%-1.5rem)] shadow-md"
+      className="public-map-calculate min-h-11 w-full"
       disabled={disabled}
       onClick={() => {
-        onOpenPanel();
         if (editing) {
           if (overview) controller.overviewPanel.onReset();
           else day.onEdit();

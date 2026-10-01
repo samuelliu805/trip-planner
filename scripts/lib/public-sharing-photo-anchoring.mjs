@@ -35,11 +35,16 @@ export async function verifyPhotoAnchoringAndFields({ page, app, token, photoGat
         const edges = await panel.locator(".edition-front").evaluate((node) => {
           const card = node.getBoundingClientRect();
           const image = node.querySelector(".edition-photo img").getBoundingClientRect();
-          return { left: image.left - card.left, right: image.right - card.right };
+          const column = node.querySelector(".edition-photo-slot").getBoundingClientRect();
+          return {
+            left: image.left - column.left,
+            right: image.right - column.right,
+            contained: image.left >= card.left - 1 && image.right <= card.right + 1,
+          };
         });
         assert.ok(
-          Math.abs(edges.left) <= 1 && Math.abs(edges.right) <= 1,
-          `Full-width cover pixels: ${JSON.stringify(edges)}`,
+          Math.abs(edges.left) <= 1 && Math.abs(edges.right) <= 1 && edges.contained,
+          `Cover pixels fill their column: ${JSON.stringify(edges)}`,
         );
       }
       photoGate.hold();
