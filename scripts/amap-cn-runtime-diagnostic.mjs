@@ -19,7 +19,12 @@ export async function diagnoseCnRuntime(stages, seal) {
       seal({ diagnosticCliFailure: { args: args.slice(0, 3), output: result.output, error: result.errorOutput } });
       throw new Error('CN diagnostic CLI operation failed.');
     }
-    return parseFirstJsonObject(result.output);
+    try { return parseFirstJsonObject(result.output); }
+    catch {
+      if(args[0] === 'fn' && ['deploy', 'delete'].includes(args[1])) return {};
+      seal({ diagnosticCliFailure: { args: args.slice(0,2), output: result.output, error: result.errorOutput } });
+      throw new Error('CN diagnostic CLI response invalid.');
+    }
   };
   let deployAttempted = false;
   try {
