@@ -10,6 +10,7 @@ import { RouteProviderError } from "../routes/errors.ts";
 import { PlaceProviderError } from "../places/errors.ts";
 import { decodeEncodedPolyline } from "../routes/geo.ts";
 import { wgs84Coordinates } from "../maps/types.ts";
+import { mapWithConcurrency } from "../../../features/routes/calculator.ts";
 
 import { gcj02ToWgs84, wgs84ToGcj02 } from "./coordinates.ts";
 import { createAmapJsApiLoader } from "./maps/amap-loader.ts";
@@ -773,6 +774,81 @@ test("AMap driving still rejects malformed numeric data and coordinates", async 
       }).calculateLeg(routeRequest("self_driving")),
       (error) => error instanceof RouteProviderError && error.code === "invalid_response",
     );
+  }
+});
+
+test("Eight concurrent AMap driving legs recover from HTTP-200 QPS errors", async () => {
+  const calls = new Map<string, number>();
+  const provider = createAmapRoutesProvider({
+    apiKey: "server-web-key",
+    retryDelayMs: 0,
+    fetchImplementation: (async (input) => {
+      const origin = new URL(String(input)).searchParams.get("origin")!;
+      const attempt = (calls.get(origin) ?? 0) + 1;
+      calls.set(origin, attempt);
+      return Response.json(
+        attempt === 1
+          ? { status: "0", infocode: "10014", info: "QPS_HAS_EXCEEDED_THE_LIMIT" }
+          : {
+              status: "1",
+              route: {
+                paths: [
+                  {
+                    distance: "1200",
+                    duration: "900",
+                    steps: [{ polyline: "116.403632,39.910125;116.405000,39.912000" }],
+                  },
+                ],
+              },
+            },
+      );
+    }) as typeof fetch,
+  });
+  const legs = await mapWithConcurrency(
+    Array.from(
+      { length: 8 },
+      (_, index) => () =>
+        provider.calculateLeg({
+          ...routeRequest("self_driving"),
+          origin: wgs84Coordinates(39.908722 + index * 0.001, 116.397389),
+          position: index + 1,
+        }),
+    ),
+    3,
+  );
+  assert.equal(legs.length, 8);
+  assert.ok(legs.every((leg) => leg.geometry.source === "encoded"));
+  assert.deepEqual(
+    legs.map((leg) => leg.position),
+    [1, 2, 3, 4, 5, 6, 7, 8],
+  );
+  assert.equal(calls.size, 8);
+  assert.ok([...calls.values()].every((attempts) => attempts === 2));
+});
+
+test("AMap payload retries are bounded and daily quotas are not retried", async () => {
+  for (const [infocode, attempts, code] of [
+    ["10014", 3, "quota"],
+    ["10018", 3, "quota"],
+    ["10020", 3, "quota"],
+    ["10015", 3, "timeout"],
+    ["10016", 3, "provider_unavailable"],
+    ["10003", 1, "quota"],
+    ["10001", 1, "authentication"],
+  ] as const) {
+    let calls = 0;
+    await assert.rejects(
+      createAmapRoutesProvider({
+        apiKey: "server-web-key",
+        retryDelayMs: 0,
+        fetchImplementation: (async () => {
+          calls += 1;
+          return Response.json({ status: "0", infocode });
+        }) as typeof fetch,
+      }).calculateLeg(routeRequest("self_driving")),
+      (error) => error instanceof RouteProviderError && error.code === code,
+    );
+    assert.equal(calls, attempts);
   }
 });
 

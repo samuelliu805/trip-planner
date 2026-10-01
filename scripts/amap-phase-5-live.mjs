@@ -4,6 +4,7 @@ import { wgs84Coordinates } from "../src/lib/providers/maps/types.ts";
 import { createAmapRoutesProvider } from "../src/lib/providers/amap/routes/amap-routes-core.ts";
 import { normalizeAmapPlace } from "../src/lib/providers/amap/places/normalize-amap-place.ts";
 import { boundedRetryFetch } from "./lib/bounded-fetch-retry.mjs";
+import { mapWithConcurrency } from "../src/features/routes/calculator.ts";
 
 function required(name) {
   const value = process.env[name]?.trim();
@@ -89,16 +90,25 @@ assert.equal(route.geometry.coordinateSystem, "wgs84");
 assert.ok(route.distanceMeters > 0);
 
 // Cover the intercity self-driving path reported by CN users, alongside walking.
-const drivingRoute = await routeProvider.calculateLeg({
-  destination: wgs84Coordinates(36.6171, 101.7782),
-  legSignature: "phase-5-real-amap-lanzhou-xining-driving",
-  mode: "self_driving",
-  origin: wgs84Coordinates(36.0611, 103.8343),
-  position: 1,
-});
-assert.equal(drivingRoute.geometry.source, "encoded");
-assert.equal(drivingRoute.geometry.provider, "amap");
-assert.ok(drivingRoute.distanceMeters > 100_000);
+const drivingRoutes = await mapWithConcurrency(
+  Array.from(
+    { length: 8 },
+    (_, index) => () =>
+      routeProvider.calculateLeg({
+        destination: wgs84Coordinates(36.6171, 101.7782),
+        legSignature: `phase-5-real-amap-lanzhou-xining-driving-${index + 1}`,
+        mode: "self_driving",
+        origin: wgs84Coordinates(36.0611, 103.8343),
+        position: index + 1,
+      }),
+  ),
+  3,
+);
+for (const drivingRoute of drivingRoutes) {
+  assert.equal(drivingRoute.geometry.source, "encoded");
+  assert.equal(drivingRoute.geometry.provider, "amap");
+  assert.ok(drivingRoute.distanceMeters > 100_000);
+}
 
 const tipsUrl = new URL("https://restapi.amap.com/v3/assistant/inputtips");
 tipsUrl.searchParams.set("key", key);
