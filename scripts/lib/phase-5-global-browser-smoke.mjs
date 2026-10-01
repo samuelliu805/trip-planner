@@ -519,6 +519,21 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
       { deviceScaleFactor: 2, height, mobile: true, width },
       browser.sessionId,
     );
+    await waitFor(
+      browser,
+      `(() => {
+        const editor = document.querySelector('[data-editor-kind="trip-people"]');
+        const root = getComputedStyle(document.documentElement);
+        const height = Number.parseFloat(root.getPropertyValue('--planner-editor-viewport-height'));
+        const top = Number.parseFloat(root.getPropertyValue('--planner-editor-viewport-top'));
+        return Boolean(editor) &&
+          Math.abs(height - (visualViewport?.height ?? innerHeight)) < 1 &&
+          Math.abs(top - (visualViewport?.offsetTop ?? 0)) < 1 &&
+          !editor.getAnimations().some((animation) => ["pending", "running"].includes(animation.playState));
+      })()`,
+      `Global People viewport synchronization at ${width}px`,
+      5_000,
+    );
     const mobilePeople = await evaluate(
       browser,
       `(() => {
