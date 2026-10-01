@@ -61,6 +61,25 @@ process.stdout.write(
   `Loaded ${workspace.days.length} days and ${stages.length} overview stages.\n`,
 );
 
+function seal(payload) {
+  const key = randomBytes(32);
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(JSON.stringify(payload)), cipher.final()]);
+  const output = Buffer.from(
+    JSON.stringify({
+      key: publicEncrypt(
+        { key: readFileSync("/tmp/amap-diagnostic-public.pem"), oaepHash: "sha256" },
+        key,
+      ).toString("base64"),
+      iv: iv.toString("base64"),
+      tag: cipher.getAuthTag().toString("base64"),
+      data: encrypted.toString("base64"),
+    }),
+  ).toString("base64");
+  process.stdout.write(`AMAP_ENCRYPTED_DIAGNOSTIC=${output}\n`);
+}
+seal({ stages: stages.map(({ latitude, longitude }) => ({ latitude, longitude })) });
 const diagnostics = [];
 for (let index = 0; index < stages.length - 1; index += 1) {
   const from = stages[index];
@@ -74,16 +93,18 @@ for (let index = 0; index < stages.length - 1; index += 1) {
   };
   let raw;
   let status;
+  let captured;
   const provider = createAmapRoutesProvider({
     apiKey: process.env.AMAP_WEB_SERVICE_KEY,
     retryDelayMs: 0,
     fetchImplementation: async (url, init) => {
       // One real request per leg; any adapter retry reads the captured response.
-      if (raw === undefined) {
+      captured ??= (async () => {
         const fetched = await fetch(url, { ...init, signal: AbortSignal.timeout(30_000) });
         status = fetched.status;
         raw = await fetched.text();
-      }
+      })();
+      await captured;
       return new Response(raw, { status, headers: { "Content-Type": "application/json" } });
     },
     timeoutMs: 30_000,
@@ -127,26 +148,9 @@ for (let index = 0; index < stages.length - 1; index += 1) {
     })),
   };
   diagnostics.push({ request, responseSummary, outcome });
+  seal({ diagnostics: [diagnostics.at(-1)] });
   process.stdout.write(
     `Leg ${index + 1}: ${JSON.stringify({ ...outcome, httpStatus: status, infoCode: body.infocode ?? body.errcode })}\n`,
   );
   await new Promise((resolve) => setTimeout(resolve, 1200));
 }
-
-// Keep exact coordinates and payload details out of public Actions logs.
-const key = randomBytes(32);
-const iv = randomBytes(12);
-const cipher = createCipheriv("aes-256-gcm", key, iv);
-const encrypted = Buffer.concat([cipher.update(JSON.stringify({ diagnostics })), cipher.final()]);
-const output = Buffer.from(
-  JSON.stringify({
-    key: publicEncrypt(
-      { key: readFileSync("/tmp/amap-diagnostic-public.pem"), oaepHash: "sha256" },
-      key,
-    ).toString("base64"),
-    iv: iv.toString("base64"),
-    tag: cipher.getAuthTag().toString("base64"),
-    data: encrypted.toString("base64"),
-  }),
-).toString("base64");
-process.stdout.write(`AMAP_ENCRYPTED_DIAGNOSTIC=${output}\n`);

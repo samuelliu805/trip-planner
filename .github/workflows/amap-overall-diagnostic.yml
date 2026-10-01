@@ -42,5 +42,10 @@ jobs:
           5QIDAQAB
           -----END PUBLIC KEY-----
           PUBLIC_KEY
+      - name: Use the existing bounded AMap edge selection for the overseas runner
+        run: |
+          restapi_address="$(node scripts/select-amap-ci-edge.mjs restapi.amap.com)"
+          test -n "$restapi_address"
+          printf '%s restapi.amap.com\n' "$restapi_address" | sudo --non-interactive tee -a /etc/hosts > /dev/null
       - name: Read the reported route and probe each actual AMap leg
         run: node scripts/amap-overall-diagnostic.mjs
