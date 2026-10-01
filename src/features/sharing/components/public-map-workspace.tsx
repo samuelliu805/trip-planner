@@ -1,7 +1,7 @@
 "use client";
 
 import { Localized, useI18n } from "@/features/i18n/i18n-provider";
-import { ChevronUp, ChevronRight, Route } from "lucide-react";
+import { ChevronUp, ChevronDown, Route } from "lucide-react";
 import { useState } from "react";
 
 import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
@@ -48,7 +48,7 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
       className="public-map-workspace relative h-full min-h-0"
     >
       <div
-        className={`public-map-canvas absolute inset-0 z-0 isolate sm:pb-0 ${panelOpen ? "pb-[min(44%,22rem)] sm:pr-[min(85%,20rem)]" : "pb-11"}`}
+        className={`public-map-canvas absolute inset-0 z-0 isolate ${panelOpen ? "pb-[min(44%,22rem)]" : "pb-11"}`}
       >
         <PublicPlannerMapCanvas
           configurationState={mapConfigurationState}
@@ -60,7 +60,7 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
       </div>
 
       <div
-        className={`public-map-panel absolute inset-x-0 bottom-0 z-20 flex flex-col overflow-hidden border-t sm:inset-x-auto sm:right-0 sm:border-l ${panelOpen ? "mobile-pull-up-panel max-h-[52%] sm:inset-y-0 sm:max-h-none sm:w-[min(85%,20rem)]" : "max-h-11 sm:bottom-auto sm:right-3 sm:top-3 sm:rounded-lg sm:border sm:shadow-sm"}`}
+        className={`public-map-panel absolute inset-x-0 bottom-0 z-20 flex flex-col overflow-hidden border-t ${panelOpen ? "mobile-pull-up-panel max-h-[52%]" : "max-h-11"}`}
       >
         {panelOpen ? (
           <PullUpPanelHandle className="sm:hidden" onClose={() => setPanelOpen(false)} />
@@ -82,7 +82,7 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
             <ChevronUp aria-hidden="true" className="ml-auto size-4 text-muted-foreground" />
           ) : null}
           {panelOpen ? (
-            <ChevronRight aria-hidden="true" className="ml-auto hidden size-4 sm:block" />
+            <ChevronDown aria-hidden="true" className="ml-auto hidden size-4 sm:block" />
           ) : null}
         </button>
         {panelOpen ? (

@@ -1,8 +1,41 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { parisPublicItinerary } from "../../src/features/landing/landing-public-fixture.ts";
 import { touchDrag } from "./public-sharing-mobile-gestures.mjs";
 
 export async function verifyFullScreenMap({ page, app, token, directory, requests }) {
+  const ownerStyles = await readFile(
+    new URL("../../src/app/planner-workspace.css", import.meta.url),
+    "utf8",
+  );
+  for (const width of [900, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const geometry = await page.evaluate((css) => {
+      const style = document.createElement("style");
+      style.textContent = css;
+      const map = document.createElement("div");
+      map.style.cssText = "position:fixed;inset:0;z-index:80";
+      const panel = document.createElement("section");
+      panel.className = "map-bottom-panel overview-route-panel";
+      panel.style.cssText = "position:absolute;bottom:12px;left:12px;right:12px;height:120px";
+      map.append(panel);
+      document.head.append(style);
+      document.body.append(map);
+      const rect = panel.getBoundingClientRect();
+      const result = {
+        left: rect.left,
+        right: innerWidth - rect.right,
+        bottom: innerHeight - rect.bottom,
+      };
+      map.remove();
+      style.remove();
+      return result;
+    }, ownerStyles);
+    assert.ok(
+      Object.values(geometry).every((gap) => Math.abs(gap - 16) <= 1),
+      `Owner map routes stay at the bottom across desktop widths: ${JSON.stringify(geometry)}`,
+    );
+  }
   for (const template of ["ethereal", "journal"]) {
     const fixture = structuredClone(parisPublicItinerary);
     fixture.settings.templateId = template;
@@ -188,10 +221,10 @@ export async function verifyFullScreenMap({ page, app, token, directory, request
         };
       });
       assert.ok(
-        Math.abs(layout.top) <= 1 && Math.abs(layout.bottom) <= 1 && Math.abs(layout.right) <= 1,
-        `Desktop routes occupy a full-height side drawer: ${JSON.stringify(layout)}`,
+        layout.top > 0 && Math.abs(layout.bottom) <= 1 && Math.abs(layout.right) <= 1,
+        `Desktop routes return to the bottom of the map: ${JSON.stringify(layout)}`,
       );
-      assert.ok(layout.width <= 321 && layout.width < layout.mapWidth);
+      assert.ok(Math.abs(layout.width - layout.mapWidth) <= 1);
       assert.equal(layout.dragHandle, false);
       await workspace.getByRole("button", { name: "Whole trip", exact: true }).click();
       await workspace.getByRole("button", { name: "Calculate whole trip", exact: true }).waitFor();

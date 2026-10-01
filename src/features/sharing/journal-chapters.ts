@@ -1,26 +1,27 @@
 import type { PublicItineraryDay } from "./types.ts";
 
-/** One activity-rich chapter from each chronological third, in itinerary order. */
+/** Pick the richest three days globally; spread equally rich ties, then read chronologically. */
 export function journalPreviewIndexes(days: PublicItineraryDay[]) {
   if (days.length <= 3) return days.map((_, index) => index);
   const candidates = days.map((day, index) => ({
     index,
+    plans: day.items.filter((item) => item.type !== "location").length,
     activities: day.items.filter((item) => item.type === "activity").length,
   }));
   const chosen: number[] = [];
-  for (let segment = 0; segment < 3; segment++) {
-    const start = Math.floor((days.length * segment) / 3);
-    const end = Math.floor((days.length * (segment + 1)) / 3);
-    const target = (start + end - 1) / 2;
-    const candidate = candidates
-      .filter(({ index }) => index >= start && index < end)
-      .sort(
-        (a, b) =>
-          b.activities - a.activities ||
-          Math.abs(a.index - target) - Math.abs(b.index - target) ||
-          a.index - b.index,
-      )[0];
-    chosen.push(candidate.index);
+  const distance = (index: number) =>
+    chosen.length
+      ? Math.min(...chosen.map((selected) => Math.abs(index - selected)))
+      : -Math.abs(index - (days.length - 1) / 2);
+  while (chosen.length < 3) {
+    candidates.sort(
+      (a, b) =>
+        b.plans - a.plans ||
+        b.activities - a.activities ||
+        distance(b.index) - distance(a.index) ||
+        a.index - b.index,
+    );
+    chosen.push(candidates.shift()!.index);
   }
   return chosen.sort((a, b) => a - b);
 }

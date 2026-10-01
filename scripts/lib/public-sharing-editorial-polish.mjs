@@ -129,6 +129,9 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
       }
       // A jump stays selected while late images insert content above the chapter.
       await panel.locator(".edition-dates button").nth(4).click();
+      const stripOffset = await panel
+        .locator(".edition-dates ol")
+        .evaluate((node) => node.scrollLeft);
       const sampled = await panel.evaluate(async (node) => {
         const values = [];
         for (let index = 0; index < 35; index++) {
@@ -140,6 +143,13 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
       assert.ok(
         sampled.every((value) => value.includes("Day 5")),
         `Date jump flickered: ${JSON.stringify(sampled)}`,
+      );
+      assert.ok(
+        Math.abs(
+          (await panel.locator(".edition-dates ol").evaluate((node) => node.scrollLeft)) -
+            stripOffset,
+        ) <= 1,
+        "Selecting a day does not recenter the date strip.",
       );
       await panel.locator(".edition-dates button").last().click();
       if (template === "journal")
@@ -297,7 +307,13 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
             columns: copy.right <= visual.left + 1,
             aligned: Math.abs((copy.top + copy.bottom - visual.top - visual.bottom) / 2) <= 1,
             photoFillsColumn:
-              Math.abs(image.left - visual.left) <= 1 && Math.abs(image.right - cover.right) <= 1,
+              Math.abs(image.left - visual.left) <= 1 &&
+              Math.abs(image.right - cover.right) <= 1 &&
+              Math.abs(image.top - cover.top) <= 1 &&
+              Math.abs(
+                node.querySelector(".edition-front .edition-photo").getBoundingClientRect().bottom -
+                  cover.bottom,
+              ) <= 1,
           };
         });
         assert.ok(Math.abs(geometry.left) <= 1 && Math.abs(geometry.right) <= 1);

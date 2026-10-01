@@ -18,7 +18,6 @@ export function ContinuousItineraryEdition({
   templateId: "ethereal" | "journal";
 }) {
   const scroller = useRef<HTMLDivElement>(null);
-  const navigation = useRef<HTMLDivElement>(null);
   const [readingDayRef, setReadingDayRef] = useState<string | undefined>(itinerary.days[0]?.ref);
   useEffect(() => {
     const node = scroller.current;
@@ -157,19 +156,9 @@ export function ContinuousItineraryEdition({
       node.removeEventListener("public-photo-ready", photoReady);
     };
   }, [itinerary.days]);
-  useEffect(() => {
-    // Only move the date strip. Reading never changes content-to-map selection.
-    const current = navigation.current?.querySelector<HTMLElement>("[aria-current=date]");
-    const strip = current?.closest("ol");
-    if (current && strip)
-      strip.scrollLeft +=
-        current.getBoundingClientRect().left -
-        strip.getBoundingClientRect().left -
-        (strip.clientWidth - current.offsetWidth) / 2;
-  }, [readingDayRef]);
   return (
     <>
-      <div ref={navigation}>
+      <div>
         <EditionNavigation
           days={itinerary.days}
           selectedDayRef={readingDayRef}
