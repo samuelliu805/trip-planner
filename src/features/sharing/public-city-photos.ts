@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { PublicItinerary } from "./types.ts";
 import { editionTowns } from "./edition-destinations.ts";
 import { publicGoogleCoverItem } from "./public-media-presentation.ts";
+import { publicTownVisualAnchor } from "./public-photo-selection.ts";
 
 export const publicCityPhotoSourcesSchema = z.array(
   z
@@ -14,7 +15,7 @@ export const publicCityPhotoSourcesSchema = z.array(
     .strict(),
 );
 
-/** A city's first chapter uses its saved city; later chapters use a saved POI. */
+/** Prefer an existing visual anchor in the overnight town, retaining the saved city fallback. */
 export function withPublicCityPhotos(
   itinerary: PublicItinerary,
   sources: z.infer<typeof publicCityPhotoSourcesSchema>,
@@ -49,8 +50,14 @@ export function withPublicCityPhotos(
       const repeated = Boolean(label && cities.has(label));
       if (label) cities.add(label);
       const poi = publicGoogleCoverItem(day);
-      const photoSource =
-        city && (!repeated || !poi)
+      const anchor = publicTownVisualAnchor(day, town);
+      const photoSource = anchor?.place?.googlePlaceId
+        ? {
+            ref: anchor.ref,
+            googlePlaceId: anchor.place.googlePlaceId,
+            name: anchor.place.displayName,
+          }
+        : city && (!repeated || !poi)
           ? { ref: city.ref, googlePlaceId: city.googlePlaceId, name: city.name }
           : undefined;
       const cityPhotoSource = city

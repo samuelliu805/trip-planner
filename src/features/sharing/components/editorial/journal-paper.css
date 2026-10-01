@@ -55,17 +55,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 30px;
+  flex-direction: column;
+  gap: 3px;
+  height: 40px;
   color: #a77f5e;
 }
-.public-template-journal .journal-contents-continuation svg {
-  width: 16px;
-  height: 28px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-dasharray: 2 4;
+.public-template-journal .journal-contents-continuation span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
 }
 .public-template-journal .itinerary-edition .edition-overview-day-card {
   position: relative;

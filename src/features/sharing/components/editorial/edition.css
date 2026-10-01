@@ -10,6 +10,7 @@
 @import "./journal-overview.css";
 @import "./journal-paper.css";
 @import "./journal-photos.css";
+@import "./photo-loading.css";
 @import "./item-detail-fields.css";
 @import "./export-responsive.css";
 @import "../public-provider-photo.css";

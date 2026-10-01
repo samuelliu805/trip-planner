@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { PublicItineraryDay } from "./types.ts";
+import type { PublicItinerary, PublicItineraryDay } from "./types.ts";
 import { parisPublicItinerary } from "../landing/landing-public-fixture.ts";
 import { publicGoogleCoverItem, publicDayItemMedia } from "./public-media-presentation.ts";
 import { selectGooglePlacePhoto } from "../../lib/providers/google/sharing/google-photo-selection.ts";
+import { withPublicCityPhotos } from "./public-city-photos.ts";
+import { editionCoverPhoto } from "./edition-cover-photo.ts";
 
 test("visual anchors beat untimed service activities, with stable manual order on ties", () => {
   const day: PublicItineraryDay = structuredClone(parisPublicItinerary.days[0]);
@@ -115,4 +117,59 @@ test("photo metadata chooses sufficient landscape and preserves provider fallbac
   ];
   assert.equal(selectGooglePlacePhoto(unknown)?.name, "first");
   assert.equal(selectGooglePlacePhoto([]), null);
+});
+
+test("an acceptable leading photo beats a later ideal ratio, and only the first five compete", () => {
+  const original = { name: "classic-view", widthPx: 1200, heightPx: 900 };
+  const perfectRatio = { name: "car-park", widthPx: 2400, heightPx: 1600 };
+  assert.equal(selectGooglePlacePhoto([original, perfectRatio]), original);
+  assert.equal(
+    selectGooglePlacePhoto([{ name: "invalid", widthPx: -1, heightPx: 0 }, original]),
+    original,
+  );
+  const portraits = Array.from({ length: 5 }, (_, index) => ({
+    name: String(index),
+    widthPx: 800,
+    heightPx: 1600,
+  }));
+  assert.equal(selectGooglePlacePhoto([...portraits, perfectRatio]), portraits[0]);
+  assert.equal(selectGooglePlacePhoto([portraits[0], original, perfectRatio]), original);
+});
+
+test("the longest-stay town reuses its existing scenic POI; service locations and other towns cannot supply it", () => {
+  const itinerary: PublicItinerary = structuredClone(parisPublicItinerary);
+  itinerary.settings.showPlacePhotos = true;
+  const activity = itinerary.days[0].items.find((item) => item.type === "activity")!;
+  activity.place!.googlePlaceId = "saved-louvre";
+  const sources = itinerary.days.map((day) => ({
+    dayRef: day.ref,
+    ref: String(day.dayNumber).repeat(64),
+    name: day.city!,
+    googlePlaceId: `city-${day.city}`,
+  }));
+  const before = structuredClone(itinerary);
+  const selected = withPublicCityPhotos(itinerary, sources);
+  assert.equal(selected.days[0].photoSource?.ref, activity.ref);
+  assert.equal(editionCoverPhoto(selected)?.source.googlePlaceId, "saved-louvre");
+  assert.deepEqual(itinerary, before);
+  activity.title = activity.place!.displayName = "Museum hotel";
+  assert.equal(
+    editionCoverPhoto(withPublicCityPhotos(itinerary, sources))?.source.googlePlaceId,
+    "city-Paris",
+  );
+  activity.title = activity.place!.displayName = "Louvre Museum";
+  activity.place!.localityName = "Versailles";
+  assert.equal(
+    editionCoverPhoto(withPublicCityPhotos(itinerary, sources))?.source.googlePlaceId,
+    "city-Paris",
+  );
+  activity.place!.localityName = "Paris";
+  activity.place!.countryCode = "US";
+  itinerary.days[0].items.find((item) => item.type === "hotel")!.place!.countryCode = "FR";
+  assert.equal(
+    editionCoverPhoto(withPublicCityPhotos(itinerary, sources))?.source.googlePlaceId,
+    "city-Paris",
+  );
+  itinerary.settings.showPlacePhotos = false;
+  assert.equal(editionCoverPhoto(withPublicCityPhotos(itinerary, sources)), undefined);
 });

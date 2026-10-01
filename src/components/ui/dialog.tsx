@@ -116,7 +116,13 @@ function DialogContent({
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div className={cn("space-y-1.5 border-b px-5 py-5 pr-16 sm:px-6", className)} {...props} />
+    <div
+      className={cn(
+        "space-y-1.5 border-b px-5 py-4 pr-16 sm:pl-6 [&>h2]:flex [&>h2]:min-h-11 [&>h2]:items-center",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
@@ -132,7 +138,11 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-const DialogTitle = DialogPrimitive.Title;
+function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
+  return (
+    <DialogPrimitive.Title className={cn("text-lg font-bold leading-snug", className)} {...props} />
+  );
+}
 const DialogDescription = DialogPrimitive.Description;
 
 export {

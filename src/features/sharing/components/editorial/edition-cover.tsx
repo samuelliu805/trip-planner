@@ -6,7 +6,7 @@ import type { PublicItinerary } from "../../types";
 import { JournalQuickOverview } from "./journal-quick-overview";
 import { DayPhoto } from "./day-photo";
 import { publicDateSummary } from "../public-trip-header";
-import { editionCoverDay, editionTownKey, editionTowns } from "../../edition-destinations";
+import { editionCoverPhoto } from "../../edition-cover-photo";
 
 export function EditionCover({
   itinerary,
@@ -24,20 +24,11 @@ export function EditionCover({
   const { t, locale } = useI18n();
   const count = new Set(itinerary.days.map((day) => day.dayNumber)).size;
   const dates = publicDateSummary(itinerary, locale);
-  const coverDay = editionCoverDay(itinerary);
-  const town = coverDay ? editionTowns(coverDay)[0] : undefined;
-  const cityPhotoSource = itinerary.days.find(
-    (day) =>
-      town &&
-      coverDay &&
-      editionTownKey(day) === editionTownKey(coverDay) &&
-      day.cityPhotoSource?.name.trim().toLocaleLowerCase() === town.toLocaleLowerCase(),
-  )?.cityPhotoSource;
+  const coverPhoto = editionCoverPhoto(itinerary);
   const photo =
-    !exporting && coverDay ? (
+    !exporting && coverPhoto ? (
       <DayPhoto
-        day={{ ...coverDay, cityPhotoSource }}
-        townOnly
+        day={{ ...coverPhoto.day, photoSource: coverPhoto.source }}
         reserveSpace={templateId === "journal"}
       />
     ) : null;

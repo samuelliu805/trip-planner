@@ -8,9 +8,9 @@ import { journalPreviewIndexes } from "../../journal-chapters";
 function ChapterContinuation() {
   return (
     <div className="journal-contents-continuation" aria-hidden="true">
-      <svg viewBox="0 0 20 36" focusable="false">
-        <path d="M9 1 Q20 9 10 18 T9 35" />
-      </svg>
+      {Array.from({ length: 6 }, (_, index) => (
+        <span key={index} />
+      ))}
     </div>
   );
 }

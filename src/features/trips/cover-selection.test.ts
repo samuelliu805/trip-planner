@@ -25,7 +25,7 @@ function candidate(
   };
 }
 
-test("cover weights distinct days rather than the number of stops and prefers the saved city", () => {
+test("cover weights distinct days and chooses a saved scenic anchor in the longest-stay town", () => {
   const rows = [
     candidate("1", "Paris"),
     candidate("2", "Paris"),
@@ -37,7 +37,7 @@ test("cover weights distinct days rather than the number of stops and prefers th
   const result = selectTripCover(rows);
   assert.equal(result?.name, "Paris");
   assert.equal(result?.dayCount, 2);
-  assert.equal(result?.googlePlaceId, "saved-Paris");
+  assert.equal(result?.googlePlaceId, "saved-Paris museum");
 });
 
 test("flight airports and entries without a saved locality cannot become a city cover", () => {
@@ -74,8 +74,11 @@ test("public covers prefer the longest published city and the town strip exclude
   assert.equal(editionCoverDay(itinerary)?.ref, itinerary.days[1].ref);
 });
 
-test("a POI never impersonates the longest-stay town photo", () => {
-  assert.equal(selectTripCover([candidate("1", "Paris"), candidate("2", "Paris")]), undefined);
+test("scenic anchors represent their town, while hotels and shorter stays cannot substitute", () => {
+  assert.equal(
+    selectTripCover([candidate("1", "Paris"), candidate("2", "Paris")])?.googlePlaceId,
+    "saved-Paris museum",
+  );
   const rows = [
     candidate("1", "Paris", "hotel"),
     candidate("2", "Paris", "hotel"),

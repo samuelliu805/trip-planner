@@ -11,10 +11,15 @@ import type {
 
 const amountScale = 100;
 
-export function formatMoney(amount: number, currency: string) {
+export function formatMoney(
+  amount: number,
+  currency: string,
+  currencyDisplay: "symbol" | "code" = "symbol",
+) {
   try {
     return new Intl.NumberFormat(undefined, {
       currency,
+      currencyDisplay,
       maximumFractionDigits: 2,
       style: "currency",
     }).format(amount);

@@ -20,12 +20,23 @@ import {
 import { researchDecisionSlotKey } from "./decision-slot.ts";
 import {
   convertPlanCostBreakdown,
+  formatMoney,
   knownCostFromBreakdown,
   planCostBreakdown,
   planCostSummary,
   sortResearchItems,
 } from "./money.ts";
 import { parseEcbReferenceRates } from "./exchange-rate-parser.ts";
+
+test("original Plan prices display the currency code once without an additional symbol", () => {
+  const cny = formatMoney(7724, "CNY", "code");
+  assert.match(cny, /CNY/);
+  assert.doesNotMatch(cny, /¥|CN¥/);
+  assert.equal(cny.match(/CNY/g)?.length, 1);
+  assert.match(cny, /7,724\.00/);
+  assert.match(formatMoney(0, "CNY", "code"), /0\.00/);
+  assert.match(formatMoney(1152.06, "USD"), /1,152\.06/);
+});
 import { addIsoDateDays, firstPresentIsoDate } from "./date-range.ts";
 import { rentalReturnsToPickup } from "./rental-return.ts";
 import { deriveOptionImpact } from "./option-impact.ts";

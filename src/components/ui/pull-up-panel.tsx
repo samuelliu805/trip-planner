@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { X } from "lucide-react";
 
 import {
   Sheet,
   SheetContent,
+  SheetClose,
   SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Localized } from "@/features/i18n/i18n-provider";
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { useDialogViewport } from "./dialog";
 import { cn } from "@/lib/utils";
 
@@ -107,8 +109,7 @@ export function PullUpPanel({
       <SheetContent
         aria-describedby={description ? descriptionId : undefined}
         className={cn(
-          "mobile-pull-up-panel max-h-[76dvh] rounded-t-2xl border-t bg-background pb-[env(safe-area-inset-bottom)] sm:rounded-xl sm:max-h-[min(76dvh,calc(var(--dialog-viewport-height,100svh)-2rem))] [&>[data-sheet-close]]:top-8 sm:[&>[data-sheet-close]]:top-3",
-          compactHeader && "[&>[data-sheet-close]]:top-3",
+          "mobile-pull-up-panel max-h-[76dvh] rounded-t-2xl border-t bg-background pb-[env(safe-area-inset-bottom)] font-sans sm:rounded-xl sm:max-h-[min(76dvh,calc(var(--dialog-viewport-height,100svh)-2rem))]",
           className,
         )}
         overlayClassName={overlayClassName}
@@ -131,7 +132,7 @@ export function PullUpPanel({
           event.preventDefault();
           trigger.focus({ preventScroll: true });
         }}
-        showCloseButton
+        showCloseButton={false}
         side="adaptive"
         tabIndex={focusPanelOnOpen ? -1 : undefined}
       >
@@ -140,10 +141,21 @@ export function PullUpPanel({
           className={cn("sm:hidden", compactHeader && "h-5")}
           onClose={() => onOpenChange(false)}
         />
-        <SheetHeader className={cn("shrink-0 border-b-0 pb-3 pt-3", compactHeader && "pb-2 pt-1")}>
-          <SheetTitle className={compactHeader ? "text-lg leading-tight" : undefined}>
-            <Localized value={title} />
-          </SheetTitle>
+        <SheetHeader className="shrink-0 border-b-0 px-5 pb-3 pt-1 sm:pt-4" data-panel-header="">
+          <div className="flex min-h-11 items-center gap-4">
+            <SheetTitle className="min-w-0 flex-1 break-words text-lg font-bold leading-snug">
+              <Localized value={title} />
+            </SheetTitle>
+            <SheetClose
+              className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              data-sheet-close=""
+            >
+              <X aria-hidden="true" className="size-5" />
+              <span className="sr-only">
+                <T message="Close" />
+              </span>
+            </SheetClose>
+          </div>
           {description ? (
             <SheetDescription id={descriptionId}>
               <Localized value={description} />

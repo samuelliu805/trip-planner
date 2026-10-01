@@ -27,8 +27,11 @@ export function PlanCostMenu({
 
   return (
     <PullUpPanel id="plan-cost" onOpenChange={setPanelOpen} open={panelOpen} title="Plan cost">
-      <div className="min-h-0 overflow-y-auto pb-4">
-        <p className="border-b px-4 pb-3 text-xl font-semibold tabular-nums">
+      <div className="min-h-0 overflow-y-auto overscroll-contain">
+        <p
+          className="mx-5 mb-2 rounded-xl border bg-muted/30 px-4 py-4 text-2xl font-semibold leading-tight tracking-tight tabular-nums"
+          data-plan-cost-total=""
+        >
           <Localized value={value} />
         </p>
         <PlanCostBreakdown lines={lines} summary={summary} />

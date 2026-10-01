@@ -5,6 +5,7 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 import type { PublicItineraryDay } from "../../types";
 import { publicGoogleCoverItem } from "../../public-media-presentation";
 import { usePublicPlacePhoto } from "../public-photo-provider";
+import { PhotoPlaceholder } from "./photo-placeholder";
 
 export function DayPhoto({
   day,
@@ -35,7 +36,7 @@ export function DayPhoto({
       src={photo.displayUrl}
     />
   ) : (
-    <div className="edition-photo-placeholder" aria-hidden="true" />
+    <PhotoPlaceholder />
   );
   return (
     <div
