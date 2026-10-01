@@ -2,7 +2,7 @@
 
 import type { MarkerKind, PlannerMapMarker } from "@/lib/providers/maps/contracts";
 
-import { GoogleStableAdvancedMarker } from "./google-stable-advanced-marker";
+import { GoogleStableMapMarker } from "./google-stable-map-marker";
 import { GoogleStablePin } from "./google-stable-pin";
 
 const markerStyles: Record<MarkerKind, { background: string; glyph: string; label: string }> = {
@@ -50,7 +50,7 @@ export function GooglePlannerMapMarkerOverlay({
   const themedGlyph = marker.glyphColor ?? "#ffffff";
 
   return (
-    <GoogleStableAdvancedMarker
+    <GoogleStableMapMarker
       anchorLeft={comparison ? "-50%" : undefined}
       anchorTop={comparison ? "-100%" : undefined}
       accessibleLabel={
@@ -120,6 +120,6 @@ export function GooglePlannerMapMarkerOverlay({
           />
         </div>
       )}
-    </GoogleStableAdvancedMarker>
+    </GoogleStableMapMarker>
   );
 }

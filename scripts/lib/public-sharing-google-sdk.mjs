@@ -61,6 +61,8 @@ export function installGoogleMapsMock() {
       this.content?.setAttribute(name, value);
     }
     set map(value) {
+      if (window.mockAdvancedMarkerMapFailure)
+        throw new TypeError("Cannot read properties of undefined (reading 'getRootNode')");
       this.currentMap = value;
       if (value) {
         this.content.dataset.mockGoogleMarker = "ready";
@@ -69,6 +71,53 @@ export function installGoogleMapsMock() {
     }
     get map() {
       return this.currentMap;
+    }
+  }
+  class MockOverlayView {
+    setMap(map) {
+      if (this.currentMap) {
+        const remove = this.onRemove;
+        if (window.mockDeferredOverlayRemoval) setTimeout(() => remove?.(), 30);
+        else remove?.();
+      }
+      this.currentMap = map;
+      if (map) {
+        this.onAdd?.();
+        this.draw?.();
+      }
+    }
+    getPanes() {
+      if (!this.currentMap) return null;
+      return {
+        overlayMouseTarget: {
+          appendChild: (node) => {
+            node.dataset.mockGoogleMarker = "ready";
+            return this.currentMap.getDiv().appendChild(node);
+          },
+        },
+      };
+    }
+    getProjection() {
+      const node = this.currentMap?.getDiv();
+      return node
+        ? {
+            fromLatLngToDivPixel: (position) => ({
+              x: node.clientWidth / 2 + position.lng(),
+              y: node.clientHeight / 2 - position.lat(),
+            }),
+          }
+        : undefined;
+    }
+  }
+  class MockLatLng {
+    constructor(position) {
+      this.position = position;
+    }
+    lat() {
+      return typeof this.position.lat === "function" ? this.position.lat() : this.position.lat;
+    }
+    lng() {
+      return typeof this.position.lng === "function" ? this.position.lng() : this.position.lng;
     }
   }
   class MockPin {
@@ -100,6 +149,8 @@ export function installGoogleMapsMock() {
   const marker = { AdvancedMarkerElement: MockAdvancedMarker, PinElement: MockPin };
   const maps = {
     Map: MockMap,
+    OverlayView: MockOverlayView,
+    LatLng: MockLatLng,
     Polyline: MockPolyline,
     marker,
     version: innerWidth === 430 ? "3.62.0" : "3.61.0",
