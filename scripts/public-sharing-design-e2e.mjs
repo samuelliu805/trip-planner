@@ -1051,8 +1051,13 @@ try {
       0,
       "The town photo is a full-card background, not a header thumbnail.",
     );
+    // Exercise returning from hover; previous browser stages leave the pointer
+    // at arbitrary coordinates that may fall inside a newly rendered card.
+    await page.locator("[data-trip-card]").first().hover();
     for (const width of [390, 430, 820, 1440]) {
       await page.setViewportSize({ width, height: 1000 });
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(320);
       const cardLayout = await page
         .locator(".trip-cover-photo")
         .first()
@@ -1068,6 +1073,7 @@ try {
             footer: card.querySelector(".trip-card-footer").getBoundingClientRect().toJSON(),
             bodyWidth: document.documentElement.scrollWidth,
             width: innerWidth,
+            interacting: card.matches(":hover, :focus-within"),
           };
         });
       assert.ok(
@@ -1077,9 +1083,10 @@ try {
         `Town photo fills the entire card: ${JSON.stringify({ width, cardLayout })}`,
       );
       assert.equal(cardLayout.fit, "cover");
+      assert.equal(cardLayout.interacting, false, "Measure the settled default card state.");
       assert.ok(
         cardLayout.filter.includes("0.86"),
-        "A translucent paper filter keeps the original trip text readable.",
+        `A translucent paper filter keeps the original trip text readable: ${JSON.stringify(cardLayout)}`,
       );
       assert.ok(
         cardLayout.attribution.top >= cardLayout.footer.bottom,
