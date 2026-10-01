@@ -47,7 +47,7 @@ const runs = (name) =>
 const token = "11111111-1111-4111-8111-111111111111";
 const directory = process.env.PUBLIC_SHARING_DESIGN_ARTIFACT_DIR;
 if (directory) await mkdir(directory, { recursive: true });
-const app = await startPublicSharingDesignRuntime();
+const app = await startPublicSharingDesignRuntime({ enableMockMap: true });
 const executablePath = [
   process.env.CHROME_PATH,
   "/usr/bin/chromium",
