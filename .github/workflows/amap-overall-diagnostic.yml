@@ -12,7 +12,7 @@ jobs:
     if: github.repository == 'samuelliu805/trip-planner' && github.actor == github.repository_owner
     runs-on: ubuntu-latest
     environment: cloudbase-cn-dev
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
       CLOUDBASE_API_KEY: ${{ secrets.CLOUDBASE_API_KEY }}

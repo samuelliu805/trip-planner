@@ -6,6 +6,7 @@ import { createAmapRoutesProvider } from "../src/lib/providers/amap/routes/amap-
 import { wgs84Coordinates } from "../src/lib/providers/maps/types.ts";
 import { parseFirstJsonObject } from "./cloudbase-cli-json.mjs";
 import { runCommand } from "./cloudbase-run-source-submitter.mjs";
+import { diagnoseCnRuntime } from "./amap-cn-runtime-diagnostic.mjs";
 
 // Temporary, read-only diagnostic for the user-reported trip. No itinerary or route writes.
 const envId = "trip-planner-cn-dev-d3bz94038b26";
@@ -80,6 +81,7 @@ function seal(payload) {
   process.stdout.write(`AMAP_ENCRYPTED_DIAGNOSTIC=${output}\n`);
 }
 seal({ stages: stages.map(({ latitude, longitude }) => ({ latitude, longitude })) });
+await diagnoseCnRuntime(stages, seal);
 const diagnostics = [];
 for (let index = 0; index < stages.length - 1; index += 1) {
   const from = stages[index];
