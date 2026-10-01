@@ -158,14 +158,14 @@ export function ContinuousItineraryEdition({
     };
   }, [itinerary.days]);
   useEffect(() => {
-    // Only move the date strip. Reading never changes content-to-map selection.
+    // Reveal clipped dates at the nearest edge; never recenter a visible day.
     const current = navigation.current?.querySelector<HTMLElement>("[aria-current=date]");
     const strip = current?.closest("ol");
-    if (current && strip)
-      strip.scrollLeft +=
-        current.getBoundingClientRect().left -
-        strip.getBoundingClientRect().left -
-        (strip.clientWidth - current.offsetWidth) / 2;
+    if (!current || !strip) return;
+    const date = current.getBoundingClientRect();
+    const viewport = strip.getBoundingClientRect();
+    if (date.right > viewport.right) strip.scrollLeft += date.right - viewport.right;
+    else if (date.left < viewport.left) strip.scrollLeft += date.left - viewport.left;
   }, [readingDayRef]);
   return (
     <>
