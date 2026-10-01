@@ -1,14 +1,6 @@
+import { publicPhotoPriority } from "./public-photo-selection.ts";
 import { orderedPublicItems } from "./presentation.ts";
 import type { PublicItemMedia, PublicItineraryDay, PublicItineraryItem } from "./types.ts";
-
-function googleCoverPriority(item: PublicItineraryItem) {
-  if (item.type === "activity" && !item.startTime && !item.scheduleLabel) return 0;
-  if (item.type === "activity") return 1;
-  if (item.type === "hotel") return 2;
-  if (item.type === "meal") return 3;
-  if (item.type === "car_rental") return 4;
-  return 5;
-}
 
 function mediaPriority(media: PublicItemMedia) {
   return media.source === "attachment" ? 0 : 1;
@@ -27,7 +19,7 @@ export function orderedPublicItemMedia(item: PublicItineraryItem) {
 export function publicGoogleCoverItem(day: PublicItineraryDay) {
   return orderedPublicItems(day)
     .filter(({ place, type }) => type !== "location" && Boolean(place?.googlePlaceId))
-    .map((item, index) => ({ index, item, priority: googleCoverPriority(item) }))
+    .map((item, index) => ({ index, item, priority: publicPhotoPriority(item, day) }))
     .sort((left, right) => left.priority - right.priority || left.index - right.index)[0]?.item;
 }
 
@@ -42,7 +34,7 @@ export function publicDayItemMedia(day: PublicItineraryDay) {
               itemIndex,
               media,
               mediaIndex,
-              priority: googleCoverPriority(item),
+              priority: publicPhotoPriority(item, day),
             },
           ]
         : [],

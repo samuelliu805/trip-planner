@@ -15,8 +15,9 @@
 }
 .public-template-ethereal .edition-ethereal-cover > .edition-photo-slot,
 .public-template-ethereal .edition-cover-visual > .edition-photo-slot {
-  max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 .public-template-ethereal .ethereal-day-photo:has(.edition-photo-slot) {
   max-width: 560px;

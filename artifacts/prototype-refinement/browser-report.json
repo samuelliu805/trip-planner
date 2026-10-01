@@ -1,0 +1,13 @@
+{
+  "cases": [],
+  "requests": {
+    "resolve": 0,
+    "media": 0,
+    "external": 0
+  },
+  "tripPhotoRequests": {
+    "resolve": 0,
+    "media": 0
+  },
+  "errors": []
+}

@@ -42,7 +42,15 @@ test("Google photo request chain coalesces only in flight, uses saved IDs, and b
     return Response.json({
       photos: [
         {
+          name: "places/saved-place/photos/portrait",
+          widthPx: 1000,
+          heightPx: 2000,
+          authorAttributions: [{ displayName: "Portrait author" }],
+        },
+        {
           name: "places/saved-place/photos/current",
+          widthPx: 1600,
+          heightPx: 1000,
           authorAttributions: [
             { displayName: "Author one", uri: "https://example.invalid/one" },
             { displayName: "Author two", uri: "https://example.invalid/two" },
@@ -76,6 +84,12 @@ test("Google photo request chain coalesces only in flight, uses saved IDs, and b
     const url = new URL(a.get("first")[0].url, "http://localhost");
     const photo = url.searchParams.get("photo"),
       signature = url.searchParams.get("signature");
+    assert.equal(
+      photo,
+      "places/saved-place/photos/current",
+      "Pick the landscape photo within the same Details response.",
+    );
+    assert.equal(a.get("first")[0].attributions[0].label, "Author one");
     assert.ok(
       provider.verifyGooglePhotoSignature("token-a", "first", "saved-place", photo, signature),
     );

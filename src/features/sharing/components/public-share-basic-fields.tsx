@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import type { PlannerVariant } from "@/features/itinerary/types";
 
-import { publicTemplateOptions } from "../templates/registry";
+import { getPublicTemplateRegistryEntry, publicTemplateOptions } from "../templates/registry";
 import type { ShareSettings } from "./public-share-settings";
 
 /** The only two answers a shareable page needs before it can be published. */
@@ -29,6 +29,9 @@ export function PublicShareBasicFields({
   variants: PlannerVariant[];
 }) {
   const templates = publicTemplateOptions();
+  const selectedTemplate = getPublicTemplateRegistryEntry(
+    `${settings.templateId}@${settings.templateVersion}`,
+  );
 
   return (
     <div className={`grid min-w-0 gap-4 ${existingPage ? "" : "sm:grid-cols-2"}`}>
@@ -66,7 +69,9 @@ export function PublicShareBasicFields({
           value={`${settings.templateId}@${settings.templateVersion}`}
         >
           <SelectTrigger className="min-h-11 min-w-0" id="public-share-template">
-            <SelectValue />
+            <SelectValue>
+              {selectedTemplate ? <Localized value={selectedTemplate.label} /> : null}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {templates.map((template) => (

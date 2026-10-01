@@ -4,6 +4,8 @@ import { Localized, useI18n } from "@/features/i18n/i18n-provider";
 import { ChevronUp, Route, X } from "lucide-react";
 import { useState } from "react";
 
+import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
+import { PublicMapCalculateAction } from "./public-map-calculate-action";
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { PublicDayRoutePanel } from "./public-day-route-panel";
 import { PublicOverviewRoutePanel } from "./public-overview-route-panel";
@@ -57,13 +59,15 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
         />
       </div>
 
+      <PublicMapCalculateAction controller={controller} onOpenPanel={() => setPanelOpen(true)} />
       <div
-        className={`public-map-panel absolute inset-x-0 bottom-0 z-20 overflow-y-auto border-t bg-background/97 backdrop-blur ${panelOpen ? "max-h-[52%]" : "max-h-11 overflow-hidden"}`}
+        className={`public-map-panel absolute inset-x-0 bottom-0 z-20 flex flex-col overflow-hidden border-t bg-background/97 backdrop-blur ${panelOpen ? "mobile-pull-up-panel max-h-[52%]" : "max-h-11 overflow-hidden"}`}
       >
+        {panelOpen ? <PullUpPanelHandle onClose={() => setPanelOpen(false)} /> : null}
         <button
           aria-label={t(panelOpen ? "Close route panel" : "Open route panel")}
           aria-expanded={panelOpen}
-          className="public-map-panel-toggle sticky top-0 z-10 flex min-h-11 w-full items-center gap-2 border-b bg-background/97 px-3 text-left text-xs font-semibold backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          className="public-map-panel-toggle shrink-0 z-10 flex min-h-11 w-full items-center gap-2 border-b bg-background/97 px-3 text-left text-xs font-semibold backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           onClick={() => setPanelOpen((current) => !current)}
           type="button"
         >
@@ -80,12 +84,12 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
           )}
         </button>
         {panelOpen ? (
-          <div className="p-3">
+          <div className="min-h-0 overflow-y-auto overscroll-contain p-3">
             <RouteScopePicker onSelect={controller.selectScope} scope={controller.routeScope} />
             {controller.routeScope === "overview" ? (
-              <PublicOverviewRoutePanel {...controller.overviewPanel} />
+              <PublicOverviewRoutePanel {...controller.overviewPanel} showCalculateAction={false} />
             ) : (
-              <PublicDayRoutePanel {...controller.dayPanel} />
+              <PublicDayRoutePanel {...controller.dayPanel} showCalculateAction={false} />
             )}
           </div>
         ) : null}

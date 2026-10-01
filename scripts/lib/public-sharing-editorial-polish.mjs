@@ -161,12 +161,12 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
       const overview = page.locator("#public-overview-panel");
       await overview.locator(".edition-front .edition-photo img").waitFor();
       if (template === "journal") {
-        assert.equal(await overview.locator(".journal-quick-overview button").count(), 6);
-        await overview.locator(".journal-quick-overview button").nth(3).click();
+        assert.equal(await overview.locator(".journal-quick-overview button").count(), 3);
+        await overview.locator(".journal-quick-overview button").nth(1).click();
         await page.waitForFunction(() =>
           document
             .querySelector("#public-timeline-panel .edition-dates [aria-current=date]")
-            ?.textContent.includes("Day 4"),
+            ?.textContent.includes("Day 3"),
         );
         await page.getByRole("tab", { name: "Overview", exact: false }).click();
       } else {

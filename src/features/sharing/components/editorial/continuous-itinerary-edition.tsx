@@ -25,7 +25,6 @@ export function ContinuousItineraryEdition({
     if (!node) return;
     let frame = 0;
     let explicitRef: string | undefined;
-    let resized = false;
     let touchY: number | undefined;
     let anchor: { chapter: HTMLElement; offset: number; scrollTop: number } | undefined;
     function keepReadingPosition() {
@@ -36,6 +35,10 @@ export function ContinuousItineraryEdition({
         anchor.offset;
       if (Math.abs(delta) > 1) node.scrollTop += delta;
       anchor.scrollTop = node.scrollTop;
+    }
+    function photoReady() {
+      keepReadingPosition();
+      schedule();
     }
     function recordJump(event: Event) {
       const ref = (event as CustomEvent<string>).detail;
@@ -59,8 +62,6 @@ export function ContinuousItineraryEdition({
 
       // A late image above the reader must not displace an explicit chapter jump.
       // Explicit jumps use one manual anchor; user scrolling restores native anchoring.
-      if (resized) keepReadingPosition();
-      resized = false;
 
       const top = node.getBoundingClientRect().top + 24;
       const chapters = [...node.querySelectorAll<HTMLElement>(".edition-day[data-public-day-ref]")];
@@ -75,10 +76,12 @@ export function ContinuousItineraryEdition({
       if (current) {
         setReadingDayRef(current.dataset.publicDayRef);
         const offset = current.getBoundingClientRect().top - node.getBoundingClientRect().top;
-        anchor =
-          explicitRef || offset <= 24
-            ? { chapter: current, offset, scrollTop: node.scrollTop }
-            : undefined;
+        // An explicit jump owns its original offset until user input releases it.
+        // A queued animation frame can run before ResizeObserver after an image
+        // commit, so it must never replace that offset with the displaced one.
+        if (!explicitRef)
+          anchor =
+            offset <= 24 ? { chapter: current, offset, scrollTop: node.scrollTop } : undefined;
       }
     }
     function schedule() {
@@ -126,7 +129,9 @@ export function ContinuousItineraryEdition({
       schedule();
     }
     const observer = new ResizeObserver(() => {
-      resized = true;
+      // ResizeObserver runs before paint. Deferring this correction to the next
+      // animation frame would expose one frame of the image-induced jump.
+      keepReadingPosition();
       schedule();
     });
     node.addEventListener("wheel", readerMoved, { passive: true });
@@ -137,6 +142,7 @@ export function ContinuousItineraryEdition({
     if (node.firstElementChild) observer.observe(node.firstElementChild);
     node.addEventListener("scroll", scrolled, { passive: true });
     node.addEventListener("public-day-jump", recordJump);
+    node.addEventListener("public-photo-ready", photoReady);
     schedule();
     return () => {
       cancelAnimationFrame(frame);
@@ -148,6 +154,7 @@ export function ContinuousItineraryEdition({
       node.removeEventListener("touchmove", touchMoved);
       node.removeEventListener("scroll", scrolled);
       node.removeEventListener("public-day-jump", recordJump);
+      node.removeEventListener("public-photo-ready", photoReady);
     };
   }, [itinerary.days]);
   useEffect(() => {

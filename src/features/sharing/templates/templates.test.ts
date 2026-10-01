@@ -119,17 +119,17 @@ test("built-ins compile to deterministic immutable artifact contracts", () => {
   );
   assert.deepEqual(
     publicTemplateOptions().map(({ key }) => key),
-    ["ethereal@1", "journal@1", "bento@2", "neon@1", "traverse@1"],
+    ["ethereal@1", "journal@1"],
   );
   assert.deepEqual(
     publicTemplateOptions().map(({ label }) => label),
-    ["Ethereal", "Journal", "Midnight", "Neon", "Traverse"],
+    ["Ethereal", "Journal"],
   );
   assert.equal(publicTemplateRegistry["standard@1"].selectable, false);
 });
 
 test("template resolver honors legacy query, persistence, disable, fallback, and rollback", () => {
-  assert.equal(DEFAULT_PUBLIC_TEMPLATE_KEY, "neon@1");
+  assert.equal(DEFAULT_PUBLIC_TEMPLATE_KEY, "ethereal@1");
   assert.equal(
     resolvePublicTemplate({
       legacyTemplate: "standard",
@@ -165,7 +165,7 @@ test("template resolver honors legacy query, persistence, disable, fallback, and
       persistedTemplateId: "bento",
       persistedTemplateVersion: 1,
     }).key,
-    "neon@1",
+    "ethereal@1",
   );
   assert.equal(
     resolvePublicTemplate({

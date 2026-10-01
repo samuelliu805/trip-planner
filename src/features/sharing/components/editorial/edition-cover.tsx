@@ -64,14 +64,8 @@ export function EditionCover({
         {!timeline && !exporting ? (
           <div className="edition-journal-front-spread">
             {photo}
-            <div className="edition-journal-stamp" aria-label={t("{count} shared days", { count })}>
-              <strong>{String(count).padStart(2, "0")}</strong>
-              <span>{t("Shared pages")}</span>
-            </div>
+            <JournalQuickOverview itinerary={itinerary} onSelectDay={onSelectDay} />
           </div>
-        ) : null}
-        {!timeline && !exporting ? (
-          <JournalQuickOverview itinerary={itinerary} onSelectDay={onSelectDay} />
         ) : null}
       </header>
     );

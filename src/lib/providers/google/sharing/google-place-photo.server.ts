@@ -3,6 +3,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
+import { selectGooglePlacePhoto } from "./google-photo-selection";
 import { mapWithConcurrency } from "@/features/routes/calculator";
 import type { PublicPlaceMediaSource } from "@/features/sharing/public-media-data";
 import type { PublicItemMedia, PublicItineraryItem } from "@/features/sharing/types";
@@ -80,7 +81,7 @@ async function fetchGooglePlacePhoto(providerPlaceId: string) {
     );
     if (!response.ok) return null;
     const parsed = googlePlacePhotoResponseSchema.safeParse(await response.json());
-    return parsed.success ? (parsed.data.photos?.[0] ?? null) : null;
+    return parsed.success ? selectGooglePlacePhoto(parsed.data.photos ?? []) : null;
   } catch {
     return null;
   }

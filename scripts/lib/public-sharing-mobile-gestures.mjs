@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-async function touchDrag(page, start, end, steps = 10) {
+export async function touchDrag(page, start, end, steps = 10) {
   const client = await page.context().newCDPSession(page);
   const point = (x, y) => [{ x, y, radiusX: 1, radiusY: 1, force: 1, id: 1 }];
   await client.send("Input.dispatchTouchEvent", {

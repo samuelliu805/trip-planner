@@ -45,8 +45,10 @@ export function PublicOverviewRoutePanel({
   onReset,
   pending,
   stops,
+  showCalculateAction = true,
 }: {
   allowExplore: boolean;
+  showCalculateAction?: boolean;
   calculation?: PublicRouteCalculation;
   error?: string;
   modes: OverviewRouteMode[];
@@ -90,7 +92,7 @@ export function PublicOverviewRoutePanel({
                         from: stop.title,
                         to: next.title,
                       })}
-                      className="h-9"
+                      className="min-h-11"
                     >
                       <span className="flex items-center gap-1.5 truncate text-xs">
                         <ModeIcon aria-hidden="true" className="size-3.5 shrink-0" />
@@ -124,7 +126,7 @@ export function PublicOverviewRoutePanel({
           <Localized value={error} />
         </p>
       ) : null}
-      {allowExplore ? (
+      {allowExplore && showCalculateAction ? (
         <div className="flex gap-2">
           {calculation ? (
             <Button className="min-h-11 flex-1" onClick={onReset} type="button" variant="outline">
@@ -147,11 +149,11 @@ export function PublicOverviewRoutePanel({
             </Button>
           )}
         </div>
-      ) : (
+      ) : !allowExplore ? (
         <p className="text-xs text-muted-foreground">
           <T message={"Route calculation is disabled by the owner."} />
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

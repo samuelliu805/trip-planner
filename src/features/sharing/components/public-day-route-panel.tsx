@@ -39,8 +39,10 @@ export function PublicDayRoutePanel({
   plan,
   route,
   routeSetupItems,
+  showCalculateAction = true,
 }: {
   allowExplore: boolean;
+  showCalculateAction?: boolean;
   calculation?: PublicRouteCalculation;
   candidates: PublicItineraryItem[];
   legModes: RouteLegMode[];
@@ -69,7 +71,7 @@ export function PublicDayRoutePanel({
     <div className="space-y-2">
       {days.length > 1 ? (
         <Select onValueChange={onSelectDay} value={day?.ref}>
-          <SelectTrigger aria-label={t("Route day")} className="min-h-10 font-semibold">
+          <SelectTrigger aria-label={t("Route day")} className="min-h-11 font-semibold">
             <span className="truncate">
               {day ? <T message={"Day {day}"} values={{ day: day.dayNumber }} /> : null}
               {day && publicDayCityLabel(day, true) ? ` · ${publicDayCityLabel(day, true)}` : ""}
@@ -147,21 +149,25 @@ export function PublicDayRoutePanel({
                 <Localized value={error} />
               </p>
             ) : null}
-            <div className="sticky bottom-0 grid grid-cols-[1fr_auto_auto] gap-2 border-t bg-background pt-2">
-              <Button
-                aria-busy={pending}
-                className="min-h-11"
-                disabled={pending || localStops.length < 2}
-                onClick={onCalculate}
-                type="button"
-              >
-                {pending ? (
-                  <LoaderCircle className="size-4 animate-spin" />
-                ) : (
-                  <Calculator className="size-4" />
-                )}
-                <Localized value={pending ? "Calculating…" : "Calculate"} />
-              </Button>
+            <div
+              className={`sticky bottom-0 grid ${showCalculateAction ? "grid-cols-[1fr_auto_auto]" : "grid-cols-2"} gap-2 border-t bg-background pt-2`}
+            >
+              {showCalculateAction ? (
+                <Button
+                  aria-busy={pending}
+                  className="min-h-11"
+                  disabled={pending || localStops.length < 2}
+                  onClick={onCalculate}
+                  type="button"
+                >
+                  {pending ? (
+                    <LoaderCircle className="size-4 animate-spin" />
+                  ) : (
+                    <Calculator className="size-4" />
+                  )}
+                  <Localized value={pending ? "Calculating…" : "Calculate"} />
+                </Button>
+              ) : null}
               <Button onClick={onReset} type="button" variant="outline">
                 <T message={" Reset "} />
               </Button>

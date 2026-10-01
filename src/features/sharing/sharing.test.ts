@@ -322,7 +322,7 @@ test("long-image date ranges are inclusive and update the exported trip summary"
 test("public views keep the canonical three, prefer Timeline for new links, and preserve saved defaults", () => {
   assert.deepEqual(canonicalPublicViews, ["overview", "table", "timeline"]);
   assert.equal(defaultShareSettings.defaultView, "timeline");
-  assert.equal(defaultShareSettings.templateId, "neon");
+  assert.equal(defaultShareSettings.templateId, "ethereal");
   assert.equal(defaultShareSettings.templateVersion, 1);
   for (const setting of [
     "allowRouteExplore",
@@ -2263,7 +2263,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(shareSettings, /<OwnerLongImageSettings/);
   assert.match(viewerShare, /\[&>\[data-dialog-close\]\]:hidden/);
   assert.match(shareSettings, /\[&>\[data-dialog-close\]\]:hidden/);
-  assert.match(platformParts, /useExclusivePullUpPanel\("public-map"/);
+  assert.match(
+    await readFile(new URL("./components/public-mobile-map.tsx", import.meta.url), "utf8"),
+    /useExclusivePullUpPanel\("public-map"/,
+  );
   assert.doesNotMatch(viewerShare + shareTools, /WeChat|Wechat|showWechatQr|ShareQrCode/);
   assert.match(shareSettings, /window\.open\("about:blank", "_blank"\)/);
   assert.match(shareSettings, /tab\.location\.replace\(publicUrl\)/);

@@ -12,7 +12,7 @@ import {
   type CompiledPublicTemplateV1,
 } from "./schema.ts";
 
-export const DEFAULT_PUBLIC_TEMPLATE_KEY = "neon@1" as const;
+export const DEFAULT_PUBLIC_TEMPLATE_KEY = "ethereal@1" as const;
 export const LEGACY_PUBLIC_TEMPLATE_KEY = "standard@1" as const;
 
 export type PublicTemplateRegistryEntry = {
@@ -32,7 +32,7 @@ export const publicTemplateRegistry = {
   "bento@2": {
     enabled: true,
     label: "Midnight",
-    selectable: true,
+    selectable: false,
     template: bentoPublicTemplateV2,
   },
   "ethereal@1": {
@@ -50,7 +50,7 @@ export const publicTemplateRegistry = {
   "neon@1": {
     enabled: true,
     label: "Neon",
-    selectable: true,
+    selectable: false,
     template: neonPublicTemplateV1,
   },
   "standard@1": {
@@ -62,7 +62,7 @@ export const publicTemplateRegistry = {
   "traverse@1": {
     enabled: true,
     label: "Traverse",
-    selectable: true,
+    selectable: false,
     template: traversePublicTemplateV1,
   },
 } as const satisfies Record<string, PublicTemplateRegistryEntry>;
