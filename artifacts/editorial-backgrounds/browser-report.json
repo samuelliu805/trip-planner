@@ -1,0 +1,14 @@
+{
+  "stage": "presentation",
+  "cases": [],
+  "requests": {
+    "resolve": 12,
+    "media": 12,
+    "external": 0
+  },
+  "tripPhotoRequests": {
+    "resolve": 0,
+    "media": 0
+  },
+  "errors": []
+}

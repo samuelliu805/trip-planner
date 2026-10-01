@@ -1,0 +1,30 @@
+.trip-cover-photo-filter {
+  position: absolute;
+  inset: 0;
+  z-index: -5;
+  border-radius: 0.75rem;
+  background: rgb(255 254 250 / 86%);
+  -webkit-backdrop-filter: blur(0);
+  backdrop-filter: blur(0);
+  pointer-events: none;
+  transition:
+    background-color 280ms ease-in-out,
+    -webkit-backdrop-filter 280ms ease-in-out,
+    backdrop-filter 280ms ease-in-out;
+}
+.trip-photo-card:is(:hover, :focus-within) .trip-cover-photo-filter {
+  background: rgb(255 254 250 / 80%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.trip-photo-card:has(.trip-cover-photo) {
+  color: #243f33;
+}
+.trip-photo-card:has(.trip-cover-photo) .text-muted-foreground {
+  color: #425547;
+}
+@media (prefers-reduced-motion: reduce) {
+  .trip-cover-photo-filter {
+    transition: none;
+  }
+}

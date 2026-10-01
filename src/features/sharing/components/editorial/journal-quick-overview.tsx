@@ -8,10 +8,9 @@ import { journalPreviewIndexes } from "../../journal-chapters";
 function ChapterContinuation() {
   return (
     <div className="journal-contents-continuation" aria-hidden="true">
-      <svg viewBox="0 0 120 20" focusable="false">
-        <path d="M2 8 Q28 24 60 10 T118 9" />
+      <svg viewBox="0 0 20 36" focusable="false">
+        <path d="M9 1 Q20 9 10 18 T9 35" />
       </svg>
-      <span>…</span>
     </div>
   );
 }
@@ -53,13 +52,6 @@ export function JournalQuickOverview({
         })}
       </ol>
       {indexes.at(-1)! < days.length - 1 ? <ChapterContinuation /> : null}
-      <div
-        className="edition-journal-stamp"
-        aria-label={t("{count} shared days", { count: days.length })}
-      >
-        <strong>{String(days.length).padStart(2, "0")}</strong>
-        <span>{t("Shared pages")}</span>
-      </div>
     </nav>
   );
 }

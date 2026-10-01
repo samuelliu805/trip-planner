@@ -60,7 +60,7 @@ export function MobileCategoryPicker({
           <ChevronDown aria-hidden="true" className="size-4 shrink-0" />
         </Button>
       </SheetTrigger>
-      <SheetContent className="p-0" side="bottom">
+      <SheetContent className="p-0" side="adaptive">
         <SheetHeader className="py-4">
           <SheetTitle>
             <T message={"Choose category"} />

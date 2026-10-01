@@ -77,6 +77,9 @@ export function usePullUpPanelDrag(onClose: () => void, handleOnly = false) {
     };
 
     const begin = (clientX: number, clientY: number, target: EventTarget | null) => {
+      // Hidden handles identify desktop modals/drawers. Do not intercept their
+      // scrolling or mouse selection, including after a responsive resize.
+      if (!controller.getClientRects().length) return;
       window.clearTimeout(settleTimer);
       settleListener?.();
       settleListener = undefined;
@@ -255,6 +258,15 @@ export function usePullUpPanelDrag(onClose: () => void, handleOnly = false) {
       event.stopPropagation();
     };
 
+    const resetForDesktop = () => {
+      if (controller.getClientRects().length) return;
+      gesture = undefined;
+      window.clearTimeout(settleTimer);
+      settleListener?.();
+      settleListener = undefined;
+      clearInlineMotion();
+    };
+    window.addEventListener("resize", resetForDesktop);
     eventSurface.addEventListener("touchstart", onTouchStart, { passive: true, capture: true });
     eventSurface.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
     eventSurface.addEventListener("touchend", onTouchEnd, true);
@@ -265,6 +277,7 @@ export function usePullUpPanelDrag(onClose: () => void, handleOnly = false) {
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
     return () => {
+      window.removeEventListener("resize", resetForDesktop);
       window.clearTimeout(settleTimer);
       settleListener?.();
       clearInlineMotion();

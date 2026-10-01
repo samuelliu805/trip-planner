@@ -34,7 +34,13 @@ export function EditionCover({
       day.cityPhotoSource?.name.trim().toLocaleLowerCase() === town.toLocaleLowerCase(),
   )?.cityPhotoSource;
   const photo =
-    !exporting && coverDay ? <DayPhoto day={{ ...coverDay, cityPhotoSource }} townOnly /> : null;
+    !exporting && coverDay ? (
+      <DayPhoto
+        day={{ ...coverDay, cityPhotoSource }}
+        townOnly
+        reserveSpace={templateId === "journal"}
+      />
+    ) : null;
   const title = (
     <div className="edition-cover-copy">
       <span className="edition-kicker">
@@ -66,11 +72,14 @@ export function EditionCover({
     return (
       <header className={`edition-front edition-journal-front ${timeline ? "is-timeline" : ""}`}>
         {title}
-        {timeline ? <div className="edition-journal-cover-photo">{photo}</div> : null}
         {!timeline && !exporting ? (
           <div className="edition-journal-front-spread">
             {photo}
             <JournalQuickOverview itinerary={itinerary} onSelectDay={onSelectDay} />
+            <div className="edition-journal-stamp" aria-label={t("{count} shared days", { count })}>
+              <strong>{String(count).padStart(2, "0")}</strong>
+              <span>{t("Shared pages")}</span>
+            </div>
           </div>
         ) : null}
       </header>

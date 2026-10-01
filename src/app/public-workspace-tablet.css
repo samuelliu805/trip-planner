@@ -103,10 +103,6 @@
     .app-bottom-navigation-item {
     border-radius: 0;
   }
-
-  .public-itinerary-shell .public-mobile-map-control {
-    bottom: max(0.875rem, env(safe-area-inset-bottom));
-  }
 }
 
 @media (max-width: 899px) {

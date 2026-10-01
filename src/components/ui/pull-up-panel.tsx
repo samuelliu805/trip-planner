@@ -10,6 +10,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Localized } from "@/features/i18n/i18n-provider";
+import { useDialogViewport } from "./dialog";
 import { cn } from "@/lib/utils";
 
 import { usePullUpPanelDrag } from "./use-pull-up-panel-drag";
@@ -99,13 +100,14 @@ export function PullUpPanel({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const descriptionId = useId();
+  const viewport = useDialogViewport(open);
   useExclusivePullUpPanel(id, open, onOpenChange);
   return (
     <Sheet onOpenChange={onOpenChange} open={open}>
       <SheetContent
         aria-describedby={description ? descriptionId : undefined}
         className={cn(
-          "mobile-pull-up-panel max-h-[76dvh] rounded-t-2xl border-t bg-background pb-[env(safe-area-inset-bottom)] [&>[data-sheet-close]]:top-8",
+          "mobile-pull-up-panel max-h-[76dvh] rounded-t-2xl border-t bg-background pb-[env(safe-area-inset-bottom)] sm:rounded-xl sm:max-h-[min(76dvh,calc(var(--dialog-viewport-height,100svh)-2rem))] [&>[data-sheet-close]]:top-8 sm:[&>[data-sheet-close]]:top-3",
           compactHeader && "[&>[data-sheet-close]]:top-3",
           className,
         )}
@@ -116,18 +118,26 @@ export function PullUpPanel({
           panelRef.current?.focus({ preventScroll: true });
         }}
         ref={panelRef}
+        style={
+          viewport
+            ? ({
+                "--dialog-viewport-center": `${viewport.center}px`,
+                "--dialog-viewport-height": `${viewport.height}px`,
+              } as React.CSSProperties)
+            : undefined
+        }
         onCloseAutoFocus={(event) => {
           if (!trigger?.isConnected) return;
           event.preventDefault();
           trigger.focus({ preventScroll: true });
         }}
         showCloseButton
-        side="bottom"
+        side="adaptive"
         tabIndex={focusPanelOnOpen ? -1 : undefined}
       >
         <PullUpPanelHandle
           handleOnly={dragMode === "handle"}
-          className={cn(dragMode === "mobile" ? "sm:hidden" : undefined, compactHeader && "h-5")}
+          className={cn("sm:hidden", compactHeader && "h-5")}
           onClose={() => onOpenChange(false)}
         />
         <SheetHeader className={cn("shrink-0 border-b-0 pb-3 pt-3", compactHeader && "pb-2 pt-1")}>

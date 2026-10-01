@@ -4461,7 +4461,7 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
     "utf8",
   );
   const stableMarker = await readFile(
-    new URL("../../lib/providers/google/maps/google-stable-advanced-marker.tsx", import.meta.url),
+    new URL("../../lib/providers/google/maps/google-stable-map-marker.tsx", import.meta.url),
     "utf8",
   );
   const googleCanvas = await readFile(
@@ -4499,13 +4499,17 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(mapShell, /\? formatMoney\(item\.price_amount, item\.price_currency\)/);
   assert.doesNotMatch(mapShell, /`\$\{item\.price_currency\}/);
   assert.doesNotMatch(workspace, /Map preview · P3|P4/);
-  assert.match(map, /GoogleStableAdvancedMarker/);
+  assert.match(map, /GoogleStableMapMarker/);
   assert.match(stableMarker, /useLayoutEffect/);
   assert.match(
     stableMarker,
-    /new markerLibrary\.AdvancedMarkerElement\(\{[\s\S]*content,[\s\S]*map,[\s\S]*position/,
+    /new mapsLibrary\.OverlayView\(\)[\s\S]*fromLatLngToDivPixel\(new google\.maps\.LatLng\(positionRef\.current\)\)/,
   );
-  assert.match(stableMarker, /return \(\) => \{[\s\S]*nextMarker\.map = null/);
+  assert.match(stableMarker, /return \(\) => \{[\s\S]*overlay\.setMap\(null\)/);
+  assert.match(
+    stableMarker,
+    /overlay\.onRemove = \(\) => \{[\s\S]*overlayRef\.current === overlay\) content\.remove\(\)/,
+  );
   assert.doesNotMatch(stableMarker, /useEffect\(/);
   assert.match(googleCanvas, /map\.addListener\("tilesloaded"/);
   assert.match(

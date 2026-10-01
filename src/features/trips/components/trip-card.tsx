@@ -164,7 +164,7 @@ export function TripCard({
     <>
       <Card
         data-trip-card={trip.id}
-        className={`relative h-full [&:has(.trip-cover-photo_figure)_.trip-card-identity]:pr-0 transition-shadow focus-within:shadow-md hover:shadow-md ${status === "done" ? "bg-muted/40" : ""}`}
+        className={`trip-photo-card relative isolate h-full transition-shadow focus-within:shadow-md hover:shadow-md ${status === "done" ? "bg-muted/40" : ""}`}
       >
         <TripCardArt id={trip.id} cityName={trip.coverSource?.name} />
         <Link
@@ -193,7 +193,6 @@ export function TripCard({
               <T message={trip.role === "owner" ? "Owner" : "Collaborator"} />
             </p>
           </div>
-          <TripCoverPhoto tripId={trip.id} source={trip.coverSource} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -270,6 +269,7 @@ export function TripCard({
             <PrimaryRouteSummary trip={trip} />
           </div>
         </CardContent>
+        <TripCoverPhoto tripId={trip.id} source={trip.coverSource} />
         <AutoDismissAlert
           className="rounded-none border-x-0 border-b-0 px-6 py-3 shadow-none"
           onDismiss={() => setStatusError(null)}

@@ -51,7 +51,13 @@ export async function verifyFullScreenMap({ page, app, token, directory, request
       await page.goto(`${app.baseUrl}/share/${token}?view=timeline`);
       await page.locator('.public-itinerary-shell[data-public-reader-ready="true"]').waitFor();
       const trigger = page.getByRole("button", { name: "Open map and routes", exact: true });
-      const coverImage = page.locator("#public-timeline-panel .edition-front .edition-photo img");
+      const coverImage = page
+        .locator(
+          template === "ethereal"
+            ? "#public-timeline-panel .edition-front .edition-photo img"
+            : "#public-timeline-panel .edition-day .edition-photo img",
+        )
+        .first();
       await coverImage.waitFor();
       const coverUrl = await coverImage.getAttribute("src");
       await trigger.click();
@@ -156,6 +162,48 @@ export async function verifyFullScreenMap({ page, app, token, directory, request
         1,
         "Repeated opens reuse the SDK map instead of creating another billable map load.",
       );
+    }
+    for (const width of [820, 1440]) {
+      app.setFixture(fixture);
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`${app.baseUrl}/share/${token}?view=timeline`);
+      await page.locator('.public-itinerary-shell[data-public-reader-ready="true"]').waitFor();
+      if (width < 1200)
+        await page.getByRole("button", { name: "Open map and routes", exact: true }).click();
+      const workspace = page.locator(".public-map-workspace:visible");
+      await workspace.locator("[data-mock-google-map=ready]").waitFor();
+      await workspace.getByRole("button", { name: "Open route panel", exact: true }).click();
+      const drawer = workspace.locator(".public-map-panel");
+      const layout = await drawer.evaluate((node) => {
+        const panel = node.getBoundingClientRect();
+        const map = node.closest(".public-map-workspace").getBoundingClientRect();
+        const handle = node.querySelector("[data-pull-up-handle]");
+        return {
+          top: panel.top - map.top,
+          bottom: panel.bottom - map.bottom,
+          right: panel.right - map.right,
+          width: panel.width,
+          mapWidth: map.width,
+          dragHandle: Boolean(handle?.getClientRects().length),
+        };
+      });
+      assert.ok(
+        Math.abs(layout.top) <= 1 && Math.abs(layout.bottom) <= 1 && Math.abs(layout.right) <= 1,
+        `Desktop routes occupy a full-height side drawer: ${JSON.stringify(layout)}`,
+      );
+      assert.ok(layout.width <= 321 && layout.width < layout.mapWidth);
+      assert.equal(layout.dragHandle, false);
+      await workspace.getByRole("button", { name: "Whole trip", exact: true }).click();
+      await workspace.getByRole("button", { name: "Calculate whole trip", exact: true }).waitFor();
+      if (directory)
+        await page.screenshot({ path: `${directory}/${template}-map-drawer-${width}.png` });
+      await workspace.getByRole("button", { name: "Close route panel", exact: true }).click();
+      assert.equal(await drawer.locator(".overflow-y-auto").count(), 0);
+      if (width < 1200)
+        await page
+          .locator(".public-mobile-map")
+          .getByRole("button", { name: "Back", exact: true })
+          .click();
     }
   }
   console.log(

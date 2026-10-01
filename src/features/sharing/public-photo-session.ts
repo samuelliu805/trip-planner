@@ -25,6 +25,9 @@ export function createPublicPhotoSession({
   const decoded = new Map<string, LoadedPlacePhoto>();
   let disposed = false;
   return {
+    has(itemRef: string) {
+      return !disposed && byRef.has(itemRef);
+    },
     peek(itemRef: string) {
       const source = byRef.get(itemRef);
       return !disposed && source ? decoded.get(source.placeId) : undefined;

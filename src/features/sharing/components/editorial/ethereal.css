@@ -21,10 +21,6 @@
   max-width: none;
   margin: 0;
 }
-.public-template-ethereal .ethereal-day-photo:has(.edition-photo-slot) {
-  max-width: 560px;
-  margin: 0 auto 24px;
-}
 .public-template-ethereal .itinerary-edition .edition-cover-copy {
   padding: 40px 42px;
   min-width: 0;
@@ -140,16 +136,31 @@
 @container public-content (max-width:719px) {
   .public-template-ethereal .edition-timeline .edition-ethereal-cover:has(> .edition-photo-slot) {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: 1fr;
   }
   .public-template-ethereal .edition-timeline .edition-ethereal-cover > .edition-photo-slot {
-    grid-column: 1;
-    grid-row: 1;
+    position: relative;
+    min-height: 0;
+  }
+  .public-template-ethereal
+    .edition-timeline
+    .edition-ethereal-cover
+    > .edition-photo-slot
+    .edition-photo {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .public-template-ethereal .edition-timeline .edition-ethereal-cover > .edition-photo-slot img {
+    flex: 1;
+    min-height: 0;
+    height: 0;
+    object-fit: cover;
   }
   .public-template-ethereal .edition-timeline .edition-cover-copy {
-    grid-column: 2;
-    padding: 20px 18px;
+    padding: 28px 24px;
   }
   .public-template-ethereal .edition-timeline .edition-cover-copy h2 {
     font-size: clamp(26px, 5.5cqw, 38px);

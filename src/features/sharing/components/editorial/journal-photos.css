@@ -1,0 +1,26 @@
+.public-template-journal .itinerary-edition .edition-photo-reserved .edition-photo-frame {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #e9e5d9;
+}
+.public-template-journal .itinerary-edition .edition-photo-frame > img {
+  height: 100%;
+  object-fit: cover;
+}
+.public-template-journal .itinerary-edition .edition-photo-placeholder {
+  height: 100%;
+  background: linear-gradient(145deg, #ede8db, #d8dfd0 62%, #e6dfcf);
+}
+.public-template-journal .itinerary-edition .edition-photo-reserved figcaption {
+  box-sizing: border-box;
+  height: 54px;
+  padding: 5px 12px;
+  overflow: auto;
+}
+.public-template-journal .itinerary-edition .edition-photo-reserved figcaption a {
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 100%;
+}
