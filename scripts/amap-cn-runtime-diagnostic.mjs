@@ -70,7 +70,14 @@ exports.main=async event=>{
     await writeFile(join(cwd, 'params.json'), JSON.stringify({auth,legs:stages.slice(0,-1).map((s,i)=>({origin:coordinates(s),destination:coordinates(stages[i+1])}))}));
     deployAttempted = true;
     await cli(['fn', 'deploy', name], 180_000);
-    const invocation = await cli(['fn', 'invoke', name, '--data', '@params.json'], 180_000);
+    const invocationResponse = await fetch(`https://${envId}.api.tcloudbasegateway.com/v1/functions/${name}`, {
+      method:'POST', redirect:'error', signal:AbortSignal.timeout(150_000),
+      headers:{Authorization:`Bearer ${process.env.CLOUDBASE_API_KEY}`,'Content-Type':'application/json'},
+      body:await readFile(join(cwd,'params.json'),'utf8'),
+    });
+    const invocationBody = await invocationResponse.text();
+    if(!invocationResponse.ok) { seal({ diagnosticHttpFailure:{status:invocationResponse.status,body:invocationBody} }); throw new Error('Private diagnostic invocation failed.'); }
+    const invocation = {data:{RetMsg:JSON.parse(invocationBody)}};
     seal({ invocationEnvelope: invocation });
     const rawResult = invocation.data?.RetMsg ?? invocation.data?.Response?.RetMsg ?? invocation.RetMsg;
     if (rawResult) {
