@@ -127,9 +127,14 @@ function dayMeasurements(node: HTMLElement) {
   const dayNodes = Array.from(
     node.querySelectorAll<HTMLElement>(".timeline-section-v4, .edition-day"),
   );
-  const dayHeights = dayNodes.map((day) => day.getBoundingClientRect().height);
-  const sections = node.querySelector<HTMLElement>(".timeline-sections-v4");
-  const dayGap = sections ? Number.parseFloat(getComputedStyle(sections).rowGap) || 0 : 0;
+  const bounds = dayNodes.map((day) => day.getBoundingClientRect());
+  const dayHeights = bounds.map((day) => day.height);
+  // A legacy row-gap can remain on a block layout without creating any space.
+  // Budget the rendered separation, including margins, instead of the CSS declaration.
+  const dayGap = bounds.reduce(
+    (gap, day, index) => Math.max(gap, index ? day.top - bounds[index - 1].bottom : 0),
+    0,
+  );
   return { dayGap, dayHeights };
 }
 

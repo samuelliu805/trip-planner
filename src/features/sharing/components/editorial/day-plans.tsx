@@ -2,11 +2,12 @@
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { meaningfulText, publicItemAttachments } from "../../editorial-presentation";
-import { publicTimelineTransportMeta } from "../../public-timeline-presentation";
 import { publicTransportShortLabel, publicTransportSupportingTitle } from "../../presentation";
 import type { PublicItineraryItem } from "../../types";
 import { PublicItemIcon, publicItemTypeLabels } from "../public-item-icon";
 import { PublicItemMediaGallery } from "../public-item-media";
+import { PublicTransportDetails } from "../public-transport-details";
+import { PublicInlineLinks } from "../public-inline-links";
 import { PublicQuickActions } from "../public-quick-actions";
 
 export function OptionalNote({ text, exporting = false }: { text?: string; exporting?: boolean }) {
@@ -132,19 +133,15 @@ export function DayTransport({
             type="button"
           >
             <PublicItemIcon type={item.type} />
-            <strong>{t(publicTransportShortLabel(item))}</strong>
-            {publicTimelineTransportMeta(item) || publicTransportSupportingTitle(item) ? (
-              <span className="edition-transfer-copy">
+            <span className="edition-transfer-content">
+              <span className="edition-transfer-headline">
+                <strong>{t(publicTransportShortLabel(item))}</strong>
                 {publicTransportSupportingTitle(item) ? (
-                  <span className="edition-transfer-title">
-                    {publicTransportSupportingTitle(item)}
-                  </span>
-                ) : null}
-                {publicTimelineTransportMeta(item) ? (
-                  <span>{publicTimelineTransportMeta(item)}</span>
+                  <span>{publicTransportSupportingTitle(item)}</span>
                 ) : null}
               </span>
-            ) : null}
+              <PublicTransportDetails item={item} />
+            </span>
           </button>
           <OptionalNote text={item.notes} exporting={exporting} />
           {exporting ? (
@@ -158,7 +155,7 @@ export function DayTransport({
           ) : (
             <>
               <PublicItemMediaGallery media={publicItemAttachments(item)} variant="transport" />
-              <PublicQuickActions item={item} quiet />
+              <PublicInlineLinks item={item} />
             </>
           )}
         </div>

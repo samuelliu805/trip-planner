@@ -2,8 +2,9 @@
   :is(.public-template-ethereal, .public-template-journal) .itinerary-edition {
     padding: 28px 30px 38px;
   }
-  .public-template-ethereal .edition-editorial-spread {
-    gap: 28px;
+  .public-template-ethereal .itinerary-edition {
+    --edition-inline-padding: 30px;
+    padding-top: 0;
   }
   .public-template-ethereal .itinerary-edition .edition-cover-copy {
     padding: 30px;
@@ -20,21 +21,9 @@
   :is(.public-template-ethereal, .public-template-journal) .itinerary-edition {
     padding: 24px 22px 32px;
   }
-  .public-template-ethereal .edition-editorial-spread {
-    display: block;
-  }
-  .public-template-ethereal .itinerary-edition .edition-ethereal-cover.is-timeline {
-    position: static;
-    margin-bottom: 32px;
-  }
-  .public-template-ethereal .edition-overview .edition-ethereal-cover {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .public-template-ethereal
-    .edition-overview
-    .edition-ethereal-cover:not(:has(.edition-photo-slot)) {
-    grid-template-columns: minmax(0, 1fr) 120px;
-    min-height: 260px;
+  .public-template-ethereal .itinerary-edition {
+    --edition-inline-padding: 22px;
+    padding-top: 0;
   }
   .itinerary-edition .edition-cover-visual .edition-journey-numeral {
     font-size: 76px;
@@ -78,11 +67,6 @@
   }
 }
 @container public-content (max-width:450px) {
-  .public-template-ethereal
-    .edition-overview
-    .edition-ethereal-cover:not(:has(.edition-photo-slot)) {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .public-template-ethereal .itinerary-edition .edition-journey-numeral {
     padding: 0 24px 24px;
     text-align: left;
@@ -103,12 +87,6 @@
   }
   .edition-dates > .edition-kicker {
     display: none;
-  }
-  .itinerary-edition .edition-transfer-button {
-    flex-wrap: wrap;
-  }
-  .itinerary-edition .edition-transfer-button > span {
-    flex: 1 1 160px;
   }
 }
 .timeline-export-document .itinerary-edition {
