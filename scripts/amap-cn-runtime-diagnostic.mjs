@@ -23,6 +23,7 @@ export async function diagnoseCnRuntime(stages, seal) {
   };
   let deployAttempted = false;
   try {
+    await cli(['login', '--cloudbase-api-key', process.env.CLOUDBASE_API_KEY]);
     const detail = await cli(['cloudrun', 'detail', '--service-name', 'trip-planner-cn']);
     const environment = JSON.parse(detail.data.ServerConfig.EnvParams);
     const runtimeKey = environment.AMAP_WEB_SERVICE_KEY;
