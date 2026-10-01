@@ -1,7 +1,7 @@
 "use client";
 
 import { T, useI18n } from "@/features/i18n/i18n-provider";
-import { Copy, MoreHorizontal, Paperclip, Trash2 } from "lucide-react";
+import { Copy, MoreHorizontal, Paperclip, Pencil, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -134,6 +134,7 @@ export function PlannerItemRow({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => onEdit(item)}>
+              <Pencil aria-hidden="true" className="size-4" />
               <T message={"Edit item"} />
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onCopy(item)}>

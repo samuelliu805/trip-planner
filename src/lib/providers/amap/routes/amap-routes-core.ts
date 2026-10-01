@@ -17,7 +17,7 @@ export const amapRoutesEndpoints: Record<AmapRouteMode, string> = {
 type AmapPath = {
   distance?: unknown;
   duration?: unknown;
-  steps?: Array<{ polyline?: unknown }>;
+  steps?: Array<{ duration?: unknown; polyline?: unknown }>;
 };
 
 type AmapV3Response = {
@@ -40,6 +40,16 @@ type AmapRoutesProviderOptions = {
 };
 
 const maximumAttempts = 3;
+const transientInfoCodes = new Set([
+  "10004",
+  "10014",
+  "10015",
+  "10016",
+  "10017",
+  "10018",
+  "10019",
+  "10020",
+]);
 
 function retryableStatus(status: number) {
   return status === 408 || status === 429 || status >= 500;
@@ -51,7 +61,11 @@ async function waitForRetry(delayMs: number) {
 
 function numberField(value: unknown) {
   const parsed =
-    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : NaN;
   if (!Number.isFinite(parsed) || parsed < 0) throw amapRouteProviderError("invalid_response");
   return Math.round(parsed);
 }
@@ -71,10 +85,26 @@ function providerErrorForInfoCode(value: unknown): RouteProviderError {
   let code: RouteProviderErrorCode = "invalid_response";
   if (["10001", "10005", "10006", "10007"].includes(infoCode)) code = "authentication";
   else if (["10002", "10009", "10012", "10013"].includes(infoCode)) code = "permission";
-  else if (["10003", "10004", "10008", "10010", "10019"].includes(infoCode)) code = "quota";
+  else if (
+    ["10003", "10004", "10008", "10010", "10014", "10018", "10019", "10020"].includes(infoCode)
+  )
+    code = "quota";
+  else if (infoCode === "10015") code = "timeout";
   else if (["10016", "10017"].includes(infoCode)) code = "provider_unavailable";
-  else if (infoCode.startsWith("2") || infoCode === "10020") code = "invalid_request";
+  else if (infoCode.startsWith("2")) code = "invalid_request";
   return amapRouteProviderError(code);
+}
+
+function retryablePayload(payload: unknown, routeMode: AmapRouteMode) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+  if (routeMode === "bicycling")
+    return transientInfoCodes.has(String((payload as AmapV4Response).errcode));
+  const response = payload as AmapV3Response;
+  return (
+    response.status !== "1" &&
+    response.status !== 1 &&
+    transientInfoCodes.has(String(response.infocode))
+  );
 }
 
 function coordinateParameter(request: RouteLegRequest, key: "destination" | "origin") {
@@ -88,18 +118,33 @@ function routeUrl(request: RouteLegRequest, routeMode: AmapRouteMode, apiKey: st
   url.searchParams.set("destination", coordinateParameter(request, "destination"));
   url.searchParams.set("key", apiKey);
   url.searchParams.set("output", "json");
+  if (routeMode === "driving") url.searchParams.set("extensions", "all");
   return url;
+}
+
+function missingField(value: unknown) {
+  return value == null || value === "" || (Array.isArray(value) && value.length === 0);
+}
+
+function pathDuration(path: AmapPath) {
+  if (!missingField(path.duration)) return numberField(path.duration);
+  if (!path.steps?.length || path.steps.some((step) => missingField(step.duration))) return null;
+  return path.steps.reduce((total, step) => total + numberField(step.duration), 0);
 }
 
 function pathCoordinates(path: AmapPath) {
   const coordinates = (path.steps ?? []).flatMap(({ polyline }) => {
-    if (typeof polyline !== "string") return [];
-    return polyline.split(";").flatMap((point) => {
-      const [longitude, latitude] = point.split(",").map(Number);
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude))
-        throw amapRouteProviderError("invalid_response");
-      return [gcj02ToWgs84({ coordinateSystem: "gcj02", latitude, longitude })];
-    });
+    if (missingField(polyline)) return [];
+    if (typeof polyline !== "string") throw amapRouteProviderError("invalid_response");
+    return polyline
+      .split(";")
+      .filter((point) => point.trim())
+      .flatMap((point) => {
+        const [longitude, latitude] = point.split(",").map(Number);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude))
+          throw amapRouteProviderError("invalid_response");
+        return [gcj02ToWgs84({ coordinateSystem: "gcj02", latitude, longitude })];
+      });
   });
   return coordinates.filter(
     (coordinate, index) =>
@@ -135,6 +180,7 @@ export function createAmapRoutesProvider(options: AmapRoutesProviderOptions): Ro
       if (!options.apiKey) throw amapRouteProviderError("missing_key");
 
       let response: Response | undefined;
+      let payload: unknown;
       for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -154,27 +200,32 @@ export function createAmapRoutesProvider(options: AmapRoutesProviderOptions): Ro
         } finally {
           clearTimeout(timeout);
         }
-        if (response.ok || !retryableStatus(response.status) || attempt === maximumAttempts) break;
+        if (response.ok) {
+          try {
+            payload = await response.json();
+          } catch (error) {
+            throw amapRouteProviderError("invalid_response", error);
+          }
+          if (!retryablePayload(payload, routeMode) || attempt === maximumAttempts) break;
+          // AMap reports QPS limits as HTTP 200; wait for the rate window to reset.
+          await waitForRetry((options.retryDelayMs ?? 1_000) * attempt);
+          continue;
+        }
+        if (!retryableStatus(response.status) || attempt === maximumAttempts) break;
         await response.body?.cancel().catch(() => undefined);
         await waitForRetry((options.retryDelayMs ?? 200) * attempt);
       }
       if (!response) throw amapRouteProviderError("network");
       if (!response.ok) throw providerErrorForStatus(response.status);
 
-      let payload: unknown;
-      try {
-        payload = await response.json();
-      } catch (error) {
-        throw amapRouteProviderError("invalid_response", error);
-      }
       const path = responsePaths(payload, routeMode)[0];
       if (!path) return amapStraightFallbackLeg(request, "no_route", now());
       const coordinates = pathCoordinates(path);
-      if (coordinates.length < 2) throw amapRouteProviderError("invalid_response");
+      if (coordinates.length < 2) return amapStraightFallbackLeg(request, "no_route", now());
       return {
         computedAt: now(),
         distanceMeters: numberField(path.distance),
-        durationSeconds: numberField(path.duration),
+        durationSeconds: pathDuration(path),
         geometry: {
           coordinateSystem: "wgs84",
           encodedPolyline: encodePolyline5(coordinates),

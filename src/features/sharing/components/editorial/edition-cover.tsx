@@ -49,7 +49,7 @@ export function EditionCover({
       ) : null}
       <h2>{itinerary.trip.title}</h2>
       <p className="edition-cover-dates">
-        {dates || t("Date TBD")} · {itinerary.variant.name}
+        {dates} · {itinerary.variant.name}
       </p>
       {timeline && templateId === "ethereal" ? (
         <div className="edition-cover-signature">
