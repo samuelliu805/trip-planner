@@ -18,7 +18,7 @@ const typeLabels: Partial<Record<ConvertedPlanCostLine["type"], string>> = {
 export function costSummaryText(summary: PlanCostSummary) {
   if (!summary.itemCount) return "No priced items";
   if (summary.amount === null) return "Rate unavailable";
-  return formatMoney(summary.amount, summary.currency);
+  return formatMoney(summary.amount, summary.currency, "code");
 }
 
 export function PlanCostBreakdown({
@@ -31,12 +31,12 @@ export function PlanCostBreakdown({
   const { t } = useI18n();
   if (!lines.length)
     return (
-      <p className="px-3 py-4 text-xs text-muted-foreground">
+      <p className="px-5 py-4 text-sm text-muted-foreground">
         <T message={"No priced items yet."} />
       </p>
     );
   return (
-    <div className="min-w-0">
+    <div className="plan-cost-breakdown min-w-0 font-sans">
       <ul
         className="divide-y"
         aria-label="Plan cost breakdown"
@@ -44,18 +44,18 @@ export function PlanCostBreakdown({
       >
         {lines.map((line) => (
           <li
-            className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 px-3 py-2.5 text-xs"
+            className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,auto)] items-start gap-4 px-5 py-4 text-sm"
             key={line.itemId}
           >
             <span className="min-w-0">
-              <span className="block truncate font-medium">{line.title}</span>
-              <span className="block text-[10px] text-muted-foreground">
+              <span className="block break-words font-medium leading-snug">{line.title}</span>
+              <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
                 <T message={"Day {day}"} values={{ day: line.dayNumber }} /> ·{" "}
                 <Localized value={typeLabels[line.type] ?? "Plan item"} />
               </span>
             </span>
-            <span className="text-right tabular-nums">
-              <span className="block whitespace-nowrap font-semibold">
+            <span className="min-w-0 text-right tabular-nums">
+              <span className="block break-words font-semibold leading-snug">
                 {line.convertedAmount === null ? (
                   <T message="Rate unavailable" />
                 ) : (
@@ -63,9 +63,8 @@ export function PlanCostBreakdown({
                 )}
               </span>
               {line.currency !== line.convertedCurrency ? (
-                <span className="block whitespace-nowrap text-[10px] text-muted-foreground">
-                  {line.currency} {formatMoney(line.amount, line.currency)}{" "}
-                  <T message={" original "} />
+                <span className="mt-1 block break-words text-xs leading-relaxed text-muted-foreground">
+                  {formatMoney(line.amount, line.currency, "code")} <T message={" original "} />
                 </span>
               ) : null}
             </span>
@@ -73,7 +72,7 @@ export function PlanCostBreakdown({
         ))}
       </ul>
       {summary.converted || !summary.complete ? (
-        <p className="border-t px-3 py-2 text-[10px] leading-relaxed text-muted-foreground">
+        <p className="border-t border-dashed bg-muted/20 px-5 py-3 text-xs leading-relaxed text-muted-foreground">
           {summary.rateDate
             ? t("Converted to {currency} with European Central Bank reference rates from {date}.", {
                 currency: summary.currency,

@@ -62,10 +62,18 @@ function SheetContent({
 }
 
 function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("border-b px-5 py-5 pr-14", className)} {...props} />;
+  return (
+    <div
+      className={cn(
+        "border-b px-5 py-3 pr-16 [&>h2]:flex [&>h2]:min-h-11 [&>h2]:items-center",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPrimitive.Title>) {
-  return <SheetPrimitive.Title className={cn("font-semibold", className)} {...props} />;
+  return <SheetPrimitive.Title className={cn("font-bold leading-snug", className)} {...props} />;
 }
 function SheetDescription({
   className,

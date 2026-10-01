@@ -215,11 +215,26 @@ export async function verifyEditorialPolish({ page, app, token, directory, photo
             node.querySelector(".public-item-detail").getBoundingClientRect().top -
             node.querySelector("h2").getBoundingClientRect().bottom,
           overflow: node.scrollWidth > node.clientWidth,
+          titleWeight: Number(getComputedStyle(node.querySelector("h2")).fontWeight),
+          titleCenter: (() => {
+            const r = node.querySelector("h2").getBoundingClientRect();
+            return (r.top + r.bottom) / 2;
+          })(),
+          closeCenter: (() => {
+            const r = node.querySelector("[data-sheet-close]").getBoundingClientRect();
+            return (r.top + r.bottom) / 2;
+          })(),
+          bottomGap:
+            node.getBoundingClientRect().bottom -
+            node.querySelector(".public-item-detail").getBoundingClientRect().bottom,
         };
       });
       assert.ok(Math.abs(layout.values[0] - layout.values[1]) <= 1);
       assert.ok(layout.gap >= 20, JSON.stringify(layout));
       assert.equal(layout.overflow, false);
+      assert.ok(layout.titleWeight >= 700);
+      assert.ok(Math.abs(layout.titleCenter - layout.closeCenter) <= 1);
+      assert.ok(layout.bottomGap <= 24, JSON.stringify(layout));
       if (directory)
         await page.screenshot({ path: `${directory}/${template}-flight-${width}.png` });
       await sheet.getByRole("button", { name: "Close", exact: true }).click();

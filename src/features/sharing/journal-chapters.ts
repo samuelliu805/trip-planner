@@ -1,6 +1,6 @@
 import type { PublicItineraryDay } from "./types.ts";
 
-/** Tease three activity-rich chapters, retaining itinerary order and spreading tied choices. */
+/** One activity-rich chapter from each chronological third, in itinerary order. */
 export function journalPreviewIndexes(days: PublicItineraryDay[]) {
   if (days.length <= 3) return days.map((_, index) => index);
   const candidates = days.map((day, index) => ({
@@ -8,10 +8,12 @@ export function journalPreviewIndexes(days: PublicItineraryDay[]) {
     activities: day.items.filter((item) => item.type === "activity").length,
   }));
   const chosen: number[] = [];
-  for (const fraction of [0.2, 0.5, 0.8]) {
-    const target = (days.length - 1) * fraction;
+  for (let segment = 0; segment < 3; segment++) {
+    const start = Math.floor((days.length * segment) / 3);
+    const end = Math.floor((days.length * (segment + 1)) / 3);
+    const target = (start + end - 1) / 2;
     const candidate = candidates
-      .filter(({ index }) => !chosen.includes(index))
+      .filter(({ index }) => index >= start && index < end)
       .sort(
         (a, b) =>
           b.activities - a.activities ||

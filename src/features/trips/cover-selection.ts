@@ -1,3 +1,5 @@
+import { isScenicPhotoPlace } from "../sharing/public-photo-selection.ts";
+
 export type TripCoverSource = {
   name: string;
   placeId: string;
@@ -41,15 +43,25 @@ export function selectTripCover(candidates: TripCoverCandidate[]): TripCoverSour
     if (!stop?.place?.locality_name) continue;
     const name = stop.place.locality_name.trim();
     const key = `${stop.place.country_code ?? ""}:${name.toLocaleLowerCase()}`;
-    // Resolve only an actual saved town, including one saved on another day.
+    // Use an existing scenic anchor within the town; otherwise its saved city.
     const source =
+      ordered.find(
+        (item) =>
+          item.type === "activity" &&
+          item.place?.source === "google" &&
+          item.place.google_place_id &&
+          item.place.country_code === stop.place?.country_code &&
+          item.place.locality_name?.trim().toLocaleLowerCase() === name.toLocaleLowerCase() &&
+          isScenicPhotoPlace(item.place.display_name),
+      )?.place ??
       ordered.find(
         (item) =>
           ["location", "hotel"].includes(item.type) &&
           item.place?.country_code === stop.place?.country_code &&
           item.place?.locality_name?.trim().toLocaleLowerCase() === name.toLocaleLowerCase() &&
           item.place.display_name.trim().toLocaleLowerCase() === name.toLocaleLowerCase(),
-      )?.place ?? null;
+      )?.place ??
+      null;
     const existing = towns.get(key);
     if (existing) existing.days.add(day);
     else towns.set(key, { days: new Set([day]), source, name });

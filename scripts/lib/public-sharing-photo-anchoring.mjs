@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { parisPublicItinerary } from "../../src/features/landing/landing-public-fixture.ts";
 
-export async function verifyPhotoAnchoringAndFields({ page, app, token, photoGate }) {
+export async function verifyPhotoAnchoringAndFields({ page, app, token, photoGate, directory }) {
   for (const template of ["ethereal", "journal"]) {
     const fixture = structuredClone(parisPublicItinerary);
     fixture.settings.templateId = template;
@@ -52,6 +52,8 @@ export async function verifyPhotoAnchoringAndFields({ page, app, token, photoGat
           photoGate.held() > 0,
           "At least one photo above the target is actually in flight.",
         );
+        if (template === "journal" && directory)
+          await page.screenshot({ path: `${directory}/journal-loading-${width}.png` });
         await panel.locator(".edition-dates button").nth(7).click();
         await page.waitForFunction(() =>
           document
@@ -71,6 +73,19 @@ export async function verifyPhotoAnchoringAndFields({ page, app, token, photoGat
             "Pending Journal photos reserve their full frame.",
           );
           assert.ok(await pendingPhoto.locator(".edition-photo-placeholder").isVisible());
+          const ink = pendingPhoto.locator(".edition-photo-loading-dots i");
+          assert.equal(await ink.count(), 3);
+          assert.ok(
+            (await ink.first().evaluate((node) => getComputedStyle(node).animationName)).includes(
+              "edition-photo-ink",
+            ),
+          );
+          await page.emulateMedia({ reducedMotion: "reduce" });
+          assert.equal(
+            await ink.first().evaluate((node) => getComputedStyle(node).animationName),
+            "none",
+          );
+          await page.emulateMedia({ reducedMotion: "no-preference" });
         }
         const before = await target.evaluate((node) => ({
           top: node.getBoundingClientRect().top,

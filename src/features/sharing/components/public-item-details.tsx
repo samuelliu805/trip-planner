@@ -32,7 +32,7 @@ export function PublicItemDetails({ item }: { item: PublicItineraryItem }) {
       ? publicTransportShortLabel(item)
       : publicItemTypeLabels[item.type];
   return (
-    <article className="public-item-detail space-y-5 pb-3 text-sm">
+    <article className="public-item-detail space-y-5 text-sm">
       {!transfer ? (
         <div className="public-item-detail-field text-muted-foreground">
           <PublicItemIcon type={item.flightEndpoint ? "flight" : item.type} />

@@ -13,6 +13,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { parisPublicItinerary } from "../src/features/landing/landing-public-fixture.ts";
 import { verifyFullScreenMap } from "./lib/public-sharing-fullscreen-map.mjs";
 import { verifyPhotoAnchoringAndFields } from "./lib/public-sharing-photo-anchoring.mjs";
+import { verifyPanelPolish } from "./lib/public-sharing-panel-polish.mjs";
 import { verifyEditorialPolish } from "./lib/public-sharing-editorial-polish.mjs";
 import {
   touchDrag,
@@ -177,6 +178,7 @@ try {
         publicPhotoDelay = value;
       },
     });
+  if (runs("polish")) await verifyPanelPolish({ page, directory });
   if (runs("responsive")) {
     for (const template of ["journal", "ethereal"])
       for (const photos of [false, true]) {
@@ -528,7 +530,7 @@ try {
     }));
     longJournal.trip.dayCount = 12;
     // The teaser should reveal rich chapters from the middle, with omissions on both ends.
-    for (const index of [1, 4, 7]) {
+    for (const index of [1, 4, 9]) {
       const day = longJournal.days[index];
       const activity = day.items.find((item) => item.type === "activity");
       day.items.push(
@@ -565,7 +567,7 @@ try {
       assert.deepEqual(await front.locator(".journal-contents-number").allTextContents(), [
         "02",
         "05",
-        "08",
+        "10",
       ]);
       assert.equal(
         await front.locator(".journal-contents-continuation").count(),
@@ -584,10 +586,15 @@ try {
         stampInside: node
           .querySelector(".journal-quick-overview")
           .contains(node.querySelector(".edition-journal-stamp")),
-        connectors: [...node.querySelectorAll(".journal-contents-continuation svg")].map((svg) => ({
-          width: svg.getBoundingClientRect().width,
-          height: svg.getBoundingClientRect().height,
-        })),
+        connectors: [...node.querySelectorAll(".journal-contents-continuation")].map(
+          (connector) => ({
+            width: connector.firstElementChild.getBoundingClientRect().width,
+            height:
+              connector.lastElementChild.getBoundingClientRect().bottom -
+              connector.firstElementChild.getBoundingClientRect().top,
+            dots: connector.children.length,
+          }),
+        ),
         photoBottom: node.querySelector(".edition-photo").getBoundingClientRect().bottom,
         stampTop: node.querySelector(".edition-journal-stamp").getBoundingClientRect().top,
         stampLeft: node.querySelector(".edition-journal-stamp").getBoundingClientRect().left,
@@ -601,7 +608,7 @@ try {
       assert.equal(layout.stampInside, false, "The stamp sits outside the chapter card.");
       assert.ok(
         layout.connectors.every(
-          ({ width, height }) => height > width && height >= 24 && height <= 40,
+          ({ width, height, dots }) => dots === 6 && height > width && height >= 24 && height <= 40,
         ),
         "Visible, short vertical chapter connectors.",
       );
@@ -695,7 +702,7 @@ try {
     }
   }
   if (runs("chapters")) {
-    // Saved city photos take the first chapter; a repeat city uses its saved POI.
+    // A saved scenic anchor supplies the first chapter and hero; later POIs keep their own sources.
     const cityFixture = structuredClone(parisPublicItinerary);
     cityFixture.settings.templateId = "journal";
     cityFixture.settings.showPlacePhotos = true;
@@ -717,10 +724,10 @@ try {
     const cityRequestStart = resolvedRefs.length;
     await page.goto(`${app.baseUrl}/share/${token}`);
     await page.locator('.public-itinerary-shell[data-public-reader-ready="true"]').waitFor();
-    await page.locator("#public-overview-panel .edition-photo").first().waitFor();
-    assert.ok(resolvedRefs.slice(cityRequestStart).includes("1".repeat(64)));
+    await page.locator("#public-overview-panel .edition-photo img").first().waitFor();
+    assert.ok(!resolvedRefs.slice(cityRequestStart).includes("1".repeat(64)));
     assert.ok(
-      !resolvedRefs
+      resolvedRefs
         .slice(cityRequestStart)
         .includes(cityFixture.days[0].items.find((item) => item.type === "activity").ref),
     );
@@ -729,7 +736,7 @@ try {
       .locator(
         `#public-timeline-panel .edition-day[data-public-day-ref="${cityFixture.days[1].ref}"]`,
       )
-      .locator(".edition-photo")
+      .locator(".edition-photo img")
       .waitFor();
     assert.ok(
       resolvedRefs
@@ -760,7 +767,8 @@ try {
     assert.ok(await page.locator("[role=dialog]").isVisible());
     await page.keyboard.press("Escape");
   }
-  if (runs("refinement")) await verifyPhotoAnchoringAndFields({ page, app, token, photoGate });
+  if (runs("refinement"))
+    await verifyPhotoAnchoringAndFields({ page, app, token, photoGate, directory });
   if (runs("gestures") || runs("maps"))
     await verifyFullScreenMap({ page, app, token, directory, requests });
   if (runs("gestures")) {
@@ -818,6 +826,13 @@ try {
           assert.ok((await fallback.boundingBox()).height > 100);
           assert.equal(await fallback.locator("img").count(), 0);
           assert.ok(await fallback.locator(".edition-photo-placeholder").isVisible());
+          assert.equal(
+            await fallback
+              .locator(".edition-photo-loading-dots i")
+              .first()
+              .evaluate((node) => getComputedStyle(node).animationName),
+            "none",
+          );
         } else if (scenario !== "failed-photo") {
           assert.equal(
             await page.locator(".edition-photo-reserved").count(),

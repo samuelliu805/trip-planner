@@ -7,6 +7,38 @@ const visualAnchor =
 const servicePlace =
   /\b(airport|station|terminal|hotel|motel|hostel|restaurant|cafe|café|rental|cooking class|workshop|transfer)\b|机场|機場|车站|車站|航站|酒店|旅馆|旅館|餐厅|餐廳|租车|租車|烹饪|烹飪/i;
 
+export function isScenicPhotoPlace(name: string) {
+  return visualAnchor.test(name) && !servicePlace.test(name);
+}
+
+export function isPublicVisualAnchor(item: PublicItineraryItem) {
+  return (
+    item.type === "activity" &&
+    !item.flightEndpoint &&
+    isScenicPhotoPlace([item.place?.displayName, item.title].filter(Boolean).join(" "))
+  );
+}
+
+/** An existing, representative POI in the overnight town; unknown localities cannot stand in for it. */
+export function publicTownVisualAnchor(day: PublicItineraryDay, town?: string) {
+  if (!town) return undefined;
+  const country = day.items.findLast(
+    (item) =>
+      ["hotel", "location"].includes(item.type) &&
+      item.place?.localityName?.trim().toLocaleLowerCase() === town.trim().toLocaleLowerCase(),
+  )?.place?.countryCode;
+  return day.items
+    .filter(
+      (item) =>
+        isPublicVisualAnchor(item) &&
+        item.place?.googlePlaceId &&
+        (!country || item.place.countryCode === country) &&
+        item.place.localityName?.trim().toLocaleLowerCase() === town.trim().toLocaleLowerCase(),
+    )
+    .map((item, index) => ({ item, index, priority: publicPhotoPriority(item, day) }))
+    .sort((a, b) => a.priority - b.priority || a.index - b.index)[0]?.item;
+}
+
 function nearbyActivities(item: PublicItineraryItem, day: PublicItineraryDay) {
   const place = item.place;
   if (place?.latitude == null || place.longitude == null) return 0;
