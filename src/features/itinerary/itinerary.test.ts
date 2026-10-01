@@ -4508,11 +4508,14 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(stableMarker, /return \(\) => \{[\s\S]*nextMarker\.map = null/);
   assert.doesNotMatch(stableMarker, /useEffect\(/);
   assert.match(googleCanvas, /map\.addListener\("tilesloaded"/);
-  assert.match(googleCanvas, /readyMap === map \? children : null/);
+  assert.match(
+    googleCanvas,
+    /map && \(readyMap === map \|\| map\.getProjection\(\)\) \? children : null/,
+  );
   assert.match(googleProvider, /gm_authFailure/);
   assert.match(map, /anchorLeft=\{comparison \? "-50%" : undefined\}/);
   assert.match(map, /anchorTop=\{comparison \? "-100%" : undefined\}/);
-  assert.match(map, /comparison \? \([\s\S]*<Pin/);
+  assert.match(map, /comparison \? \([\s\S]*<GoogleStablePin/);
   assert.doesNotMatch(map, /comparison \? \([\s\S]*absolute left-full/);
   assert.match(map, /entry\.title/);
   assert.doesNotMatch(places, /new places\.PlaceAutocompleteElement|gmp-select/);
