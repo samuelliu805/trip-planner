@@ -848,7 +848,7 @@ async function run() {
   }
   if (failure) throw failure;
   process.stdout.write(
-    "Global Phase 5 Auth, CRUD, RPC, A/B RLS, immutable sharing, and zero-residue checks passed.\n",
+    "Global Phase 5 Auth, CRUD, RPC, A/B RLS, automatic share synchronization, and zero-residue checks passed.\n",
   );
 }
 
