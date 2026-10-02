@@ -112,7 +112,9 @@ async function assertJump(page, ref, context) {
     const chapter = scroller.querySelector(`[data-public-day-ref="${ref}"]`);
     const samples = [];
     for (let frame = 0; frame < 30; frame++) {
-      await new Promise(requestAnimationFrame);
+      // Sample the rendered frame after ResizeObserver has restored its anchor.
+      // WebKit can update layout between RAF callbacks and the pre-paint observer.
+      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
       samples.push({
         selected: panel.querySelector(".edition-dates [aria-current=date]")?.textContent,
         top: chapter.getBoundingClientRect().top - scroller.getBoundingClientRect().top,

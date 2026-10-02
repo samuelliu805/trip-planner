@@ -59,6 +59,7 @@ export function ContinuousItineraryEdition({
     function update() {
       frame = 0;
       if (!node || !node.getClientRects().length) return;
+      keepReadingPosition();
 
       // A late image above the reader must not displace an explicit chapter jump.
       // Explicit jumps use one manual anchor; user scrolling restores native anchoring.
