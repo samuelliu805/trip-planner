@@ -26,14 +26,22 @@ function session(result, label) {
   return data?.session ?? data ?? null;
 }
 
-function assertPublicProjection(projection, intendedTitle, privateTitle, ownerId) {
+function assertPublicProjection(
+  projection,
+  intendedTitle,
+  privateTitle,
+  ownerId,
+  staleTitles = [],
+) {
   if (!projection || projection.available !== true) {
     throw new Error("Anonymous public snapshot was unavailable");
   }
   const serialized = JSON.stringify(projection);
-  if (!serialized.includes(intendedTitle)) throw new Error("Public snapshot lost intended data");
+  if (projection.metadata?.title !== intendedTitle)
+    throw new Error("Public snapshot lost the latest saved title");
   for (const forbidden of [
     privateTitle,
+    ...staleTitles,
     ownerId,
     "owner_id",
     "object_key",
@@ -258,7 +266,8 @@ async function runAssertions(auth, db, config) {
     )
       dataOrThrow(statusUpdate, "A own status update");
     const intendedTitle = `${runLabel}-published`;
-    const privateTitle = `${runLabel}-private-after-publish`;
+    const savedTitle = `${runLabel}-saved-after-publish`;
+    const privateTitle = `${runLabel}-b`;
     const publishTrip = rows(
       await db.from("trips").select("content_version").eq("id", aTrip),
       "A publish content version",
@@ -299,7 +308,7 @@ async function runAssertions(auth, db, config) {
         target_operation_id: crypto.randomUUID(),
         target_variant_id: aVariant,
       }),
-      "A immutable public share",
+      "A automatically synchronized public share",
     );
     publicToken = share?.publicToken;
     if (!publicToken) throw new Error("A public share token was unavailable");
@@ -317,7 +326,7 @@ async function runAssertions(auth, db, config) {
     )[0];
     const privateUpdate = await db.rpc("update_trip_plan_v2", {
       target_trip_id: aTrip,
-      trip_title: privateTitle,
+      trip_title: savedTitle,
       trip_start_date: null,
       trip_end_date: null,
       trip_day_count: 1,
@@ -333,8 +342,18 @@ async function runAssertions(auth, db, config) {
         String(privateUpdate.error.message ?? ""),
       )
     ) {
-      dataOrThrow(privateUpdate, "A private title update");
+      dataOrThrow(privateUpdate, "A saved title update");
     }
+    assertPublicProjection(
+      dataOrThrow(
+        await db.rpc("get_public_share_page_v3", { shared_token: publicToken }),
+        "A public page after saved title update",
+      ),
+      savedTitle,
+      privateTitle,
+      aId,
+      [intendedTitle],
+    );
     if (
       dataOrThrow(
         await db.rpc("invite_trip_collaborator", {
@@ -665,14 +684,13 @@ async function runAssertions(auth, db, config) {
     }
     const projection = dataOrThrow(
       await db.rpc("get_public_share_page_v3", { shared_token: publicToken }),
-      "anonymous immutable public snapshot",
+      "anonymous synchronized public snapshot",
     );
-    assertPublicProjection(
-      projection,
-      `${runLabel}-published`,
-      `${runLabel}-private-after-publish`,
-      aId,
-    );
+    assertPublicProjection(projection, `${runLabel}-owner-after-reload`, privateTitle, aId, [
+      intendedTitle,
+      savedTitle,
+      `${runLabel}-stale-owner-edit`,
+    ]);
     const citySources = dataOrThrow(
       await db.rpc("get_public_city_photo_sources_v1", { shared_token: publicToken }),
       "anonymous city-photo scope",
@@ -716,7 +734,7 @@ async function run() {
   await runAssertions(auth, db, config);
   console.log("CloudBase live A/B JWT RLS and business RPC security matrix passed.");
   console.log("Session restore, refresh, expiry boundary, and logout verification passed.");
-  console.log("Immutable public snapshot and owner-private leak checks passed.");
+  console.log("Automatically synchronized public snapshots and private-data leak checks passed.");
   console.log("Both identities proved exact deletion and zero controlled/cascading fixtures.");
 }
 
