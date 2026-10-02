@@ -66,9 +66,11 @@ function RouteLegList({ legs }: { legs: RouteLegDetail[] }) {
 }
 
 export function RouteLegDetails({
+  collapsible = true,
   defaultOpen = false,
   legs,
 }: {
+  collapsible?: boolean;
   defaultOpen?: boolean;
   legs: RouteLegDetail[];
 }) {
@@ -95,14 +97,15 @@ export function RouteLegDetails({
   };
   const walkingDistance = distanceFor(["walk"]);
   const drivingDistance = distanceFor(["self_driving", "taxi", "rideshare", "motorcycle"]);
+  const Header = collapsible ? "button" : "div";
 
   return (
     <section className="border-t">
-      <button
-        aria-expanded={open}
-        className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-xs font-semibold hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-        onClick={() => setOpen((current) => !current)}
-        type="button"
+      <Header
+        aria-expanded={collapsible ? open : undefined}
+        className={`flex min-h-11 w-full items-center gap-2 px-3 text-left text-xs font-semibold ${collapsible ? "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" : ""}`}
+        onClick={collapsible ? () => setOpen((current) => !current) : undefined}
+        type={collapsible ? "button" : undefined}
       >
         <Route aria-hidden="true" className="size-3.5 text-primary" />
         <span>{t("{count} leg(s)", { count: legs.length })}</span>
@@ -126,13 +129,19 @@ export function RouteLegDetails({
             {formatRouteDistance(drivingDistance)}
           </span>
         ) : null}
-        <ChevronDown
-          aria-hidden="true"
-          className={`ml-auto size-3.5 text-muted-foreground transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      {open ? (
-        <div className="max-h-44 overflow-y-auto overscroll-contain border-t">
+        {collapsible ? (
+          <ChevronDown
+            aria-hidden="true"
+            className={`ml-auto size-3.5 text-muted-foreground transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+          />
+        ) : null}
+      </Header>
+      {!collapsible || open ? (
+        <div
+          className={
+            collapsible ? "max-h-44 overflow-y-auto overscroll-contain border-t" : "border-t"
+          }
+        >
           <RouteLegList legs={legs} />
         </div>
       ) : null}

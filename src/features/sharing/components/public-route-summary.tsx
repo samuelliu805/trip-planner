@@ -21,11 +21,9 @@ export function RouteTotals({ calculation }: { calculation: PublicRouteCalculati
 }
 
 export function PublicRouteLegDetails({
-  defaultOpen = false,
   labels,
   legs,
 }: {
-  defaultOpen?: boolean;
   labels: string[];
   legs: PublicRouteCalculation["legs"];
 }) {
@@ -34,7 +32,7 @@ export function PublicRouteLegDetails({
     fromLabel: labels[leg.position - 1],
     toLabel: labels[leg.position],
   }));
-  return <RouteLegDetails defaultOpen={defaultOpen} legs={details} />;
+  return <RouteLegDetails collapsible={false} legs={details} />;
 }
 
 export function RouteScopePicker({

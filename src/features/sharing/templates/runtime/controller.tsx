@@ -1,10 +1,13 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import { flushSync } from "react-dom";
 import {
   createContext,
   useContext,
   useEffect,
+  useEffectEvent,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -21,6 +24,7 @@ import type { PublicItinerary, PublicView, ShareImageManifest } from "../../type
 import type { CompiledPublicTemplateV1 } from "../schema";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
+import type { PublicDayIntentRoot } from "./early-day-intent";
 
 type PublicTemplateController = {
   desktopMap: boolean;
@@ -91,11 +95,42 @@ export function PublicTemplateControllerProvider({
   const [desktopMap, setDesktopMap] = useState(false);
   const [split, setSplit] = useState(64);
   const [selection, setSelection] = useState<PublicMapSelection>({});
+  const dayJumpRef = useRef<string | undefined>(undefined);
   const shellRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const showMap = itinerary.settings.showMapRoutes;
   const exposureReported = useRef(false);
+
+  const replayInitialDay = useEffectEvent(() => {
+    const root = shellRef.current?.closest<PublicDayIntentRoot>(".public-itinerary-shell");
+    const ref = root?.publicDayIntent;
+    if (root) delete root.publicDayIntent;
+    if (ref && itinerary.days.some((day) => day.ref === ref)) flushSync(() => selectDay(ref));
+  });
+  useLayoutEffect(() => {
+    const root = shellRef.current?.closest(".public-itinerary-shell");
+    const replay = () => replayInitialDay();
+    root?.addEventListener("public-reader-ready", replay, { once: true });
+    return () => root?.removeEventListener("public-reader-ready", replay);
+  }, []);
+
+  useLayoutEffect(() => {
+    const dayJump = dayJumpRef.current;
+    if (!dayJump || view !== "timeline") return;
+    const panel = shellRef.current?.querySelector("#public-timeline-panel");
+    const scroller = panel?.querySelector<HTMLElement>(".public-view-scroll");
+    const day = Array.from(
+      scroller?.querySelectorAll<HTMLElement>("[data-public-day-ref]") ?? [],
+    ).find((node) => node.dataset.publicDayRef === dayJump);
+    if (day && scroller) {
+      scroller.scrollTop += day.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+      day.tabIndex = -1;
+      day.focus({ preventScroll: true });
+      scroller.dispatchEvent(new CustomEvent("public-day-jump", { detail: dayJump }));
+    }
+    dayJumpRef.current = undefined;
+  }, [selection, view]);
 
   useEffect(() => {
     if (exposureReported.current) return;
@@ -122,10 +157,10 @@ export function PublicTemplateControllerProvider({
   useEffect(() => {
     const nextParams = new URLSearchParams(searchParams.toString());
     applyTemplateQuery(nextParams, legacyTemplateOverride);
-    nextParams.set("view", initialView);
+    nextParams.set("view", view);
     if (nextParams.toString() === searchParams.toString()) return;
     window.history.replaceState(window.history.state, "", `${pathname}?${nextParams.toString()}`);
-  }, [initialView, legacyTemplateOverride, pathname, searchParams]);
+  }, [view, legacyTemplateOverride, pathname, searchParams]);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 900px)");
@@ -158,25 +193,14 @@ export function PublicTemplateControllerProvider({
   }
 
   function selectDay(dayRef: string) {
+    const root = shellRef.current?.closest<PublicDayIntentRoot>(".public-itinerary-shell");
+    if (root) delete root.publicDayIntent;
+    if (view !== "table") dayJumpRef.current = dayRef;
     if (view === "overview") switchView("timeline");
     setSelection((current) => ({
       dayRef,
       scope: current.dayRef === dayRef && !current.itemRef ? current.scope : undefined,
     }));
-    requestAnimationFrame(() => {
-      const panel = shellRef.current?.querySelector("#public-timeline-panel");
-      const day = Array.from(
-        panel?.querySelectorAll<HTMLElement>("[data-public-day-ref]") ?? [],
-      ).find((node) => node.dataset.publicDayRef === dayRef);
-      const scroller = panel?.querySelector<HTMLElement>(".public-view-scroll");
-      if (day && scroller) {
-        scroller.scrollTop +=
-          day.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-        day.tabIndex = -1;
-        day.focus({ preventScroll: true });
-        scroller.dispatchEvent(new CustomEvent("public-day-jump", { detail: dayRef }));
-      }
-    });
   }
 
   function selectItem(itemRef: string, dayRef: string) {

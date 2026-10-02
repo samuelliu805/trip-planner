@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PublicItinerary } from "../../types";
 import { EditionNavigation } from "./edition-navigation";
 import { ItineraryEdition } from "./itinerary-edition";
@@ -20,7 +20,7 @@ export function ContinuousItineraryEdition({
   const scroller = useRef<HTMLDivElement>(null);
   const navigation = useRef<HTMLDivElement>(null);
   const [readingDayRef, setReadingDayRef] = useState<string | undefined>(itinerary.days[0]?.ref);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const node = scroller.current;
     if (!node) return;
     let frame = 0;
@@ -59,6 +59,7 @@ export function ContinuousItineraryEdition({
     function update() {
       frame = 0;
       if (!node || !node.getClientRects().length) return;
+      keepReadingPosition();
 
       // A late image above the reader must not displace an explicit chapter jump.
       // Explicit jumps use one manual anchor; user scrolling restores native anchoring.

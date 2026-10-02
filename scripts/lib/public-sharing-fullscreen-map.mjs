@@ -112,7 +112,7 @@ export async function verifyFullScreenMap({ page, app, token, directory, request
       assert.ok(Math.abs((await map.boundingBox()).y - initial.y) <= 1);
       await map.locator("[data-mock-google-map=ready]").waitFor();
       await map.locator("[data-mock-google-pin=ready]").first().waitFor();
-      await map.getByRole("button", { name: "Open route panel", exact: true }).click();
+      await map.getByRole("button", { name: "Close route panel", exact: true }).waitFor();
       const action = map.locator(".public-map-calculate");
       assert.ok(
         (await action.boundingBox()).y >=
@@ -154,17 +154,22 @@ export async function verifyFullScreenMap({ page, app, token, directory, request
       await map.getByRole("button", { name: "Day route", exact: true }).click();
       await action.click();
       await map.getByRole("button", { name: "Calculate", exact: true }).waitFor();
-      // A content touch hands off to the drawer only at its scroll boundary.
+      // Scrolling the content must never turn into a dismissal at its top boundary.
       const body = drawer.locator(".overflow-y-auto");
       await body.evaluate((node) => {
         node.scrollTop = 0;
       });
       const content = await body.boundingBox();
+      const topBeforeSwipe = (await drawer.boundingBox()).y;
       await touchDrag(
         page,
         { x: content.x + 25, y: content.y + 35 },
         { x: content.x + 25, y: Math.min(835, content.y + 235) },
       );
+      assert.ok(await drawer.locator(".public-map-panel-body").isVisible());
+      assert.equal(await drawer.getAttribute("data-pull-up-dragging"), null);
+      assert.ok(Math.abs((await drawer.boundingBox()).y - topBeforeSwipe) <= 1);
+      await drawer.getByRole("button", { name: "Close route panel", exact: true }).click();
       await drawer.locator("[data-pull-up-handle]").waitFor({ state: "hidden" });
       assert.ok(await map.isVisible(), "Dismissing route setup keeps the map available.");
       const beforeReturn = requests ? { ...requests } : undefined;
@@ -205,7 +210,7 @@ export async function verifyFullScreenMap({ page, app, token, directory, request
         await page.getByRole("button", { name: "Open map and routes", exact: true }).click();
       const workspace = page.locator(".public-map-workspace:visible");
       await workspace.locator("[data-mock-google-map=ready]").waitFor();
-      await workspace.getByRole("button", { name: "Open route panel", exact: true }).click();
+      await workspace.getByRole("button", { name: "Close route panel", exact: true }).waitFor();
       const drawer = workspace.locator(".public-map-panel");
       const layout = await drawer.evaluate((node) => {
         const panel = node.getBoundingClientRect();

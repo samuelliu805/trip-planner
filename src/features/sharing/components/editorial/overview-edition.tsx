@@ -47,6 +47,7 @@ function OverviewDayCard({
         {journal ? <OptionalNote text={day.notes} /> : null}
         <button
           className="edition-overview-open"
+          data-public-day-target={day.ref}
           type="button"
           onClick={() => onSelectDay(day.ref)}
         >

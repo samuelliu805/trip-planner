@@ -72,6 +72,12 @@ jobs:
       - run: npm test
       - name: Verify sharing designs, gestures, and export in Chromium
         run: CHROME_PATH=/usr/bin/google-chrome npm run test:e2e:sharing-design
+      - name: Verify first day navigation in WebKit
+        run: |
+          npx playwright install --with-deps webkit
+          PUBLIC_SHARING_DESIGN_BROWSER=webkit PUBLIC_SHARING_DESIGN_STAGE=navigation \
+            node scripts/run-compact-command.mjs --label "WebKit first day navigation" \
+            -- node scripts/public-sharing-design-e2e.mjs
       - run: npm run test:telemetry
       - run: npm run check:backend-provider-boundary
       - run: npm run check:maps-provider-boundary
