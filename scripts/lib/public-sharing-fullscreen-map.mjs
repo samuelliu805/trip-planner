@@ -119,7 +119,7 @@ export async function verifyFullScreenMap({ page, app, token, directory, request
           (await map.locator(".public-map-panel .overflow-y-auto").boundingBox()).y,
         "The calculation action scrolls with the route fields to preserve content height.",
       );
-      assert.equal((await action.textContent()).trim(), "Explore route");
+      assert.equal((await action.textContent()).trim(), "Calculate route");
       await action.click();
       await map.getByRole("button", { name: "Calculate", exact: true }).waitFor();
       assert.ok(

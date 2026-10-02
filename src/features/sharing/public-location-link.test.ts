@@ -26,13 +26,13 @@ test("Global location links use exact coordinates and the Google place ID", () =
   assert.equal(url.searchParams.get("query_place_id"), "google-place");
 });
 
-test("CN location links keep longitude first and request native AMap opening", () => {
+test("CN location links declare WGS84 coordinates, keep longitude first and request native AMap opening", () => {
   const link = publicLocationLink(item, "amap")!;
   const url = new URL(link.href);
   assert.equal(url.origin, "https://uri.amap.com");
   assert.equal(url.pathname, "/marker");
   assert.equal(url.searchParams.get("position"), "120.15,30.25");
-  assert.equal(url.searchParams.get("coordinate"), "gaode");
+  assert.equal(url.searchParams.get("coordinate"), "wgs84");
   assert.equal(url.searchParams.get("callnative"), "1");
   assert.equal(url.searchParams.get("name"), "湖畔酒店");
   assert.equal(url.searchParams.has("query_place_id"), false);

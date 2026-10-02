@@ -27,7 +27,7 @@ export function publicLocationLink(
     if (coordinates) {
       url.searchParams.set("position", `${longitude},${latitude}`);
       url.searchParams.set("name", name || item.title);
-      url.searchParams.set("coordinate", "gaode");
+      url.searchParams.set("coordinate", "wgs84");
     } else url.searchParams.set("keyword", query);
     return { href: url.href, label: "Open in AMap" as const };
   }
