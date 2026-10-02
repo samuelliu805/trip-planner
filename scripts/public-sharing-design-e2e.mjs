@@ -602,6 +602,7 @@ try {
               connector.lastElementChild.getBoundingClientRect().bottom -
               connector.firstElementChild.getBoundingClientRect().top,
             dots: connector.children.length,
+            gap: getComputedStyle(connector).gap,
           }),
         ),
         photoBottom: node.querySelector(".edition-photo").getBoundingClientRect().bottom,
@@ -617,9 +618,10 @@ try {
       assert.equal(layout.stampInside, false, "The stamp sits outside the chapter card.");
       assert.ok(
         layout.connectors.every(
-          ({ width, height, dots }) => dots === 6 && height > width && height >= 24 && height <= 40,
+          ({ width, height, dots, gap }) =>
+            dots === 3 && gap === "5px" && height > width && height >= 16 && height <= 22,
         ),
-        "Visible, short vertical chapter connectors.",
+        "Visible three-dot chapter connectors with slightly wider spacing.",
       );
       if (width >= 1024)
         assert.ok(
