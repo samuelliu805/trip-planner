@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(25);
+SELECT plan(26);
 
 INSERT INTO auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,
   raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
@@ -118,10 +118,17 @@ SELECT lives_ok($$SELECT public.insert_variant_day_v2(
 SELECT is(jsonb_array_length(public.get_public_share_page_v3(
   ((SELECT data->>'publicToken' FROM share_sync_state WHERE key='page'))::uuid)->'days'),2,
   'the share page includes newly added days');
+SELECT throws_ok($$SELECT public.delete_itinerary_item_v2(
+  (SELECT id FROM share_sync_state WHERE key='trip'),
+  (SELECT id FROM share_sync_state WHERE key='variant'),
+  (SELECT id FROM share_sync_state WHERE key='item'),0,
+  (SELECT items_version FROM public.trip_days WHERE id=(SELECT id FROM share_sync_state WHERE key='day')),
+  gen_random_uuid())$$,'40001','APP_CONFLICT','stale deletion returns a well-formed optimistic conflict');
 SELECT lives_ok($$SELECT public.delete_itinerary_item_v2(
   (SELECT id FROM share_sync_state WHERE key='trip'),
   (SELECT id FROM share_sync_state WHERE key='variant'),
-  (SELECT id FROM share_sync_state WHERE key='item'),2,
+  (SELECT id FROM share_sync_state WHERE key='item'),
+  (SELECT version FROM public.itinerary_items WHERE id=(SELECT id FROM share_sync_state WHERE key='item')),
   (SELECT items_version FROM public.trip_days WHERE id=(SELECT id FROM share_sync_state WHERE key='day')),
   gen_random_uuid())$$,'deleting an item synchronizes published content');
 SELECT is(jsonb_array_length(public.get_public_share_page_v3(
