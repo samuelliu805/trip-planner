@@ -163,6 +163,10 @@ export function publicDayCitySequence(day: PublicItineraryDay) {
 
 export function publicDayCityLabel(day: PublicItineraryDay, condensed = false) {
   const cities = publicDayCitySequence(day);
+  const departureCity = day.departureCity?.trim();
+  if (departureCity && normalizedCityName(departureCity) !== normalizedCityName(cities[0])) {
+    cities.unshift(departureCity);
+  }
   if (!cities.length) return "";
   if (!condensed || cities.length <= 3) return cities.join(" → ");
   return `${cities[0]} → … → ${cities.at(-1)}`;

@@ -6,6 +6,46 @@
   }
 }
 
+@media (min-width: 1200px) {
+  .public-itinerary-shell:is(
+      .public-template-standard,
+      .public-template-bento,
+      .public-template-neon
+    )
+    .public-itinerary-grid {
+    order: 2;
+  }
+
+  .public-itinerary-shell:is(
+      .public-template-standard,
+      .public-template-bento,
+      .public-template-neon
+    )
+    .public-template-region-view-navigation {
+    order: 3;
+    flex: 0 0 auto;
+  }
+
+  .public-itinerary-shell:is(
+      .public-template-standard,
+      .public-template-bento,
+      .public-template-neon
+    )
+    .public-view-switcher {
+    position: static;
+    inset: auto;
+  }
+
+  .public-itinerary-shell:is(
+      .public-template-standard,
+      .public-template-bento,
+      .public-template-neon
+    )
+    .public-view-scroll {
+    scroll-padding-bottom: 0;
+  }
+}
+
 @media (min-width: 640px) and (max-width: 1199px) {
   .public-itinerary-shell .public-itinerary-grid {
     order: 2;
@@ -105,18 +145,20 @@
   }
 }
 
-@media (max-width: 899px) {
+@media (max-width: 1199px) {
   .public-itinerary-shell .timeline-section-v4 {
     overflow: visible;
   }
 
   .public-itinerary-shell .timeline-section-header-v4 {
-    position: sticky;
-    top: 0;
-    z-index: 20;
+    position: static;
     background: var(--background);
     box-shadow: 0 1px 0 var(--border);
-    transform: translateZ(0);
+  }
+
+  .public-itinerary-shell .public-view-scroll .itinerary-edition .edition-day-heading,
+  .public-itinerary-shell .public-view-scroll .itinerary-edition .edition-ethereal-cover {
+    position: static;
   }
 
   .public-itinerary-shell.public-template-bento .timeline-section-header-v4 {

@@ -125,7 +125,7 @@ export function PlannerMatrix({
               >
                 <PlannerDayHeaderCell
                   day={day}
-                  isOnlyDay={workspace.days.length === 1}
+                  isLastDay={row === workspace.days.length - 1}
                   onInsert={(position) => void insertDay(position)}
                   onSelect={() => selectDay(row)}
                   pending={dayMutationPending}

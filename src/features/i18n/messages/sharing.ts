@@ -71,7 +71,7 @@ export const sharingZhCN: Record<string, string> = {
   "Page content": "页面内容",
   "Plan your next journey with There we go": "用 There we go 开启下一段旅程",
   homepage: "首页",
-  "Public snapshot · No sign-in required": "公开快照 · 无需登录",
+  "Updates with saved itinerary · No sign-in required": "随行程保存更新 · 无需登录",
   "Published shareable page": "已发布的分享页面",
   "Publishing permanent image link…": "正在发布永久长图链接…",
   "Preparing snapshot…": "正在准备行程快照…",

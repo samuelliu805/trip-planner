@@ -162,6 +162,7 @@ const publicItemSchema = z
 const publicDaySchema = z
   .object({
     city: z.string().max(300).optional(),
+    departureCity: z.string().min(1).max(300).optional(),
     date: z.string().nullable().optional(),
     dayNumber: z.number().int().positive(),
     items: z.array(publicItemSchema),

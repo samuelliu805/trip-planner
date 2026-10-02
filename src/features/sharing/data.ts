@@ -9,6 +9,7 @@ import { PlatformOperationError } from "@/platform/contracts/errors";
 import { retryTransientRead } from "@/platform/transient-read";
 
 import { publicPlaceMediaSources } from "./public-media-data";
+import { withPublicDayDepartureCities } from "./public-day-departures";
 import { publicCityPhotoSourcesSchema, withPublicCityPhotos } from "./public-city-photos";
 import { publicPlacePhotosConfigured } from "@/lib/providers/places/public-photo.server";
 
@@ -36,7 +37,7 @@ export async function getPublicItinerary(token: string): Promise<PublicItinerary
   const parsed = publicItinerarySchema.safeParse(data);
   if (!parsed.success) return null;
 
-  let itinerary = parsed.data;
+  let itinerary = withPublicDayDepartureCities(parsed.data);
   if (publicPlacePhotosConfigured() && itinerary.settings.showPlacePhotos) {
     const cities = await retryTransientRead(async () =>
       database.rpc("get_public_city_photo_sources_v1", { shared_token: token }),

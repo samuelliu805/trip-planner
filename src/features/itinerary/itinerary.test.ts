@@ -3454,7 +3454,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(dayActions, /onInsert\(day\.day_number \+ 1\)/);
   assert.doesNotMatch(dayActions, /onInsert\(day\.day_number\)/);
   assert.doesNotMatch(dayActions, /onArrange/);
-  assert.match(workspace, /visible=\{isOnlyDay \|\| selected\}/);
+  assert.match(workspace, /visible=\{isLastDay \|\| selected\}/);
+  assert.match(workspace, /isLastDay=\{row === workspace.days.length - 1\}/);
   assert.match(workspace, /if \(await insertDay\(beforeDayNumber\)\) setSelectedDayRow\(null\)/);
   assert.match(dayActions, /min-h-11 min-w-0 flex-1 gap-1\.5 px-2 font-sans text-\[13px\]/);
   assert.match(dayActions, /whitespace-nowrap[\s\S]*message=\{"Add day"\}/);

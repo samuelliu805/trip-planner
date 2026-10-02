@@ -63,35 +63,41 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
         className={`public-map-panel absolute inset-x-0 bottom-0 z-20 flex flex-col overflow-hidden border-t ${panelOpen ? "mobile-pull-up-panel max-h-[52%]" : "max-h-11"}`}
       >
         {panelOpen ? (
-          <PullUpPanelHandle className="sm:hidden" onClose={() => setPanelOpen(false)} />
+          <PullUpPanelHandle className="h-5 sm:hidden" onClose={() => setPanelOpen(false)} />
         ) : null}
-        <button
-          aria-label={t(panelOpen ? "Close route panel" : "Open route panel")}
-          aria-expanded={panelOpen}
-          className="public-map-panel-toggle shrink-0 z-10 flex min-h-11 w-full items-center gap-2 border-b px-3 text-left text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-          onClick={() => setPanelOpen((current) => !current)}
-          type="button"
-        >
-          <Route aria-hidden="true" className="size-4 text-primary" />
-          <span>
-            <Localized
-              value={controller.routeScope === "overview" ? "Whole trip routes" : "Day route"}
-            />
-          </span>
-          {!panelOpen ? (
+        {!panelOpen ? (
+          <button
+            aria-label={t("Open route panel")}
+            aria-expanded={panelOpen}
+            className="public-map-panel-toggle z-10 flex min-h-11 w-full shrink-0 items-center gap-2 border-b px-3 text-left text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            onClick={() => setPanelOpen(true)}
+            type="button"
+          >
+            <Route aria-hidden="true" className="size-4 text-primary" />
+            <span>
+              <Localized
+                value={controller.routeScope === "overview" ? "Whole trip routes" : "Day route"}
+              />
+            </span>
             <ChevronUp aria-hidden="true" className="ml-auto size-4 text-muted-foreground" />
-          ) : null}
-          {panelOpen ? (
-            <ChevronDown aria-hidden="true" className="ml-auto hidden size-4 sm:block" />
-          ) : null}
-        </button>
+          </button>
+        ) : null}
         {panelOpen ? (
           <>
-            <div className="shrink-0 space-y-2 border-b p-3">
+            <div className="public-map-panel-toolbar flex shrink-0 items-center gap-1 border-b px-2">
               <RouteScopePicker onSelect={controller.selectScope} scope={controller.routeScope} />
-              <PublicMapCalculateAction controller={controller} />
+              <button
+                aria-label={t("Close route panel")}
+                aria-expanded={panelOpen}
+                className="public-map-panel-toggle flex size-11 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                onClick={() => setPanelOpen(false)}
+                type="button"
+              >
+                <ChevronDown aria-hidden="true" className="size-4 text-muted-foreground" />
+              </button>
             </div>
-            <div className="min-h-0 overflow-y-auto overscroll-contain p-3">
+            <div className="public-map-panel-body min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-3">
+              <PublicMapCalculateAction controller={controller} />
               {controller.routeScope === "overview" ? (
                 <PublicOverviewRoutePanel
                   {...controller.overviewPanel}

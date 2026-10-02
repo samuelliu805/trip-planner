@@ -48,7 +48,7 @@ export function RouteScopePicker({
     <div
       aria-label="Route scope"
       data-i18n-aria-label={"Route scope"}
-      className="mb-2 grid grid-cols-2 border"
+      className="grid min-w-0 flex-1 grid-cols-2 border"
       role="group"
     >
       <button

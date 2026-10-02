@@ -115,9 +115,9 @@ export async function verifyFullScreenMap({ page, app, token, directory, request
       await map.getByRole("button", { name: "Open route panel", exact: true }).click();
       const action = map.locator(".public-map-calculate");
       assert.ok(
-        (await action.boundingBox()).y <
+        (await action.boundingBox()).y >=
           (await map.locator(".public-map-panel .overflow-y-auto").boundingBox()).y,
-        "The calculation action is pinned above the panel's scrolling route fields.",
+        "The calculation action scrolls with the route fields to preserve content height.",
       );
       assert.equal((await action.textContent()).trim(), "Explore route");
       await action.click();

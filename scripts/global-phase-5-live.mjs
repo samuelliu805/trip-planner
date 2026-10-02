@@ -237,12 +237,20 @@ async function requireProviderNeutralPlaceSchema(database) {
   }
 }
 
-function assertPublicProjection(projection, intendedTitle, privateTitle, ownerId) {
+function assertPublicProjection(
+  projection,
+  intendedTitle,
+  privateTitle,
+  ownerId,
+  staleTitles = [],
+) {
   assert.equal(projection?.available, true);
   const serialized = JSON.stringify(projection);
-  assert.match(serialized, new RegExp(intendedTitle));
+  assert.equal(projection.trip?.title, intendedTitle);
+  assert.equal(projection.metadata?.title, `${intendedTitle} · ${projection.variant?.name}`);
   for (const forbidden of [
     privateTitle,
+    ...staleTitles,
     ownerId,
     "owner_id",
     "object_key",
@@ -306,7 +314,8 @@ async function run() {
     const transportTrip = await createTrip(userA.client, `${runLabel}-transport-modes`);
     tripIds.push(transportTrip);
     await verifyPublicTransportSnapshot(userA.client, transportTrip);
-    const privateTitle = `${runLabel}-private-after-publish`;
+    const savedTitle = `${runLabel}-saved-after-publish`;
+    const privateTitle = `${runLabel}-b`;
     const collaboratorTitle = `${runLabel}-collaborator-edit`;
     const aTrip = await createTrip(userA.client, `${runLabel}-a`);
     tripIds.push(aTrip);
@@ -335,7 +344,7 @@ async function run() {
         target_operation_id: randomUUID(),
         target_variant_id: variant.id,
       }),
-      "A publish immutable share",
+      "A publish automatically synchronized share",
     );
     assert.ok(share?.publicToken);
     assert.equal(
@@ -351,7 +360,17 @@ async function run() {
       variant.version,
       "Publishing changed the source Plan version.",
     );
-    await updateTrip(userA.client, aTrip, privateTitle, 3);
+    await updateTrip(userA.client, aTrip, savedTitle, 3);
+    assertPublicProjection(
+      ok(
+        await userA.client.rpc("get_public_share_page_v3", { shared_token: share.publicToken }),
+        "A public page after saved title update",
+      ),
+      savedTitle,
+      privateTitle,
+      userA.id,
+      [intendedTitle],
+    );
     assert.equal(
       ok(
         await userA.client.rpc("invite_trip_collaborator", {
@@ -701,9 +720,12 @@ async function run() {
     assert.ok(anonymousTrips.error || rows(anonymousTrips, "anonymous trips").length === 0);
     const projection = ok(
       await anonymous.rpc("get_public_share_page_v3", { shared_token: share.publicToken }),
-      "anonymous immutable snapshot",
+      "anonymous synchronized snapshot",
     );
-    assertPublicProjection(projection, intendedTitle, privateTitle, userA.id);
+    assertPublicProjection(projection, collaboratorTitle, privateTitle, userA.id, [
+      intendedTitle,
+      savedTitle,
+    ]);
     assert.deepEqual(
       ok(
         await anonymous.rpc("get_public_city_photo_sources_v1", {
@@ -826,7 +848,7 @@ async function run() {
   }
   if (failure) throw failure;
   process.stdout.write(
-    "Global Phase 5 Auth, CRUD, RPC, A/B RLS, immutable sharing, and zero-residue checks passed.\n",
+    "Global Phase 5 Auth, CRUD, RPC, A/B RLS, automatic share synchronization, and zero-residue checks passed.\n",
   );
 }
 

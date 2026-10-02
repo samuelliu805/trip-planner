@@ -20,7 +20,12 @@ export async function verifyPublicTransportSnapshot(database, tripId) {
         expected_version: version,
         ordered_item_ids: null,
         requested_draft_session_id: null,
-        requested_item: { title, type: "transport", details: { mode } },
+        requested_item: {
+          title,
+          type: "transport",
+          notes: "Private booking note",
+          details: { mode },
+        },
         requested_links: [],
         target_day_id: day.id,
         target_item_id: itemId,
@@ -45,6 +50,17 @@ export async function verifyPublicTransportSnapshot(database, tripId) {
     await database.rpc("get_public_share_page_v3", { shared_token: share.publicToken }),
   );
   const item = published.days[0].items.find((i) => i.title === "Coastal transfer");
+  const privatePage = read(
+    await database.rpc("create_share_page_v4", {
+      expected_variant_version: current.version,
+      target_operation_id: randomUUID(),
+      target_variant_id: variant.id,
+      requested_show_notes: false,
+      requested_share_title: "Custom share title",
+      requested_default_view: "table",
+      requested_template_id: "journal",
+    }),
+  );
   assert.equal(
     item.transport.mode,
     "self_driving",
@@ -53,10 +69,52 @@ export async function verifyPublicTransportSnapshot(database, tripId) {
   const privateItem = read(
     await database.from("itinerary_items").select("version").eq("id", itemId),
   )[0];
-  await save("bus", "Unpublished private transfer", privateItem.version);
-  const frozen = read(
+  await save("bus", "Updated coastal transfer", privateItem.version);
+  const refreshed = read(
     await database.rpc("get_public_share_page_v3", { shared_token: share.publicToken }),
   );
-  assert.deepEqual(frozen, published, "Private transport edits never change a published snapshot.");
-  console.log("Public transport mode projection and snapshot isolation passed.");
+  const updated = refreshed.days[0].items.find((i) => i.ref === item.ref);
+  assert.equal(updated.title, "Updated coastal transfer", "Saving updates the same public link.");
+  assert.equal(updated.transport.mode, "bus", "Transport mode updates without republishing.");
+  assert.equal(
+    refreshed.days[0].items.some((i) => i.title === "Coastal transfer"),
+    false,
+  );
+  assert.equal(
+    refreshed.settings.defaultView,
+    "overview",
+    "New pages open in Overview by default.",
+  );
+  const privateProjection = read(
+    await database.rpc("get_public_share_page_v3", {
+      shared_token: privatePage.publicToken,
+    }),
+  );
+  assert.ok(privateProjection.days[0].items.some((i) => i.title === "Updated coastal transfer"));
+  assert.equal(
+    JSON.stringify(privateProjection).includes("Private booking note"),
+    false,
+    "Per-page hidden fields stay private after synchronization.",
+  );
+  assert.equal(privateProjection.metadata.title, "Custom share title");
+  assert.equal(privateProjection.settings.defaultView, "table");
+  assert.equal(privateProjection.settings.templateId, "journal");
+  const ownerPage = read(
+    await database.rpc("owner_share_page_v2", {
+      target_share_page_id: share.id,
+    }),
+  );
+  assert.notEqual(
+    ownerPage.snapshotHash,
+    share.snapshotHash,
+    "Image source hashes follow saved content.",
+  );
+  assert.equal(
+    ownerPage.version,
+    share.version,
+    "Content sync preserves the share settings version.",
+  );
+  console.log(
+    "Public transport modes, per-page privacy and automatic share synchronization passed.",
+  );
 }

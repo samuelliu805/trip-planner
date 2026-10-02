@@ -5135,7 +5135,7 @@ async function verifyPublicTabletViewportMatrix(browser, publicToken) {
     })()`,
   );
   assert(journalTimelineTransport.flowCount > 0);
-  assert.equal(journalTimelineTransport.headerPosition, "sticky");
+  assert.equal(journalTimelineTransport.headerPosition, "static");
   assert.equal(journalTimelineTransport.headerTransportCount, 0);
   assert.equal(journalTimelineTransport.rowsOutsideHeaders, true);
   assert.equal(journalTimelineTransport.rowsStatic, true);
@@ -5853,15 +5853,23 @@ async function run() {
     );
 
     await clearCookies(browser);
+    await navigate(browser, `/share/${publicToken}`);
+    await waitFor(
+      browser,
+      `document.querySelector('#public-overview-panel')?.getClientRects().length > 0 &&
+        document.body.innerText.includes(${JSON.stringify(updatedTitle)}) &&
+        !document.body.innerText.includes(${JSON.stringify(publishedTitle)})`,
+      "new CN share opens in Overview with saved edits without republishing",
+    );
     // Timeline defaults the public map to the saved day-route scope. The overview
     // scope intentionally collapses adjacent POIs in the same locality, so two
     // Shanghai stops can correctly produce no whole-trip line.
     await navigate(browser, `/share/${publicToken}?view=timeline`);
     await waitFor(
       browser,
-      `document.body.innerText.includes(${JSON.stringify(publishedTitle)}) &&
-        !document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
-      "CN anonymous public share",
+      `document.body.innerText.includes(${JSON.stringify(updatedTitle)}) &&
+        !document.body.innerText.includes(${JSON.stringify(publishedTitle)})`,
+      "CN anonymous public share reflects saved edits",
     );
     assert.equal(await evaluate(browser, 'location.pathname.startsWith("/share/")'), true);
     assert.equal(
@@ -5872,9 +5880,9 @@ async function run() {
     await navigate(browser, `/share/${publicToken}?view=timeline`);
     await waitFor(
       browser,
-      `document.body.innerText.includes(${JSON.stringify(publishedTitle)}) &&
-        !document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
-      "CN anonymous public timeline after tablet checks",
+      `document.body.innerText.includes(${JSON.stringify(updatedTitle)}) &&
+        !document.body.innerText.includes(${JSON.stringify(publishedTitle)})`,
+      "CN anonymous public timeline retains saved edits after tablet checks",
     );
     if (requireAmapSmoke) {
       await waitFor(

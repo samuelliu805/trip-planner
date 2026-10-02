@@ -9,7 +9,7 @@ export type ShareSettings = Omit<
 export const defaultShareSettings: ShareSettings = {
   allowLongImageDownload: true,
   allowRouteExplore: true,
-  defaultView: "timeline",
+  defaultView: "overview",
   longImageEndDayNumber: null,
   longImageQrDestination: "current_share_page",
   longImageQrSharePageId: null,

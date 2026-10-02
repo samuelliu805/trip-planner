@@ -87,7 +87,7 @@ export function PublicShareStatusPanel({
             <T message={"Published shareable page"} />
           </h3>
           <p className="text-xs text-muted-foreground">
-            <T message={"Public snapshot · No sign-in required"} />
+            <T message={"Updates with saved itinerary · No sign-in required"} />
           </p>
         </div>
       </div>
