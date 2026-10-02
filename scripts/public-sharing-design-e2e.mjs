@@ -21,10 +21,12 @@ import {
   touchDrag,
   verifyContinuousReaderAndSheet,
 } from "./lib/public-sharing-mobile-gestures.mjs";
+import { verifySharingUx } from "./lib/public-sharing-ux.mjs";
 const stage = process.env.PUBLIC_SHARING_DESIGN_STAGE ?? "all";
 assert.ok(
   [
     "all",
+    "ux",
     "responsive",
     "chapters",
     "longtrip",
@@ -172,6 +174,7 @@ try {
     return route.fulfill({ contentType: "image/svg+xml", body: tripPhotoSvg });
   });
   const report = [];
+  if (runs("ux")) await verifySharingUx({ page, app, token, directory });
   if (runs("undated")) await verifyUndatedSharing({ page, app, token, directory });
   if (runs("table-content")) await verifyPublicTableContent({ page, app, token });
   if (runs("polish"))
@@ -366,7 +369,7 @@ try {
                   positions: bands.map((band) => getComputedStyle(band).position),
                 };
               });
-              assert.equal(flow.headingPosition, "sticky");
+              assert.equal(flow.headingPosition, width < 1200 ? "static" : "sticky");
               assert.ok(flow.count > 0);
               assert.equal(flow.outsideHeading, true);
               assert.ok(flow.positions.every((position) => position === "static"));

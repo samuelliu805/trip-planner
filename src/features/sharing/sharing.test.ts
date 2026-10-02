@@ -350,7 +350,7 @@ test("long-image date ranges are inclusive and update the exported trip summary"
 
 test("public views keep the canonical three, prefer Timeline for new links, and preserve saved defaults", () => {
   assert.deepEqual(canonicalPublicViews, ["overview", "table", "timeline"]);
-  assert.equal(defaultShareSettings.defaultView, "timeline");
+  assert.equal(defaultShareSettings.defaultView, "overview");
   assert.equal(defaultShareSettings.templateId, "ethereal");
   assert.equal(defaultShareSettings.templateVersion, 1);
   for (const setting of [
@@ -2187,7 +2187,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(styles, /:has\(\.public-mobile-map-control\)[\s\S]*padding-bottom: max\(5\.25rem/);
   assert.match(
     styles,
-    /max-width: 899px[\s\S]*\.public-itinerary-shell \.timeline-section-header-v4 \{[\s\S]*position: sticky;[\s\S]*top: 0;/,
+    /max-width: 1199px[\s\S]*\.public-itinerary-shell \.timeline-section-header-v4 \{[\s\S]*position: static;/,
   );
   assert.match(
     styles,

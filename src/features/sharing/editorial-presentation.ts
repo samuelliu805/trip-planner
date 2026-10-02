@@ -1,4 +1,5 @@
 import { isPublicTransfer, orderedPublicItems } from "./presentation.ts";
+import { withPublicDayDepartureCities } from "./public-day-departures.ts";
 import type { PublicItinerary, PublicItineraryDay, PublicItineraryItem } from "./types.ts";
 
 export function meaningfulText(value?: string | null) {
@@ -21,7 +22,7 @@ export function editorialDaySections(day: PublicItineraryDay) {
 export function publicDisplayItinerary(itinerary: PublicItinerary): PublicItinerary {
   return {
     ...itinerary,
-    days: itinerary.days.map((day) => ({
+    days: withPublicDayDepartureCities(itinerary).days.map((day) => ({
       ...day,
       cityPhotoSource: itinerary.settings.showPlacePhotos ? day.cityPhotoSource : undefined,
       photoSource: itinerary.settings.showPlacePhotos ? day.photoSource : undefined,

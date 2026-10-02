@@ -9,14 +9,14 @@ import { DayActions } from "./planner-grid-elements";
 
 export function PlannerDayHeaderCell({
   day,
-  isOnlyDay,
+  isLastDay,
   onInsert,
   onSelect,
   pending,
   selected,
 }: {
   day: PlannerDay;
-  isOnlyDay: boolean;
+  isLastDay: boolean;
   onInsert: (position: number) => void;
   onSelect: () => void;
   pending: boolean;
@@ -31,6 +31,7 @@ export function PlannerDayHeaderCell({
       data-day-number={day.day_number}
       onClick={onSelect}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onSelect();
@@ -65,7 +66,7 @@ export function PlannerDayHeaderCell({
           day={day}
           onInsert={onInsert}
           pending={pending}
-          visible={isOnlyDay || selected}
+          visible={isLastDay || selected}
         />
       </div>
     </div>

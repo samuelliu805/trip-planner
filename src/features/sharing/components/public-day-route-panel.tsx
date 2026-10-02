@@ -113,10 +113,14 @@ export function PublicDayRoutePanel({
                 <Localized value={error} />
               </p>
             ) : null}
-            <div className="grid grid-cols-2 gap-2 border-t pt-2">
-              <Button className="min-h-11" onClick={onEdit} type="button" variant="outline">
-                <T message={" Edit route "} />
-              </Button>
+            <div
+              className={`grid ${showCalculateAction ? "grid-cols-2" : "grid-cols-1"} gap-2 border-t pt-2`}
+            >
+              {showCalculateAction ? (
+                <Button className="min-h-11" onClick={onEdit} type="button" variant="outline">
+                  <T message={" Edit route "} />
+                </Button>
+              ) : null}
               <Button className="min-h-11" onClick={onBackToShared} type="button" variant="ghost">
                 <T message={" Shared route "} />
               </Button>
@@ -150,7 +154,7 @@ export function PublicDayRoutePanel({
               </p>
             ) : null}
             <div
-              className={`sticky bottom-0 grid ${showCalculateAction ? "grid-cols-[1fr_auto_auto]" : "grid-cols-2"} gap-2 border-t bg-background pt-2`}
+              className={`grid ${showCalculateAction ? "grid-cols-[1fr_auto_auto]" : "grid-cols-2"} gap-2 border-t bg-background pt-2`}
             >
               {showCalculateAction ? (
                 <Button

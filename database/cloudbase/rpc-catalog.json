@@ -3337,6 +3337,7 @@
     "operation_fingerprint(text,text,uuid,jsonb)",
     "raise_app_conflict(text,text)",
     "rebase_confirmed_idea_plan(uuid,uuid,date,integer,uuid)",
+    "refresh_trip_share_pages(uuid)",
     "safe_jsonb_diff(jsonb,jsonb,text)",
     "share_settings_json(public_itinerary_links)",
     "sync_flight_endpoint_stops(uuid)",

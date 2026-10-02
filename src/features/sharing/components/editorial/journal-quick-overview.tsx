@@ -8,7 +8,7 @@ import { journalPreviewIndexes } from "../../journal-chapters";
 function ChapterContinuation() {
   return (
     <div className="journal-contents-continuation" aria-hidden="true">
-      {Array.from({ length: 6 }, (_, index) => (
+      {Array.from({ length: 3 }, (_, index) => (
         <span key={index} />
       ))}
     </div>

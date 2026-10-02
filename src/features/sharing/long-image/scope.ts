@@ -1,5 +1,6 @@
 import type { LongImageScope, PublicItinerary, PublicItineraryLink } from "../types";
 import type { Locale } from "../../i18n/config.ts";
+import { withPublicDayDepartureCities } from "../public-day-departures.ts";
 
 export function longImageScopeFromPage(
   page: Pick<PublicItineraryLink, "longImageEndDayNumber" | "longImageStartDayNumber">,
@@ -17,6 +18,7 @@ export function scopePublicItinerary(
   itinerary: PublicItinerary,
   scope: LongImageScope,
 ): PublicItinerary {
+  itinerary = withPublicDayDepartureCities(itinerary);
   if (scope.mode === "entire_trip") return itinerary;
 
   const days = itinerary.days.filter(
