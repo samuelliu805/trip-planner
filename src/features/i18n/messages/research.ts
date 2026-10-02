@@ -1,4 +1,5 @@
 export const researchZhCN: Record<string, string> = {
+  "0.00 or 120 + 30": "0.00 或 120 + 30",
   "Items to add": "将添加的条目",
   "Flight times are missing; add them to the idea if known.":
     "链接中没有航班时间；如有时间，请在想法中补充。",

@@ -83,7 +83,7 @@ function DayRouteSummary({
         <button
           className="mx-3 mb-2 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-60"
           data-route-update=""
-          disabled={route.pending}
+          disabled={route.pending || !route.canCalculate}
           onClick={() => void route.recalculate()}
           type="button"
         >
@@ -94,6 +94,11 @@ function DayRouteSummary({
           )}
           <Localized value={route.pending ? "Updating route…" : "Route changed · Update route"} />
         </button>
+      ) : null}
+      {!route.canCalculate ? (
+        <p className="px-3 py-2 text-xs text-muted-foreground">
+          <T message="Select two different mapped places to calculate a route." />
+        </p>
       ) : null}
       <RouteLegDetails legs={legDetails} />
       <AutoDismissAlert
@@ -162,7 +167,7 @@ export function DayRouteOverlay({
           </p>
         </div>
         <RouteIconButton
-          disabled={route.pending || (route.displayDraft?.itemIds.length ?? 0) < 2}
+          disabled={route.pending || !route.canComputeDefault}
           label="Compute route"
           onClick={() => void route.computeDefault()}
           title="Compute route"
@@ -180,6 +185,11 @@ export function DayRouteOverlay({
           <X className="size-4" />
         </RouteIconButton>
       </div>
+      {!route.canComputeDefault ? (
+        <p className="px-3 py-2 text-xs text-muted-foreground">
+          <T message="Select two different mapped places to calculate a route." />
+        </p>
+      ) : null}
       <AutoDismissAlert
         className="m-3 mt-1 rounded-md text-xs shadow-none"
         role="alert"

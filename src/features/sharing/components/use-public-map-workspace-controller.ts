@@ -3,6 +3,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useI18n } from "@/features/i18n/i18n-provider";
 import type { OverviewRouteMode, RouteLegMode } from "@/features/routes/types";
 
+import { canCalculateRouteStops } from "@/features/routes/route-readiness";
 import { calculatePublicOverviewRoute, calculatePublicRoute } from "../actions";
 import { focusPublicMapItem } from "../public-map-focus";
 import {
@@ -121,9 +122,13 @@ export function usePublicMapWorkspaceController({
     });
   }
 
+  const canCalculateDay = canCalculateRouteStops(
+    localStops.map((ref) => candidates.find((item) => item.ref === ref)?.place),
+  );
+
   function calculateDay() {
-    if (!day || localStops.length < 2) {
-      setDayError("Select at least two stops.");
+    if (!day || !canCalculateDay) {
+      setDayError("Select two different mapped places to calculate a route.");
       return;
     }
     setDayError(undefined);
@@ -184,6 +189,7 @@ export function usePublicMapWorkspaceController({
       allowExplore: itinerary.settings.allowRouteExplore,
       calculation: dayCalculation,
       candidates,
+      canCalculate: canCalculateDay,
       legModes: dayLegModes,
       days: itinerary.days,
       error: dayError,

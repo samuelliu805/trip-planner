@@ -1,7 +1,9 @@
+import { orderOwnerFlightStops } from "./flight-stop-order.ts";
 import type { ItineraryItem } from "@/features/itinerary/types";
 import { flightEndpointParentId, flightEndpointRole } from "./flight-endpoints.ts";
 
-type OrderableActivity = Pick<ItineraryItem, "id" | "sort_order" | "type">;
+type OrderableActivity = Pick<ItineraryItem, "id" | "sort_order" | "type"> &
+  Partial<Pick<ItineraryItem, "details" | "start_time">>;
 
 export const destinationActivityTypes = ["activity", "car_rental", "meal", "hotel"] as const;
 
@@ -16,7 +18,9 @@ export function compareActivityOrder(left: OrderableActivity, right: OrderableAc
 }
 
 export function orderedDayActivities(items: ItineraryItem[]) {
-  return items.filter(({ type }) => type !== "location").sort(compareActivityOrder);
+  return orderOwnerFlightStops(
+    items.filter(({ type }) => type !== "location").sort(compareActivityOrder),
+  );
 }
 
 /** Every legal gap for an untimed destination item, excluding the item currently being edited. */
@@ -47,7 +51,7 @@ export function itemOrderAnchor(
 }
 
 export function orderedDestinationActivities(items: ItineraryItem[]) {
-  return items.filter(isDestinationActivity).sort(compareActivityOrder);
+  return orderOwnerFlightStops(items.filter(isDestinationActivity).sort(compareActivityOrder));
 }
 
 export function isActivityOrderAnchor(item: ItineraryItem) {
@@ -63,7 +67,9 @@ function canonicalFullOrder(items: ItineraryItem[], visibleOrder: ItineraryItem[
 
 export function canonicalActivityOrderIds(items: OrderableActivity[]) {
   const legacy = items.filter(({ type }) => type === "location").sort(compareActivityOrder);
-  const visible = items.filter(({ type }) => type !== "location").sort(compareActivityOrder);
+  const visible = orderOwnerFlightStops(
+    items.filter(({ type }) => type !== "location").sort(compareActivityOrder),
+  );
   return [...legacy, ...visible].map(({ id }) => id);
 }
 
@@ -89,7 +95,9 @@ export function insertedActivityOrderIds(
   afterItemId?: string | null,
 ) {
   const legacy = items.filter(({ type }) => type === "location").sort(compareActivityOrder);
-  const visible = items.filter(({ type }) => type !== "location").sort(compareActivityOrder);
+  const visible = orderOwnerFlightStops(
+    items.filter(({ type }) => type !== "location").sort(compareActivityOrder),
+  );
   let insertionIndex: number;
 
   if (item.type === "hotel") insertionIndex = visible.length;

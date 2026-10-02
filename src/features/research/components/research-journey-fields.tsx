@@ -1,5 +1,6 @@
 "use client";
 
+import { NativeSelect } from "@/components/ui/native-select";
 import { Localized, T } from "@/features/i18n/i18n-provider";
 import { nativeSelectClass, ResearchField } from "./form-controls";
 import { ResearchPlaceField } from "./research-place-field";
@@ -88,7 +89,7 @@ export function ResearchJourneyFields({
     <div className="space-y-4">
       {category === "flight" ? (
         <ResearchField label="Trip type">
-          <select
+          <NativeSelect
             className={nativeSelectClass}
             onChange={(event) => setJourneyType(event.target.value as ResearchJourneyType)}
             value={journeyType}
@@ -102,7 +103,7 @@ export function ResearchJourneyFields({
             <option value="multi_city">
               <T message={"Multiple cities"} />
             </option>
-          </select>
+          </NativeSelect>
         </ResearchField>
       ) : null}
 

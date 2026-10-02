@@ -20,7 +20,7 @@ export function PublicMapCalculateAction({ controller }: { controller: Controlle
       ? controller.overviewPanel.stops.length < 2 || controller.overviewPanel.stops.length > 20
       : settingUp
         ? day.candidates.length < 2
-        : !editing && day.localStops.length < 2);
+        : !editing && !day.canCalculate);
   const label = panel.pending
     ? "Calculating…"
     : editing

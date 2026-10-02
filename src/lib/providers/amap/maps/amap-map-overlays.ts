@@ -1,6 +1,7 @@
 "use client";
 
 import type { PlannerMapLine, PlannerMapMarker } from "../../maps/contracts.ts";
+import { markerLabelBubbleStyle, needsMarkerLabelBubble } from "../../maps/marker-label.ts";
 import { wgs84Coordinates } from "../../maps/types.ts";
 import { wgs84ToGcj02 } from "../coordinates.ts";
 import type {
@@ -98,6 +99,35 @@ function markerContent(marker: PlannerMapMarker, selectedId?: string) {
     glyph.textContent = text;
     glyph.style.transform = "rotate(45deg)";
     visual.append(glyph);
+  }
+  if (!pill && needsMarkerLabelBubble(marker.label)) {
+    Object.assign(visual.style, markerLabelBubbleStyle, {
+      background: visual.style.background,
+      color: marker.glyphColor ?? "#fff",
+      boxShadow: visual.style.boxShadow,
+      height: "auto",
+      transform: "none",
+    });
+    (visual.children[0] as HTMLElement).style.transform = "none";
+    button.dataset.mapLabelBubble = "";
+    visual.dataset.mapLabelText = "";
+    button.style.position = "relative";
+    button.style.alignItems = "flex-end";
+    button.style.paddingBottom = "7px";
+    const tip = document.createElement("span");
+    tip.setAttribute("aria-hidden", "true");
+    Object.assign(tip.style, {
+      position: "absolute",
+      bottom: "0",
+      left: "50%",
+      transform: "translateX(-50%)",
+      width: "0",
+      height: "0",
+      borderLeft: "7px solid transparent",
+      borderRight: "7px solid transparent",
+      borderTop: "8px solid #fff",
+    });
+    button.append(tip);
   }
   button.append(visual);
   return button;

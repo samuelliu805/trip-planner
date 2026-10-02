@@ -7,6 +7,7 @@ import type { PlannerItemFormState } from "@/features/itinerary/components/use-p
 import { plannerJourneyFieldCapabilities } from "@/features/itinerary/transport-form-fields";
 import type { ItineraryItem, ItineraryItemType } from "@/features/itinerary/types";
 import type { Json } from "@/types/database";
+import { priceFromExpression } from "@/lib/price-expression";
 
 /** Builds the create/update payload from the live form state, unchanged by the step grouping. */
 export function plannerItemSaveValues({
@@ -131,8 +132,8 @@ export function plannerItemSaveValues({
     details: details as never,
     endTime: journey.arrivalTime ? arrivalTime : "",
     notes: type === "note" ? "" : notes,
-    priceAmount: supportsPrice && priceAmount ? Number(priceAmount) : null,
-    priceCurrency: supportsPrice && priceAmount ? priceCurrency : null,
+    priceAmount: supportsPrice && priceAmount.trim() ? priceFromExpression(priceAmount) : null,
+    priceCurrency: supportsPrice && priceAmount.trim() ? priceCurrency : null,
     startTime: supportsTime && (type !== "transport" || journey.departureTime) ? startTime : "",
     title: savedTitle,
     tripId,

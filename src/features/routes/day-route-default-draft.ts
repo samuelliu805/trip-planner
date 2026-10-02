@@ -1,15 +1,22 @@
 import type { ItineraryItem } from "../itinerary/types.ts";
 import { fixedDayRouteDraft, type FixedDayRouteDraft } from "./day-route-order.ts";
-import type { RouteLegMode } from "./types.ts";
+import { canonicalRouteLegMode, type DayRoutePlan, type RouteLegMode } from "./types.ts";
 
 const maxRouteStops = 20;
+
+export const savedDayRouteDraft = (plan: DayRoutePlan): FixedDayRouteDraft => ({
+  itemIds: [...plan.stops].sort((a, b) => a.position - b.position).map(({ item_id }) => item_id),
+  legModes: [...plan.legs]
+    .sort((a, b) => a.position - b.position)
+    .map(({ mode }) => canonicalRouteLegMode(mode)),
+});
 
 export function defaultDayRouteDraft(
   eligibleItems: ItineraryItem[],
   suggestedMode: RouteLegMode,
   previousHotel?: ItineraryItem,
 ): FixedDayRouteDraft {
-  const currentHotel = eligibleItems.find(({ type }) => type === "hotel");
+  const currentHotel = eligibleItems.filter(({ type }) => type === "hotel").at(-1);
   const currentLimit = previousHotel ? maxRouteStops - 1 : maxRouteStops;
   const selected = eligibleItems.slice(0, currentLimit);
 

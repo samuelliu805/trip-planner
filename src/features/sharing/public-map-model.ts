@@ -1,3 +1,5 @@
+import { orderedPublicItems } from "./presentation.ts";
+import { hasValidCoordinates } from "../../lib/providers/maps/types.ts";
 import type { Locale } from "../i18n/config.ts";
 import { translateMessage } from "../i18n/translate.ts";
 
@@ -145,7 +147,13 @@ export function publicRouteCandidates(day?: PublicItineraryDay) {
 }
 
 function hasPublicCoordinates(item: PublicItineraryDay["items"][number]) {
-  return typeof item.place?.latitude === "number" && typeof item.place.longitude === "number";
+  const place = item.place;
+  return Boolean(
+    place &&
+    typeof place.latitude === "number" &&
+    typeof place.longitude === "number" &&
+    hasValidCoordinates({ latitude: place.latitude, longitude: place.longitude }),
+  );
 }
 
 export function publicDayRoutePlan(itinerary: PublicItinerary, dayRef?: string) {
@@ -159,13 +167,10 @@ export function publicDayRoutePlan(itinerary: PublicItinerary, dayRef?: string) 
         .sort((left, right) => left.sortOrder - right.sortOrder)
         .at(-1)
     : undefined;
-  const currentItems = (day?.items ?? [])
-    .filter(
-      (item) =>
-        ["activity", "meal", "car_rental", "hotel"].includes(item.type) &&
-        hasPublicCoordinates(item),
-    )
-    .sort((left, right) => left.sortOrder - right.sortOrder);
+  const currentItems = (day ? orderedPublicItems(day) : []).filter(
+    (item) =>
+      ["activity", "meal", "car_rental", "hotel"].includes(item.type) && hasPublicCoordinates(item),
+  );
   const unmappedActivities = (day?.items ?? [])
     .filter((item) => item.type === "activity" && !hasPublicCoordinates(item))
     .sort((left, right) => left.sortOrder - right.sortOrder);

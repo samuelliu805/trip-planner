@@ -20,6 +20,7 @@ import { PublicTemporaryRouteStops } from "./public-temporary-route-stops";
 export function PublicDayRoutePanel({
   allowExplore,
   calculation,
+  canCalculate,
   candidates,
   legModes,
   days,
@@ -42,6 +43,7 @@ export function PublicDayRoutePanel({
   showCalculateAction = true,
 }: {
   allowExplore: boolean;
+  canCalculate: boolean;
   showCalculateAction?: boolean;
   calculation?: PublicRouteCalculation;
   candidates: PublicItineraryItem[];
@@ -139,6 +141,11 @@ export function PublicDayRoutePanel({
                 <T message={"Only you"} />
               </span>
             </div>
+            {!canCalculate ? (
+              <p className="text-xs text-muted-foreground">
+                <T message="Select two different mapped places to calculate a route." />
+              </p>
+            ) : null}
             <PublicTemporaryRouteStops
               candidates={candidates}
               items={routeSetupItems}
@@ -160,7 +167,7 @@ export function PublicDayRoutePanel({
                 <Button
                   aria-busy={pending}
                   className="min-h-11"
-                  disabled={pending || localStops.length < 2}
+                  disabled={pending || !canCalculate}
                   onClick={onCalculate}
                   type="button"
                 >
