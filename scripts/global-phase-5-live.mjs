@@ -246,7 +246,8 @@ function assertPublicProjection(
 ) {
   assert.equal(projection?.available, true);
   const serialized = JSON.stringify(projection);
-  assert.equal(projection.metadata?.title, intendedTitle);
+  assert.equal(projection.trip?.title, intendedTitle);
+  assert.equal(projection.metadata?.title, `${intendedTitle} · ${projection.variant?.name}`);
   for (const forbidden of [
     privateTitle,
     ...staleTitles,

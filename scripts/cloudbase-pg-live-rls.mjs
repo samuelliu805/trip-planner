@@ -37,8 +37,10 @@ function assertPublicProjection(
     throw new Error("Anonymous public snapshot was unavailable");
   }
   const serialized = JSON.stringify(projection);
-  if (projection.metadata?.title !== intendedTitle)
-    throw new Error("Public snapshot lost the latest saved title");
+  if (projection.trip?.title !== intendedTitle)
+    throw new Error("Public snapshot lost the latest saved trip title");
+  if (projection.metadata?.title !== `${intendedTitle} · ${projection.variant?.name}`)
+    throw new Error("Public page title lost the saved trip title or route name");
   for (const forbidden of [
     privateTitle,
     ...staleTitles,
