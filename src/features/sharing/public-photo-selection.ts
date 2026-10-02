@@ -3,7 +3,7 @@ import type { PublicItineraryDay, PublicItineraryItem } from "./types.ts";
 // Use only already-published names, categories and coordinates. Timetables do not
 // make a place more representative, and ranking never changes itinerary order.
 const visualAnchor =
-  /\b(temple|shrine|cathedral|castle|palace|museum|monument|tower|skyline|old town|garden|park|lake|beach|mountain|glacier|waterfall|fjord|harbour|harbor|bay|coast|lookout|viewpoint|national park)\b|寺|庙|宮|宫|神社|教堂|城堡|博物馆|博物館|公园|公園|花园|花園|湖|海滩|海灘|山|瀑布|峡湾|峽灣|古城|老街|观景|觀景/i;
+  /\b(temple|shrine|cathedral|church|basilica|abbey|castle|palace|museum|monument|tower|skyline|old town|garden|park|lake|beach|mountain|glacier|waterfall|fjord|harbour|harbor|bay|coast|lookout|viewpoint|national park)\b|寺|庙|宮|宫|神社|教堂|圣[^ ]*堂|聖[^ ]*堂|城堡|博物馆|博物館|公园|公園|花园|花園|湖|海滩|海灘|山|瀑布|峡湾|峽灣|古城|老街|观景|觀景/i;
 const servicePlace =
   /\b(airport|station|terminal|hotel|motel|hostel|restaurant|cafe|café|rental|cooking class|workshop|transfer)\b|机场|機場|车站|車站|航站|酒店|旅馆|旅館|餐厅|餐廳|租车|租車|烹饪|烹飪/i;
 

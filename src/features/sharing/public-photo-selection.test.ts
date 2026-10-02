@@ -7,6 +7,47 @@ import { selectGooglePlacePhoto } from "../../lib/providers/google/sharing/googl
 import { withPublicCityPhotos } from "./public-city-photos.ts";
 import { editionCoverPhoto } from "./edition-cover-photo.ts";
 
+test("a localized church remains available as the cover when another landmark has a different city label", () => {
+  const itinerary: PublicItinerary = structuredClone(parisPublicItinerary);
+  itinerary.settings.showPlacePhotos = true;
+  itinerary.days = [itinerary.days[0]];
+  const day = itinerary.days[0];
+  const activity = day.items.find((entry) => entry.type === "activity")!;
+  const hotel = day.items.find((entry) => entry.type === "hotel")!;
+  hotel.place!.localityName = "Paris";
+  hotel.place!.countryCode = "FR";
+  day.items = [
+    {
+      ...activity,
+      ref: "louvre",
+      title: "卢浮宫",
+      place: {
+        ...activity.place!,
+        displayName: "卢浮宫",
+        googlePlaceId: "louvre",
+        localityName: "巴黎",
+        countryCode: "FR",
+      },
+    },
+    {
+      ...activity,
+      ref: "church",
+      title: "圣心堂",
+      place: {
+        ...activity.place!,
+        displayName: "圣心堂",
+        googlePlaceId: "sacre-coeur",
+        localityName: "Paris",
+        countryCode: "FR",
+      },
+    },
+    hotel,
+  ];
+  const selected = withPublicCityPhotos(itinerary, []);
+  assert.equal(selected.days[0].photoSource?.googlePlaceId, "sacre-coeur");
+  assert.equal(editionCoverPhoto(selected)?.source.googlePlaceId, "sacre-coeur");
+});
+
 test("visual anchors beat untimed service activities, with stable manual order on ties", () => {
   const day: PublicItineraryDay = structuredClone(parisPublicItinerary.days[0]);
   const activity = day.items.find((item) => item.type === "activity")!;

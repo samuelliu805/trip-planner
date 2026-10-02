@@ -1,5 +1,6 @@
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Calculator, LoaderCircle } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
@@ -38,6 +39,7 @@ export function PublicDayRoutePanel({
   omittedActivityCount,
   pending,
   plan,
+  primaryAction,
   route,
   routeSetupItems,
   showCalculateAction = true,
@@ -63,6 +65,7 @@ export function PublicDayRoutePanel({
   omittedActivityCount: number;
   pending: boolean;
   plan: ReturnType<typeof publicDayRoutePlan>;
+  primaryAction?: ReactNode;
   route?: PublicSavedRoute;
   routeSetupItems: PublicItineraryItem[];
 }) {
@@ -90,6 +93,7 @@ export function PublicDayRoutePanel({
         </Select>
       ) : null}
 
+      {primaryAction}
       {exploring ? (
         calculation ? (
           <>

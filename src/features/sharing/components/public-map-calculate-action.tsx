@@ -28,7 +28,7 @@ export function PublicMapCalculateAction({ controller }: { controller: Controlle
       : settingUp
         ? day.route
           ? " Edit route "
-          : "Explore route"
+          : "Calculate route"
         : overview
           ? "Calculate whole trip"
           : "Calculate";

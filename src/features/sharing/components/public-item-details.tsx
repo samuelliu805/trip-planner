@@ -11,6 +11,7 @@ import { PublicTransportDetails } from "./public-transport-details";
 import { PublicInlineLinks } from "./public-inline-links";
 import { isPublicTransfer } from "../presentation";
 import { PublicQuickActions } from "./public-quick-actions";
+import { publicLocationLink } from "../public-location-link";
 
 export function PublicItemDetails({ item }: { item: PublicItineraryItem }) {
   const { t } = useI18n();
@@ -19,8 +20,9 @@ export function PublicItemDetails({ item }: { item: PublicItineraryItem }) {
     [item.startTime?.slice(0, 5), item.endTime?.slice(0, 5)].filter(Boolean).join("–");
   const place = meaningfulText(item.place?.displayName);
   const address = meaningfulText(item.place?.address) ?? meaningfulText(item.carRental?.address);
-  const showPlace = place && place !== item.title;
+  const showPlace = Boolean(place);
   const showAddress = address && address !== place && address !== item.title;
+  const locationLink = publicLocationLink(item);
   const company = meaningfulText(item.carRental?.company);
   const notes = meaningfulText(item.notes);
   const transfer = isPublicTransfer(item);
@@ -46,14 +48,22 @@ export function PublicItemDetails({ item }: { item: PublicItineraryItem }) {
           <p className="min-w-0 break-words font-medium">{schedule}</p>
         </div>
       ) : null}
-      {showPlace || showAddress ? (
-        <div className="public-item-detail-field">
+      {locationLink ? (
+        <a
+          aria-label={t(locationLink.label)}
+          className="public-item-detail-field min-h-11 rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          href={locationLink.href}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
           <MapPin aria-hidden="true" className="text-muted-foreground" />
           <div className="min-w-0 space-y-1 break-words">
-            {showPlace ? <p className="font-medium">{place}</p> : null}
+            {showPlace || !showAddress ? (
+              <p className="font-medium">{place || item.title}</p>
+            ) : null}
             {showAddress ? <p>{address}</p> : null}
           </div>
-        </div>
+        </a>
       ) : null}
       {company && company !== item.title ? (
         <div className="public-item-detail-field">
