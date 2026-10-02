@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { parisPublicItinerary } from "../../src/features/landing/landing-public-fixture.ts";
+import { touchDrag } from "./public-sharing-mobile-gestures.mjs";
 
 function fixtureFor(template) {
   const fixture = structuredClone(parisPublicItinerary);
@@ -50,7 +51,22 @@ export async function verifySharingUx({ page, app, token, directory }) {
     if (route.request().method() !== "POST" || !route.request().headers()["next-action"])
       return route.fallback();
     calculations++;
-    const calculation = { legs: [], totalDistanceMeters: 1200, totalDurationSeconds: 240 };
+    const calculation = {
+      legs: Array.from({ length: 6 }, (_, index) => ({
+        position: index + 1,
+        mode: "self_driving",
+        distanceMeters: 200,
+        durationSeconds: 40,
+        geometry: {
+          source: "straight",
+          origin: { latitude: 48.85, longitude: 2.35 },
+          destination: { latitude: 48.86, longitude: 2.36 },
+          coordinateSystem: "wgs84",
+        },
+      })),
+      totalDistanceMeters: 1200,
+      totalDurationSeconds: 240,
+    };
     // Controlled routing result; real-provider behavior is covered by the regional live suites.
     return route.fulfill({
       contentType: "text/x-component",
@@ -119,9 +135,11 @@ export async function verifySharingUx({ page, app, token, directory }) {
         const mobileMap = await mapTrigger.isVisible();
         if (mobileMap) await mapTrigger.click();
         const workspace = page.locator(".public-map-workspace:visible");
-        await workspace.getByRole("button", { name: "Open route panel", exact: true }).click();
+        await workspace.getByRole("button", { name: "Close route panel", exact: true }).waitFor();
         const drawer = workspace.locator(".public-map-panel");
         const body = drawer.locator(".public-map-panel-body");
+        await workspace.locator("[data-mock-google-map=ready]").waitFor();
+        await assertPanelBoundaries(workspace, { template, width, phase: "initial" });
         const geometry = await drawer.evaluate((node) => {
           const toolbar = node.querySelector(".public-map-panel-toolbar").getBoundingClientRect();
           const body = node.querySelector(".public-map-panel-body");
@@ -146,6 +164,7 @@ export async function verifySharingUx({ page, app, token, directory }) {
           true,
         );
         await drawer.getByRole("button", { name: "Day route", exact: true }).click();
+        await assertPanelBoundaries(workspace, { template, width, phase: "day" });
         await action.click();
         await drawer.getByRole("button", { name: "Calculate", exact: true }).waitFor();
         const setup = await drawer.evaluate((node) => ({
@@ -157,10 +176,16 @@ export async function verifySharingUx({ page, app, token, directory }) {
           `Route setup retains reading space: ${JSON.stringify({ template, width, ...setup })}`,
         );
         const actionBefore = await action.boundingBox();
+        const toolbarBefore = await drawer.locator(".public-map-panel-toolbar").boundingBox();
         await body.evaluate((node) => {
           node.scrollTop = node.scrollHeight;
         });
         const actionAfter = await action.boundingBox();
+        assert.ok(
+          Math.abs(
+            (await drawer.locator(".public-map-panel-toolbar").boundingBox()).y - toolbarBefore.y,
+          ) <= 1,
+        );
         if (await body.evaluate((node) => node.scrollHeight > node.clientHeight + 10))
           assert.ok(
             actionAfter.y < actionBefore.y - 10,
@@ -171,6 +196,7 @@ export async function verifySharingUx({ page, app, token, directory }) {
         });
         await action.click();
         await drawer.getByRole("button", { name: "Edit route", exact: true }).waitFor();
+        await assertExpandedLegs(drawer, { template, width, scope: "day" });
         assert.equal(
           await drawer.getByRole("button", { name: "Edit route", exact: true }).count(),
           1,
@@ -178,6 +204,33 @@ export async function verifySharingUx({ page, app, token, directory }) {
         );
         await action.click();
         await drawer.getByRole("button", { name: "Calculate", exact: true }).waitFor();
+        if (width <= 430) {
+          const rect = await body.boundingBox();
+          const top = (await drawer.boundingBox()).y;
+          await touchDrag(
+            page,
+            { x: rect.x + 30, y: rect.y + 35 },
+            { x: rect.x + 30, y: Math.min(height - 10, rect.y + 210) },
+          );
+          assert.ok(await body.isVisible(), "Swiping down through route content never closes it");
+          assert.ok(
+            Math.abs((await drawer.boundingBox()).y - top) <= 1,
+            "Route content does not drag the panel",
+          );
+          assert.equal(await drawer.getAttribute("data-pull-up-dragging"), null);
+        }
+        await drawer.getByRole("button", { name: "Whole trip", exact: true }).click();
+        await body.evaluate((node) => {
+          node.scrollTop = 0;
+        });
+        await drawer.getByRole("button", { name: "Calculate whole trip", exact: true }).click();
+        await drawer.getByRole("button", { name: "Edit route", exact: true }).waitFor();
+        await assertExpandedLegs(drawer, { template, width, scope: "overview" });
+        await assertPanelBoundaries(workspace, { template, width, phase: "calculated" });
+        await drawer.getByRole("button", { name: "Close route panel", exact: true }).click();
+        await assertPanelBoundaries(workspace, { template, width, phase: "closed" });
+        await workspace.getByRole("button", { name: "Open route panel", exact: true }).click();
+        await assertPanelBoundaries(workspace, { template, width, phase: "reopened" });
         if (directory && width === 390)
           await page.screenshot({ path: `${directory}/${template}-compact-map-panel.png` });
         if (mobileMap)
@@ -190,7 +243,7 @@ export async function verifySharingUx({ page, app, token, directory }) {
     }
     assert.equal(
       calculations,
-      42,
+      84,
       "Every template and viewport completed the calculation/edit flow",
     );
     console.log(
@@ -200,6 +253,40 @@ export async function verifySharingUx({ page, app, token, directory }) {
   } finally {
     await page.unroute(routePattern);
   }
+}
+
+async function assertPanelBoundaries(workspace, context) {
+  const geometry = await workspace.evaluate((node) => {
+    const canvas = node.querySelector(".public-map-canvas").getBoundingClientRect();
+    const sdk = node.querySelector("[data-mock-google-map=ready]").getBoundingClientRect();
+    const panel = node.querySelector(".public-map-panel").getBoundingClientRect();
+    return {
+      gap: panel.top - canvas.bottom,
+      grayStrip: panel.top - sdk.bottom,
+      bottom: node.getBoundingClientRect().bottom - panel.bottom,
+    };
+  });
+  assert.ok(
+    Object.values(geometry).every((gap) => Math.abs(gap) <= 1),
+    `Map and panel meet without empty strips: ${JSON.stringify({ ...context, ...geometry })}`,
+  );
+}
+
+async function assertExpandedLegs(drawer, context) {
+  const legs = drawer.getByRole("list", { name: "Route leg details", exact: true });
+  await legs.waitFor();
+  assert.equal(await legs.locator("li").count(), 6, JSON.stringify(context));
+  const layout = await drawer.evaluate((node) => ({
+    collapseControls: [...node.querySelectorAll("button[aria-expanded]")].filter(
+      (button) =>
+        !button.classList.contains("public-map-panel-toggle") &&
+        button.getAttribute("role") !== "combobox",
+    ).length,
+    nestedScrollers: [...node.querySelector(".public-map-panel-body").querySelectorAll("*")].filter(
+      (child) => /auto|scroll/.test(getComputedStyle(child).overflowY),
+    ).length,
+  }));
+  assert.deepEqual(layout, { collapseControls: 0, nestedScrollers: 0 }, JSON.stringify(context));
 }
 
 async function verifyAddDay({ page }) {

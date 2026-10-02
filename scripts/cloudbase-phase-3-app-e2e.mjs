@@ -2079,11 +2079,6 @@ async function verifyPublicShareMapAndDialog(browser) {
     ),
     { documentFits: true, sheetFits: true },
   );
-  await clickElement(
-    browser,
-    `document.querySelector('.public-mobile-map .public-map-panel-toggle')`,
-    "public route panel",
-  );
   await waitFor(
     browser,
     `document.querySelector('.public-mobile-map .public-map-panel-toggle')?.getAttribute('aria-expanded') === 'true'`,
@@ -2102,7 +2097,7 @@ async function verifyPublicShareMapAndDialog(browser) {
             Number.parseInt(getComputedStyle(panel).zIndex || '0', 10),
         canvasZ: getComputedStyle(canvas).zIndex,
         hasRemovedOverviewHeading: /Overview connections|全程连接/.test(panel?.innerText ?? ''),
-        hasRemovedStopSummary: Boolean(summary?.querySelector('ol')),
+        hasRemovedStopSummary: Boolean(summary?.querySelector('ol:not([data-i18n-aria-label="Route leg details"])')),
         panelZ: getComputedStyle(panel).zIndex,
       };
     })()`,

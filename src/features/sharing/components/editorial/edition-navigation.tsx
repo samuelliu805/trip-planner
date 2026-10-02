@@ -44,6 +44,7 @@ export function EditionNavigation({
           <li key={day.ref}>
             <button
               type="button"
+              data-public-day-target={day.ref}
               onClick={() => onSelectDay(day.ref)}
               aria-current={(selectedDayRef ?? days[0].ref) === day.ref ? "date" : undefined}
             >

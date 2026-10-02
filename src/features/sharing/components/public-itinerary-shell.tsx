@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import { PublicPhotoProvider } from "./public-photo-provider";
 import { publicDisplayItinerary } from "../editorial-presentation";
 
@@ -30,7 +32,7 @@ export function PublicItineraryShell({
   templateKey: PublicTemplateKey;
   token: string;
 }) {
-  itinerary = publicDisplayItinerary(itinerary);
+  const displayItinerary = useMemo(() => publicDisplayItinerary(itinerary), [itinerary]);
   const template = getPublicTemplate(templateKey) ?? getPublicTemplate(LEGACY_PUBLIC_TEMPLATE_KEY);
   if (!template)
     return (
@@ -43,14 +45,14 @@ export function PublicItineraryShell({
   return (
     <PublicTemplateControllerProvider
       initialView={initialView}
-      itinerary={itinerary}
+      itinerary={displayItinerary}
       legacyTemplateOverride={legacyTemplateOverride}
       publicUrl={publicUrl}
       shareImage={shareImage}
       template={template}
       token={token}
     >
-      <PublicPhotoProvider itinerary={itinerary} token={token}>
+      <PublicPhotoProvider itinerary={displayItinerary} token={token}>
         <PublicTemplateRenderer template={template} />
       </PublicPhotoProvider>
     </PublicTemplateControllerProvider>

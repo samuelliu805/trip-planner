@@ -40,16 +40,14 @@ export function PublicMapWorkspace(props: PublicMapWorkspaceProps) {
 function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
   const { t } = useI18n();
   const controller = usePublicMapWorkspaceController(props);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(true);
   return (
     <section
       aria-label="Map and routes"
       data-i18n-aria-label={"Map and routes"}
-      className="public-map-workspace relative h-full min-h-0"
+      className="public-map-workspace relative flex h-full min-h-0 flex-col overflow-hidden"
     >
-      <div
-        className={`public-map-canvas absolute inset-0 z-0 isolate ${panelOpen ? "pb-[min(44%,22rem)]" : "pb-11"}`}
-      >
+      <div className="public-map-canvas relative z-0 min-h-0 flex-1 isolate overflow-hidden">
         <PublicPlannerMapCanvas
           configurationState={mapConfigurationState}
           emptyState={mapEmptyState}
@@ -60,10 +58,14 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
       </div>
 
       <div
-        className={`public-map-panel absolute inset-x-0 bottom-0 z-20 flex flex-col overflow-hidden border-t ${panelOpen ? "mobile-pull-up-panel max-h-[52%]" : "max-h-11"}`}
+        className={`public-map-panel relative z-20 flex shrink-0 flex-col overflow-hidden border-t ${panelOpen ? "mobile-pull-up-panel max-h-[52%]" : "max-h-11"}`}
       >
         {panelOpen ? (
-          <PullUpPanelHandle className="h-5 sm:hidden" onClose={() => setPanelOpen(false)} />
+          <PullUpPanelHandle
+            className="h-5 sm:hidden"
+            handleOnly
+            onClose={() => setPanelOpen(false)}
+          />
         ) : null}
         {!panelOpen ? (
           <button

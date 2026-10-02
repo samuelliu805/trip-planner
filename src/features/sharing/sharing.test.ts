@@ -2380,14 +2380,14 @@ test("route exploration is local-only and never exposes owner persistence contro
   assert.match(workspace, /usePublicMapWorkspaceController/);
   assert.match(workspace, /public-map-panel-toggle/);
   assert.match(workspace, /aria-expanded=\{panelOpen\}/);
-  assert.match(workspace, /useState\(false\)/);
+  assert.match(workspace, /useState\(true\)/);
   assert.match(workspace, /Close route panel/);
   assert.match(workspace, /Open route panel/);
   assert.doesNotMatch(workspace, /public-map-toolbar|>Collapse<|>Expand</);
   assert.match(workspaceController, /calculatePublicOverviewRoute/);
   assert.match(workspaceController, /selectedItemRef \? \[selectedItemRef\] : \[\]/);
   assert.match(workspaceController, /overviewCalculation/);
-  assert.match(routeSummary, /defaultOpen = false/);
+  assert.match(routeSummary, /collapsible=\{false\}/);
   assert.match(dayPanel, /calculation \? \([\s\S]*Edit route/);
   assert.match(overviewPanel, /calculation \? \([\s\S]*Edit route/);
   assert.match(actions, /publicDayStopOrderMatches/);

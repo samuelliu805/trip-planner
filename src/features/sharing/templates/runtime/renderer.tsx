@@ -16,6 +16,7 @@ import type {
   PublicTemplateRegionNodeV1,
 } from "../schema";
 import { usePublicTemplateController } from "./controller";
+import { earlyDayIntentScript } from "./early-day-intent";
 
 function TemplateRegion({
   children,
@@ -90,9 +91,17 @@ function TemplateNode({ node }: { node: PublicTemplateLayoutNodeV1 }) {
 export function PublicTemplateRenderer({ template }: { template: CompiledPublicTemplateV1 }) {
   const root = useRef<HTMLElement>(null);
   useEffect(() => {
-    // Server HTML can be visible before its buttons have client event handlers.
-    // Browser verification waits for this commit signal rather than a guessed delay.
-    root.current?.setAttribute("data-public-reader-ready", "true");
+    const node = root.current;
+    let disposed = false;
+    // Replay pre-hydration intent outside React's commit before exposing readiness.
+    queueMicrotask(() => {
+      if (disposed || !node?.isConnected) return;
+      node.dispatchEvent(new Event("public-reader-ready"));
+      node.setAttribute("data-public-reader-ready", "true");
+    });
+    return () => {
+      disposed = true;
+    };
   }, []);
   return (
     <main
@@ -102,6 +111,7 @@ export function PublicTemplateRenderer({ template }: { template: CompiledPublicT
       data-public-template-key={template.key}
       data-public-template-version={template.version}
     >
+      <script>{earlyDayIntentScript}</script>
       <style data-public-template-styles={template.key}>{template.scopedCss}</style>
       <PublicItemDetailsPanel />
       {template.layout.children.map((node, index) => (

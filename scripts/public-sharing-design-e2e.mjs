@@ -8,7 +8,7 @@ import {
 import assert from "node:assert/strict";
 import { installGoogleMapsMock } from "./lib/public-sharing-google-sdk.mjs";
 import { bufferDevelopmentScripts } from "./lib/public-sharing-static-responses.mjs";
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import { parisPublicItinerary } from "../src/features/landing/landing-public-fixture.ts";
 import { verifyFullScreenMap } from "./lib/public-sharing-fullscreen-map.mjs";
@@ -22,11 +22,14 @@ import {
   verifyContinuousReaderAndSheet,
 } from "./lib/public-sharing-mobile-gestures.mjs";
 import { verifySharingUx } from "./lib/public-sharing-ux.mjs";
+import { verifyFirstDayNavigation } from "./lib/public-sharing-navigation.mjs";
 const stage = process.env.PUBLIC_SHARING_DESIGN_STAGE ?? "all";
 assert.ok(
   [
     "all",
     "ux",
+    "navigation",
+    "navigation-maps",
     "responsive",
     "chapters",
     "longtrip",
@@ -49,6 +52,7 @@ assert.ok(
 const runs = (name) =>
   stage === "all" ||
   stage === name ||
+  (stage === "navigation-maps" && ["navigation", "maps"].includes(name)) ||
   (stage === "refinement2" && ["maps", "refinement", "polish", "longtrip"].includes(name)) ||
   (stage === "backgrounds" &&
     ["maps", "refinement", "polish", "longtrip", "trips"].includes(name)) ||
@@ -64,10 +68,14 @@ const executablePath = [
   "/usr/bin/google-chrome",
   "/usr/bin/google-chrome-stable",
 ].find((path) => path && existsSync(path));
-assert.ok(executablePath, "Chromium is required.");
+const browserEngine = process.env.PUBLIC_SHARING_DESIGN_BROWSER ?? "chromium";
+assert.ok(["chromium", "webkit"].includes(browserEngine), "Unknown browser engine.");
+if (browserEngine === "chromium") assert.ok(executablePath, "Chromium is required.");
 const errors = [];
 let scriptResponses;
-const browser = await chromium.launch({ executablePath, args: ["--no-sandbox"] });
+const browser = await (browserEngine === "webkit"
+  ? webkit.launch()
+  : chromium.launch({ executablePath, args: ["--no-sandbox"] }));
 try {
   if (stage === "all" || stage === "backgrounds") {
     const auth = await promisify(execFile)(
@@ -175,6 +183,7 @@ try {
   });
   const report = [];
   if (runs("ux")) await verifySharingUx({ page, app, token, directory });
+  if (runs("navigation")) await verifyFirstDayNavigation({ page, app, token });
   if (runs("undated")) await verifyUndatedSharing({ page, app, token, directory });
   if (runs("table-content")) await verifyPublicTableContent({ page, app, token });
   if (runs("polish"))
@@ -881,7 +890,7 @@ try {
         );
         assert.ok(await panel.isVisible(), "Panning the map never dismisses it.");
         assert.equal(await panel.getAttribute("data-pull-up-dragging"), null);
-        await panel.getByRole("button", { name: "Open route panel", exact: true }).click();
+        await panel.getByRole("button", { name: "Close route panel", exact: true }).waitFor();
         const drawer = panel.locator(".public-map-panel");
         const handle = drawer.locator("[data-pull-up-handle]");
         const box = await handle.boundingBox();
