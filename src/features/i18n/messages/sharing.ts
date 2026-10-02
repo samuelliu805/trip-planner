@@ -1,4 +1,6 @@
 export const sharingZhCN: Record<string, string> = {
+  "Open in Google Maps": "在 Google 地图中打开",
+  "Open in AMap": "在高德地图中打开",
   "A journey, beautifully kept": "珍藏这段旅程",
   "The little things, all in one place": "旅途点滴，珍藏在这里",
   "The chapters ahead": "接下来的篇章",

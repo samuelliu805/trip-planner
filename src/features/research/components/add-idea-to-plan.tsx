@@ -25,7 +25,7 @@ import {
 import { ideaJourneyDates } from "../idea-plan-dates";
 import { loadIdeaVariantPlans } from "../idea-variant-plan-actions";
 import {
-  emptyIdeaVariantPlacement,
+  initialIdeaVariantPlacement,
   placementReady,
   type IdeaVariantPlacement,
 } from "../idea-variant-placement";
@@ -67,7 +67,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
       placementReady(
         item,
         candidate,
-        placements[candidate.variantId] ?? emptyIdeaVariantPlacement(),
+        placements[candidate.variantId] ?? initialIdeaVariantPlacement(item, candidate),
       ),
     );
 
@@ -99,7 +99,8 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
     setError(undefined);
     let failed = false;
     for (const candidate of remainingPlans) {
-      const placement = placements[candidate.variantId] ?? emptyIdeaVariantPlacement();
+      const placement =
+        placements[candidate.variantId] ?? initialIdeaVariantPlacement(item, candidate);
       const operationId = operationIds.current[candidate.variantId] ?? newTelemetryOperationId();
       operationIds.current[candidate.variantId] = operationId;
       const input = {

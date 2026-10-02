@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 
 import { anchoredPlanDateChange, ideaJourneyDates } from "../idea-plan-dates";
-import type { IdeaVariantPlacement } from "../idea-variant-placement";
+import { ideaOrderCandidates, type IdeaVariantPlacement } from "../idea-variant-placement";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
 import { PlanAnchorDaySelect, PlanDaySelect } from "./plan-day-select";
 
@@ -39,6 +39,7 @@ export function IdeaVariantTarget({
     ? anchoredPlanDateChange(journeyDates, plan, placement.anchorDayNumber)
     : null;
   const day = plan.days.find((entry) => entry.id === placement.dayId);
+  const orderCandidates = ideaOrderCandidates(item, day);
   return (
     <section className="min-w-0 rounded-xl border bg-card p-3 sm:p-4">
       <label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-3">
@@ -99,9 +100,7 @@ export function IdeaVariantTarget({
               />
             </label>
           )}
-          {!journeyDates.length &&
-          day &&
-          (item.category === "stay" || item.category === "activity") ? (
+          {!journeyDates.length && orderCandidates.length ? (
             <label className="block text-sm font-medium">
               <T message="Position" />
               <Select
@@ -115,7 +114,7 @@ export function IdeaVariantTarget({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="end">{t("At the end")}</SelectItem>
-                  {day.items.map((entry) => (
+                  {orderCandidates.map((entry) => (
                     <SelectItem key={entry.id} value={entry.id}>
                       {t("Before {item}", { item: entry.title })}
                     </SelectItem>

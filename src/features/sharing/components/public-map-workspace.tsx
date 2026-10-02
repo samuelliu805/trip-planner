@@ -39,8 +39,8 @@ export function PublicMapWorkspace(props: PublicMapWorkspaceProps) {
 
 function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
   const { t } = useI18n();
-  const controller = usePublicMapWorkspaceController(props);
   const [panelOpen, setPanelOpen] = useState(true);
+  const controller = usePublicMapWorkspaceController(props, () => setPanelOpen(false));
   return (
     <section
       aria-label="Map and routes"
@@ -99,14 +99,20 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
               </button>
             </div>
             <div className="public-map-panel-body min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-3">
-              <PublicMapCalculateAction controller={controller} />
               {controller.routeScope === "overview" ? (
-                <PublicOverviewRoutePanel
-                  {...controller.overviewPanel}
+                <>
+                  <PublicMapCalculateAction controller={controller} />
+                  <PublicOverviewRoutePanel
+                    {...controller.overviewPanel}
+                    showCalculateAction={false}
+                  />
+                </>
+              ) : (
+                <PublicDayRoutePanel
+                  {...controller.dayPanel}
+                  primaryAction={<PublicMapCalculateAction controller={controller} />}
                   showCalculateAction={false}
                 />
-              ) : (
-                <PublicDayRoutePanel {...controller.dayPanel} showCalculateAction={false} />
               )}
             </div>
           </>

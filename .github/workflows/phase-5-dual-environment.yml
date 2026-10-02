@@ -274,7 +274,7 @@ jobs:
           npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
             --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
           node scripts/verify-cloudbase-migration-plan.mjs \
-            "$migration_list" "$migration_plan" --deployment 20260930104055 20261001171904 20261002015227 20261002022422 20261002024231
+            "$migration_list" "$migration_plan" --deployment 20260930104055 20261001171904 20261002015227 20261002022422 20261002024231 20261002152148
           npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
             --env-id "$CLOUDBASE_ENV_ID" --json
       - name: Verify migration list and dry run without applying changes

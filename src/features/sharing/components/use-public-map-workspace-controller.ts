@@ -26,16 +26,19 @@ const publicMapThemes = {
   neon: { color: "#42ddff", glyphColor: "#020612" },
 } as const;
 
-export function usePublicMapWorkspaceController({
-  activeView,
-  itinerary,
-  onSelectionChange,
-  selectedDayRef,
-  selectedItemRef,
-  selectionScope,
-  templateId,
-  token,
-}: PublicMapWorkspaceProps) {
+export function usePublicMapWorkspaceController(
+  {
+    activeView,
+    itinerary,
+    onSelectionChange,
+    selectedDayRef,
+    selectedItemRef,
+    selectionScope,
+    templateId,
+    token,
+  }: PublicMapWorkspaceProps,
+  onCalculated?: () => void,
+) {
   const { locale } = useI18n();
   const defaultDayRef =
     selectedDayRef ?? itinerary.savedRoutes[0]?.dayRef ?? itinerary.days[0]?.ref ?? "";
@@ -144,6 +147,7 @@ export function usePublicMapWorkspaceController({
         return;
       }
       setDayCalculation(result.data);
+      onCalculated?.();
     });
   }
 
@@ -168,6 +172,7 @@ export function usePublicMapWorkspaceController({
         return;
       }
       setOverviewCalculation(result.data);
+      onCalculated?.();
     });
   }
 

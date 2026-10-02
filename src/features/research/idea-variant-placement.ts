@@ -11,6 +11,35 @@ export function emptyIdeaVariantPlacement(): IdeaVariantPlacement {
   return { anchorDayNumber: null, beforeItemId: "", dayId: "" };
 }
 
+export function initialIdeaVariantPlacement(
+  item: ResearchItem,
+  plan: ResearchPlanSnapshot,
+): IdeaVariantPlacement {
+  const placement = emptyIdeaVariantPlacement();
+  if (item.category === "flight") return placement;
+  const dates = ideaJourneyDates(item);
+  const day = plan.days.find((entry) => entry.date && entry.date === (dates[0] ?? item.start_date));
+  return day
+    ? { ...placement, dayId: day.id, anchorDayNumber: dates.length ? day.dayNumber : null }
+    : placement;
+}
+
+export function ideaOrderCandidates(
+  item: ResearchItem,
+  day?: ResearchPlanSnapshot["days"][number],
+) {
+  if (item.category !== "activity" || item.start_time) return [];
+  return (day?.items ?? []).filter(
+    (entry) =>
+      (entry.type === "activity" || entry.type === "meal") &&
+      !(
+        entry.details &&
+        typeof entry.details === "object" &&
+        "flightEndpointParentId" in entry.details
+      ),
+  );
+}
+
 export function placementRequired(item: ResearchItem, plan: ResearchPlanSnapshot) {
   const matchingDay = item.start_date
     ? plan.days.find((entry) => entry.date === item.start_date)

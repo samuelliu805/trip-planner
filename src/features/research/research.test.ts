@@ -41,7 +41,12 @@ import { addIsoDateDays, firstPresentIsoDate } from "./date-range.ts";
 import { rentalReturnsToPickup } from "./rental-return.ts";
 import { deriveOptionImpact } from "./option-impact.ts";
 import { researchDraftCanSave, researchItemInputFromForm } from "./research-item-form-values.ts";
-import { emptyIdeaVariantPlacement, placementReady } from "./idea-variant-placement.ts";
+import {
+  emptyIdeaVariantPlacement,
+  initialIdeaVariantPlacement,
+  ideaOrderCandidates,
+  placementReady,
+} from "./idea-variant-placement.ts";
 import {
   isReadyToCompare,
   missingComparisonFields,
@@ -52,7 +57,7 @@ import {
 import { createResearchItemSchema } from "./schema.ts";
 import { researchItemFormSteps, researchItemPriceStep } from "./research-item-form-steps.ts";
 import { airportPlaceQuery } from "../places/airport-place-query.ts";
-import type { ResearchItem, ResearchPlanSnapshot } from "./types.ts";
+import type { ResearchItem, ResearchPlanItem, ResearchPlanSnapshot } from "./types.ts";
 import {
   anchoredPlanDateChange,
   missingJourneyDates,
@@ -724,6 +729,64 @@ test("each selected Plan needs its own flight anchor or activity day", () => {
   assert.equal(placementReady(flight, second, { ...empty, anchorDayNumber: 1 }), true);
   assert.equal(placementReady(activity, first, empty), false);
   assert.equal(placementReady(activity, second, { ...empty, dayId: "day-2" }), true);
+});
+
+test("dated non-flight ideas prefill their matching day separately for each Plan", () => {
+  const first = plan();
+  const second = { ...plan(), days: first.days.map((day) => ({ ...day, id: `second-${day.id}` })) };
+  for (const category of ["stay", "rental", "activity", "train"] as const) {
+    const idea = item({ category, start_date: first.days[1].date });
+    const placement = initialIdeaVariantPlacement(idea, first);
+    assert.equal(placement.dayId, first.days[1].id);
+    assert.equal(initialIdeaVariantPlacement(idea, second).dayId, second.days[1].id);
+    assert.equal(placementReady(idea, first, placement), true);
+  }
+  assert.deepEqual(
+    initialIdeaVariantPlacement(item({ category: "flight" }), first),
+    emptyIdeaVariantPlacement(),
+  );
+  assert.deepEqual(
+    initialIdeaVariantPlacement(item({ category: "stay", start_date: "2030-01-01" }), first),
+    emptyIdeaVariantPlacement(),
+  );
+  assert.deepEqual(
+    initialIdeaVariantPlacement(item({ category: "activity", start_date: null }), first),
+    emptyIdeaVariantPlacement(),
+  );
+});
+
+test("idea placement excludes transport, hotels, flight stops and timed activities from manual order", () => {
+  const day = plan().days[0];
+  day.items = [
+    "activity",
+    "meal",
+    "transport",
+    "car_rental",
+    "hotel",
+    "flight",
+    "train",
+    "location",
+  ].map((type) => ({
+    ...plan().days[0].items[0],
+    id: type,
+    type: type as ResearchPlanItem["type"],
+  }));
+  day.items.push({
+    ...day.items[0],
+    id: "flight-stop",
+    type: "activity",
+    details: { flightEndpointParentId: "flight" },
+  });
+  assert.deepEqual(
+    ideaOrderCandidates(item({ category: "activity", start_time: null }), day).map(({ id }) => id),
+    ["activity", "meal"],
+  );
+  for (const category of ["stay", "flight", "train", "rental"] as const)
+    assert.deepEqual(ideaOrderCandidates(item({ category }), day), []);
+  assert.deepEqual(
+    ideaOrderCandidates(item({ category: "activity", start_time: "10:00" }), day),
+    [],
+  );
 });
 
 test("Ideas apply preserves source dates in the Plan item and prefers a matching Plan day", async () => {
@@ -1843,7 +1906,7 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
     /data-editor-kind="research"[\s\S]*4rem \+ env\(safe-area-inset-bottom\)/,
   );
   assert.doesNotMatch(actions, /clearResearchSelection|Remove selection|<X/);
-  assert.match(planMenu, /sourceItem=\{researchSourceItem\}/);
+  assert.doesNotMatch(planMenu, /PlannerResearchActions|researchSourceItem/);
   assert.match(migration, /alter column source_research_item_id drop not null/);
   assert.match(migration, /on delete set null \(source_research_item_id\)/);
 });

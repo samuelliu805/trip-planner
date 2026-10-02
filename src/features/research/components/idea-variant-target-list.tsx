@@ -2,7 +2,7 @@
 
 import { T } from "@/features/i18n/i18n-provider";
 
-import { emptyIdeaVariantPlacement, type IdeaVariantPlacement } from "../idea-variant-placement";
+import { initialIdeaVariantPlacement, type IdeaVariantPlacement } from "../idea-variant-placement";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
 import { IdeaJourneyPreviewList } from "./idea-journey-preview-list";
 import { IdeaVariantTarget } from "./idea-variant-target";
@@ -51,7 +51,7 @@ export function IdeaVariantTargetList({
             key={plan.variantId}
             onPlacementChange={(placement) => onPlacementChange(plan.variantId, placement)}
             onSelectedChange={(selected) => onSelectedChange(plan.variantId, selected)}
-            placement={placements[plan.variantId] ?? emptyIdeaVariantPlacement()}
+            placement={placements[plan.variantId] ?? initialIdeaVariantPlacement(item, plan)}
             plan={plan}
             result={results[plan.variantId]}
             selected={selectedIds.includes(plan.variantId)}

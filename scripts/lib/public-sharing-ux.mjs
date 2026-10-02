@@ -174,6 +174,15 @@ export async function verifySharingUx({ page, app, token, directory }) {
         );
         await drawer.getByRole("button", { name: "Day route", exact: true }).click();
         await assertPanelBoundaries(workspace, { template, width, phase: "day" });
+        await drawer.getByRole("button", { name: "Calculate route", exact: true }).waitFor();
+        const daySelect = await drawer
+          .getByRole("combobox", { name: "Route day", exact: true })
+          .boundingBox();
+        const calculateBounds = await action.boundingBox();
+        assert.ok(
+          daySelect.y + daySelect.height <= calculateBounds.y + 1,
+          "Day selection precedes route calculation.",
+        );
         await action.click();
         await drawer.getByRole("button", { name: "Calculate", exact: true }).waitFor();
         const setup = await drawer.evaluate((node) => ({
@@ -204,6 +213,14 @@ export async function verifySharingUx({ page, app, token, directory }) {
           node.scrollTop = 0;
         });
         await action.click();
+        await workspace.getByRole("button", { name: "Open route panel", exact: true }).waitFor();
+        assert.equal(await body.count(), 0, "Successful day calculation collapses the panel.");
+        await assertPanelBoundaries(workspace, {
+          template,
+          width,
+          phase: "day-calculated-collapsed",
+        });
+        await workspace.getByRole("button", { name: "Open route panel", exact: true }).click();
         await drawer.getByRole("button", { name: "Edit route", exact: true }).waitFor();
         await assertExpandedLegs(drawer, { template, width, scope: "day" });
         assert.equal(
@@ -233,6 +250,13 @@ export async function verifySharingUx({ page, app, token, directory }) {
           node.scrollTop = 0;
         });
         await drawer.getByRole("button", { name: "Calculate whole trip", exact: true }).click();
+        await workspace.getByRole("button", { name: "Open route panel", exact: true }).waitFor();
+        assert.equal(
+          await body.count(),
+          0,
+          "Successful whole-trip calculation collapses the panel.",
+        );
+        await workspace.getByRole("button", { name: "Open route panel", exact: true }).click();
         await drawer.getByRole("button", { name: "Edit route", exact: true }).waitFor();
         await assertExpandedLegs(drawer, { template, width, scope: "overview" });
         await assertPanelBoundaries(workspace, { template, width, phase: "calculated" });

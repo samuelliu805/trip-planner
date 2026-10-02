@@ -43,7 +43,8 @@ export function PublicSharedRouteSummary({
       ) : null}
       {canExplore ? (
         <Button className="min-h-11 w-full" onClick={onExplore} type="button">
-          <Route className="size-4" /> <T message={" Edit route "} />
+          <Route className="size-4" />
+          <T message={route ? " Edit route " : "Calculate route"} />
         </Button>
       ) : null}
     </div>
