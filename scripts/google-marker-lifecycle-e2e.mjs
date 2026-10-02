@@ -23,7 +23,7 @@ const bundle = await build({
           <button onClick={() => setOpen(v => !v)}>Back</button>
           <p>{selected ? 'Selected item' : 'Nothing selected'}</p>
           {open ? <APIProvider apiKey="mock-only"><Map mapId={'test-' + version} defaultCenter={{lat:48.85,lng:2.35}} defaultZoom={10}>
-            <GooglePlannerMapMarkerOverlay marker={{...marker, appearance: presentation === 1 ? 'comparison-active' : presentation === 2 ? 'overview' : 'category', label: presentation === 2 ? 'Paris city' : '1', variantName: 'Route A'}} onMarkerClick={setSelected} selectedId={selected} />
+            <GooglePlannerMapMarkerOverlay marker={{...marker, appearance: presentation === 1 ? 'comparison-active' : presentation === 2 ? 'overview' : presentation === 3 ? 'route-planned' : 'category', label: presentation === 2 ? 'Paris city' : presentation === 3 ? '出 · 1 · 3 · 5 · 7 · 9 · 11 · 13 · 15 · 17 · 19' : '1', variantName: 'Route A'}} onMarkerClick={setSelected} selectedId={selected} />
           </Map></APIProvider> : <p>Reader restored</p>}</>;
       }
       createRoot(document.getElementById('fixture')).render(<Fixture/>);`,
@@ -90,6 +90,14 @@ try {
   );
   await page.getByRole("button", { name: "Change marker", exact: true }).click();
   await page.getByText("Paris city", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Change marker", exact: true }).click();
+  await page.locator("[data-map-label-bubble]").waitFor();
+  await page.getByRole("button", { name: "Rebuild map", exact: true }).click();
+  await page.waitForTimeout(100);
+  assert.equal(await page.locator("[data-map-label-bubble]").count(), 1);
+  assert.deepEqual(errors, [], "Variable-width labels survive map rebuilds.");
+  await page.getByRole("button", { name: "Change marker", exact: true }).click();
+  await page.locator("[data-mock-google-pin=ready]").waitFor();
   await page.getByRole("button", { name: "Back", exact: true }).click();
   await page.getByText("Reader restored", { exact: true }).waitFor();
   assert.equal(await page.locator("[data-mock-google-marker]").count(), 0);

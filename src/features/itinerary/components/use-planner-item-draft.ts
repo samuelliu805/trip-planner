@@ -1,5 +1,7 @@
 "use client";
 
+import { priceFromExpression } from "@/lib/price-expression";
+
 import { useEffect } from "react";
 
 import { itemCopy } from "./planner-item-form-config";
@@ -60,8 +62,8 @@ export function usePlannerItemDraft({
       notes: notes || null,
       place: draftPlace,
       place_id: draftPlace?.id ?? null,
-      price_amount: priceAmount ? Number(priceAmount) : null,
-      price_currency: priceAmount ? priceCurrency : null,
+      price_amount: priceAmount.trim() ? priceFromExpression(priceAmount) : null,
+      price_currency: priceAmount.trim() ? priceCurrency : null,
       schedule_kind: scheduleKind(startTime, endTime),
       start_time: startTime || null,
       title: title.trim() || place?.displayName || itemCopy[type].label,

@@ -86,7 +86,7 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
         ) : null}
         {panelOpen ? (
           <>
-            <div className="public-map-panel-toolbar flex shrink-0 items-center gap-1 border-b px-2">
+            <div className="public-map-panel-toolbar flex shrink-0 items-center gap-1 border-b px-2 pt-[3px]">
               <RouteScopePicker onSelect={controller.selectScope} scope={controller.routeScope} />
               <button
                 aria-label={t("Close route panel")}

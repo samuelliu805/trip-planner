@@ -3,7 +3,7 @@
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Check, ListOrdered } from "lucide-react";
 
-import { compareActivityOrder, isDestinationActivity } from "@/features/itinerary/activity-order";
+import { orderedDestinationActivities } from "@/features/itinerary/activity-order";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
 import type {
   CarRentalDetails,
@@ -60,9 +60,7 @@ export function PlannerItemOrderField({
   type: ItineraryItemType;
 }) {
   const { t } = useI18n();
-  const ordered = items
-    .filter((entry) => entry.id !== item?.id && isDestinationActivity(entry))
-    .sort(compareActivityOrder);
+  const ordered = orderedDestinationActivities(items.filter((entry) => entry.id !== item?.id));
   const displayName =
     title.trim() ||
     placeName ||

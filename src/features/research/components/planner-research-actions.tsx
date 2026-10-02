@@ -16,6 +16,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PriceInput } from "@/components/ui/price-input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { priceFromExpression } from "@/lib/price-expression";
 import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 import {
   tripCurrencyCodes,
@@ -109,7 +112,7 @@ export function PlannerResearchActions({
       itemId: context.itemId,
       sourceUrl: isUrl ? value : null,
       title: isUrl ? null : value,
-      totalPriceAmount: hasPrice ? Number(price) : null,
+      totalPriceAmount: hasPrice ? priceFromExpression(price) : null,
       tripId,
       draftSessionId: operationId,
       operationId,
@@ -192,18 +195,10 @@ export function PlannerResearchActions({
               </ResearchField>
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_6.5rem] gap-3">
                 <ResearchField label="Total price (optional)">
-                  <Input
-                    inputMode="decimal"
-                    min="0"
-                    onChange={(event) => setPrice(event.target.value)}
-                    placeholder="642"
-                    step="0.01"
-                    type="number"
-                    value={price}
-                  />
+                  <PriceInput onValueChange={setPrice} placeholder="642" value={price} />
                 </ResearchField>
                 <ResearchField label="Currency">
-                  <select
+                  <NativeSelect
                     className={nativeSelectClass}
                     onChange={(event) => setSelectedCurrency(event.target.value)}
                     value={selectedCurrency}
@@ -216,7 +211,7 @@ export function PlannerResearchActions({
                         {tripCurrencyLabel(value, locale)}
                       </option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </ResearchField>
               </div>
               {error ? (

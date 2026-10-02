@@ -3,7 +3,7 @@ import { fixedDayRouteDraft, type FixedDayRouteDraft } from "./day-route-order.t
 import type { RouteLegMode } from "./types.ts";
 
 const maxRouteStops = 20;
-const autoIncludedTypes = new Set(["activity", "meal", "car_rental"]);
+const autoIncludedTypes = new Set(["activity", "meal", "car_rental", "hotel"]);
 
 export type SynchronizedDayRouteDraft = {
   addedItemIds: string[];
@@ -22,7 +22,7 @@ export function synchronizeSavedDayRouteDraft(
   planUpdatedAt: string,
   previousHotel?: ItineraryItem,
 ): SynchronizedDayRouteDraft {
-  const currentHotel = eligibleItems.find(({ type }) => type === "hotel");
+  const currentHotel = eligibleItems.filter(({ type }) => type === "hotel").at(-1);
   const normalizedSaved = fixedDayRouteDraft(
     saved,
     eligibleItems.map(({ id }) => id),
@@ -32,13 +32,15 @@ export function synchronizeSavedDayRouteDraft(
   );
   const savedIds = new Set(normalizedSaved.itemIds);
   const capacity = Math.max(0, maxRouteStops - normalizedSaved.itemIds.length);
-  const addedItemIds = eligibleItems
+  const addedItemIds = (previousHotel ? [previousHotel, ...eligibleItems] : eligibleItems)
     .filter(
       (item) =>
         !savedIds.has(item.id) &&
         autoIncludedTypes.has(item.type) &&
-        item.created_at > planUpdatedAt,
+        (item.created_at > planUpdatedAt ||
+          (item.type === "hotel" && item.updated_at > planUpdatedAt)),
     )
+    .sort((a, b) => Number(b.id === currentHotel?.id) - Number(a.id === currentHotel?.id))
     .slice(0, capacity)
     .map(({ id }) => id);
   const draft = fixedDayRouteDraft(

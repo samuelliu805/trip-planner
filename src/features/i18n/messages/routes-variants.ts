@@ -1,4 +1,6 @@
 export const routesVariantsZhCN: Record<string, string> = {
+  "Select two different mapped places to calculate a route.":
+    "选择两个不同的地图地点即可计算路线。",
   "This Plan could not be loaded.": "无法加载该方案。",
   "The Plan may still be finishing setup. Retry without losing your trip.":
     "该方案可能仍在完成初始化；重试不会丢失行程数据。",

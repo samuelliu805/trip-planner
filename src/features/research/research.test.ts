@@ -1937,3 +1937,26 @@ test("Applied is a one-time Plan snapshot refreshed after canonical mutations", 
   assert.match(query, /refetchOnMount: "always"/);
   assert.match(query, /refetchType: "all"/);
 });
+
+test("Ideas evaluate a price expression during submission before blur", () => {
+  for (const [expression, expected] of [
+    ["(120 + 30) * 2", 300],
+    ["1 / 0", 0],
+  ] as const) {
+    const form = new FormData();
+    form.set("totalPriceAmount", expression);
+    form.set("currency", "CNY");
+    const input = researchItemInputFromForm({ category: "flight", form, tripId: ids.trip });
+    assert.equal(input.totalPriceAmount, expected);
+    assert.equal(input.title, `Flight · CNY ${expected}`);
+    assert.equal(
+      createResearchItemSchema.safeParse({ ...input, operationId: ids.operation }).success,
+      true,
+    );
+  }
+  assert.equal(
+    researchItemInputFromForm({ category: "flight", form: new FormData(), tripId: ids.trip })
+      .totalPriceAmount,
+    null,
+  );
+});

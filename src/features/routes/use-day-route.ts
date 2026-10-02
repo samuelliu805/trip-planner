@@ -7,8 +7,9 @@ import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 
+import { canCalculateDayRouteDraft } from "./route-readiness";
 import { eligibleDayRouteItems } from "./day-route-map";
-import { defaultDayRouteDraft } from "./day-route-default-draft";
+import { savedDayRouteDraft as savedDraft, defaultDayRouteDraft } from "./day-route-default-draft";
 import { fixedDayRouteDraft } from "./day-route-order";
 import { synchronizeSavedDayRouteDraft } from "./day-route-synchronization";
 import { resolveRouteCalculationConfig } from "./plan-config";
@@ -23,6 +24,8 @@ export type DayRouteUi = {
   activeDay?: PlannerDay;
   addStop: (itemId: string) => void;
   cancelEditing: () => void;
+  canCalculate: boolean;
+  canComputeDefault: boolean;
   clearRoute: () => Promise<void>;
   computeDefault: () => Promise<void>;
   displayDraft: DayRouteEditorDraft | null;
@@ -48,13 +51,6 @@ export type DayRouteUi = {
   stopItems: ItineraryItem[];
 };
 
-const savedDraft = (plan: DayRoutePlan): DayRouteEditorDraft => ({
-  itemIds: [...plan.stops].sort((a, b) => a.position - b.position).map(({ item_id }) => item_id),
-  legModes: [...plan.legs]
-    .sort((a, b) => a.position - b.position)
-    .map(({ mode }) => canonicalRouteLegMode(mode)),
-});
-
 export function useDayRoute(
   workspace: PlannerWorkspace,
   activeDay: PlannerDay | undefined,
@@ -79,10 +75,13 @@ export function useDayRoute(
     : undefined;
   const eligibleItems = useMemo(() => eligibleDayRouteItems(activeDay), [activeDay]);
   const previousHotel = useMemo(
-    () => eligibleDayRouteItems(previousDay).find(({ type }) => type === "hotel"),
+    () =>
+      eligibleDayRouteItems(previousDay)
+        .filter(({ type }) => type === "hotel")
+        .at(-1),
     [previousDay],
   );
-  const currentHotel = eligibleItems.find(({ type }) => type === "hotel");
+  const currentHotel = eligibleItems.filter(({ type }) => type === "hotel").at(-1);
   const stopItems = useMemo(
     () => (previousHotel ? [previousHotel, ...eligibleItems] : eligibleItems),
     [eligibleItems, previousHotel],
@@ -229,6 +228,12 @@ export function useDayRoute(
     variantId,
   });
 
+  function requestRouteAccountIfNeeded() {
+    if (!persistence) return false;
+    persistence.requestAccountFeature("route");
+    return true;
+  }
+
   async function saveAndCalculate() {
     await persistAndCalculate(draft);
   }
@@ -244,7 +249,6 @@ export function useDayRoute(
   const status =
     baseStatus === "needs_edit" ? baseStatus : synchronizedChanged ? "stale" : baseStatus;
   const resolved = plan ? resolveRouteCalculationConfig(workspace, plan) : undefined;
-  const calculatedFitKey = plan?.calculation?.computed_at;
 
   return {
     activeDay,
@@ -253,12 +257,11 @@ export function useDayRoute(
       setDraft(null);
       setError(undefined);
     },
+    canCalculate: canCalculateDayRouteDraft(displayDraft, stopItems),
+    canComputeDefault: canCalculateDayRouteDraft(defaultDraft, stopItems),
     clearRoute,
     computeDefault: async () => {
-      if (persistence) {
-        persistence.requestAccountFeature("route");
-        return;
-      }
+      if (requestRouteAccountIfNeeded()) return;
       await persistAndCalculate(defaultDraft);
     },
     conflict,
@@ -267,21 +270,17 @@ export function useDayRoute(
     editing: draft !== null,
     eligibleItems,
     error: error ?? (!resolved?.config && plan ? resolved?.error : undefined),
-    fitKey: calculatedFitKey ? `day-route:${activeDay?.id}:${calculatedFitKey}` : undefined,
+    fitKey: plan?.calculation?.computed_at
+      ? `day-route:${activeDay?.id}:${plan.calculation.computed_at}`
+      : undefined,
     hasCalculation: Boolean(plan?.calculation),
     openCreate: () => {
-      if (persistence) {
-        persistence.requestAccountFeature("route");
-        return;
-      }
+      if (requestRouteAccountIfNeeded()) return;
       setDraft(defaultDraft);
       setError(undefined);
     },
     openEdit: () => {
-      if (persistence) {
-        persistence.requestAccountFeature("route");
-        return;
-      }
+      if (requestRouteAccountIfNeeded()) return;
       if (plan) setDraft(synchronized?.draft ?? savedDraft(plan));
       else setDraft(defaultDraft);
       setError(undefined);

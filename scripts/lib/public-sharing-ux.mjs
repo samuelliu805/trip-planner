@@ -141,18 +141,27 @@ export async function verifySharingUx({ page, app, token, directory }) {
         await workspace.locator("[data-mock-google-map=ready]").waitFor();
         await assertPanelBoundaries(workspace, { template, width, phase: "initial" });
         const geometry = await drawer.evaluate((node) => {
-          const toolbar = node.querySelector(".public-map-panel-toolbar").getBoundingClientRect();
+          const toolbarNode = node.querySelector(".public-map-panel-toolbar");
+          const toolbar = toolbarNode.getBoundingClientRect();
+          const style = getComputedStyle(toolbarNode);
           const body = node.querySelector(".public-map-panel-body");
           return {
             toolbar: toolbar.height,
+            paddingTop: parseFloat(style.paddingTop),
+            paddingBottom: parseFloat(style.paddingBottom),
             panel: node.clientHeight,
             body: body.clientHeight,
             overflow: node.scrollWidth > node.clientWidth,
           };
         });
         assert.ok(
-          geometry.toolbar <= 48 && !geometry.overflow,
+          geometry.toolbar - geometry.paddingTop - geometry.paddingBottom <= 48 &&
+            !geometry.overflow,
           JSON.stringify({ template, width, ...geometry }),
+        );
+        assert.ok(
+          geometry.paddingTop === 3 && geometry.paddingBottom === 0,
+          "Route toolbar has a small top inset.",
         );
         assert.ok(
           geometry.body >= geometry.panel - 70,

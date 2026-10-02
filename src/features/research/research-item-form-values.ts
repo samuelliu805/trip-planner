@@ -1,4 +1,5 @@
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
+import { priceFromExpression } from "../../lib/price-expression.ts";
 
 import { firstPresentIsoDate } from "./date-range.ts";
 import { parseResearchLinks } from "./links.ts";
@@ -83,7 +84,8 @@ export function researchItemInputFromForm({
   item?: ResearchItem;
   tripId: string;
 }) {
-  const price = optional(form, "totalPriceAmount");
+  const rawPrice = optional(form, "totalPriceAmount");
+  const price = rawPrice === null ? null : String(priceFromExpression(rawPrice));
   const hasPrice = price !== null;
   const rawSegments =
     (
@@ -202,7 +204,7 @@ export function researchItemInputFromForm({
     startDate: firstDepartureDate,
     startTime: firstSegment?.departureTime ?? optional(form, "startTime"),
     title: optional(form, "title") ?? automaticTitle,
-    totalPriceAmount: hasPrice ? Number(price) : null,
+    totalPriceAmount: hasPrice ? priceFromExpression(price) : null,
     tripId,
   };
 }

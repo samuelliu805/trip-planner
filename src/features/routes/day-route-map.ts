@@ -1,8 +1,10 @@
+import { orderOwnerFlightStops } from "../itinerary/flight-stop-order.ts";
 import type { Locale } from "../i18n/config.ts";
 import { translateMessage } from "../i18n/translate.ts";
 import type { ItineraryItem, PlannerDay } from "../itinerary/types.ts";
 import { flightEndpointRole } from "../itinerary/flight-endpoints.ts";
 import type { PlannerMapLine, PlannerMapMarker } from "../maps/planner-map-model.ts";
+import { hasValidCoordinates } from "../../lib/providers/maps/types.ts";
 import type { MarkerKind } from "../../lib/providers/maps/contracts.ts";
 import { routeGeometryCoordinates } from "../../lib/providers/routes/geometry.ts";
 
@@ -48,10 +50,13 @@ const markerGlyph = {
 } as const;
 
 export function eligibleDayRouteItems(day?: PlannerDay): ItineraryItem[] {
-  return (
+  return orderOwnerFlightStops(
     day?.items
-      .filter((item) => isEligibleRouteStopType(item.type) && item.place)
-      .sort((a, b) => a.sort_order - b.sort_order) ?? []
+      .filter(
+        (item) =>
+          isEligibleRouteStopType(item.type) && item.place && hasValidCoordinates(item.place),
+      )
+      .sort((a, b) => a.sort_order - b.sort_order) ?? [],
   );
 }
 

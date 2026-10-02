@@ -1,7 +1,8 @@
 "use client";
 
 import { T, useI18n } from "@/features/i18n/i18n-provider";
-import { Input } from "@/components/ui/input";
+import { PriceInput } from "@/components/ui/price-input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Label } from "@/components/ui/label";
 import {
   tripCurrencyCodes,
@@ -32,7 +33,7 @@ export function BookingPriceFields({
   onAmountChange: (value: string) => void;
   onCurrencyChange: (value: string) => void;
 }) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const localizedCurrencies = tripCurrencyCodesForLocale(locale);
   const currencies = commonBookingCurrencies.includes(defaultCurrency)
     ? localizedCurrencies
@@ -44,17 +45,13 @@ export function BookingPriceFields({
         <Label htmlFor={`${idPrefix}-amount`}>
           <T message={"Price"} />
         </Label>
-        <Input
+        <PriceInput
           className="h-[3.75rem] rounded-xl"
           disabled={disabled}
           id={`${idPrefix}-amount`}
-          inputMode="decimal"
-          min="0"
           name={amountName}
-          onChange={(event) => onAmountChange(event.target.value)}
-          placeholder="0.00"
-          step="0.01"
-          type="number"
+          onValueChange={onAmountChange}
+          placeholder={t("0.00 or 120 + 30")}
           value={amount}
         />
       </div>
@@ -62,7 +59,7 @@ export function BookingPriceFields({
         <Label htmlFor={`${idPrefix}-currency`}>
           <T message={"Currency"} />
         </Label>
-        <select
+        <NativeSelect
           className="planner-native-currency-select box-border flex h-[3.75rem] min-h-[3.75rem] w-full min-w-0 max-w-full rounded-xl border border-input bg-background px-3 py-2 text-base shadow-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base"
           disabled={disabled}
           id={`${idPrefix}-currency`}
@@ -75,7 +72,7 @@ export function BookingPriceFields({
               {tripCurrencyLabel(value, locale)}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
     </div>
   );

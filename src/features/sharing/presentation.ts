@@ -1,9 +1,14 @@
+import { orderFlightStopSlots } from "../itinerary/flight-stop-order.ts";
 import type { PublicItineraryDay, PublicItineraryItem } from "./types";
 import { transportModeLabels } from "../itinerary/types.ts";
 import { publicTransportMode } from "./public-transport-mode.ts";
 
 export function orderedPublicItems(day: PublicItineraryDay) {
-  return day.items.slice().sort((left, right) => left.sortOrder - right.sortOrder);
+  return orderFlightStopSlots(
+    day.items.slice().sort((left, right) => left.sortOrder - right.sortOrder),
+    (item) =>
+      item.flightEndpoint ? { ...item.flightEndpoint, time: item.startTime?.slice(0, 5) } : null,
+  );
 }
 
 const transferTypes = new Set(["transport", "flight", "train"]);

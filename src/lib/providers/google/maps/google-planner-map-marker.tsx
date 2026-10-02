@@ -4,6 +4,8 @@ import type { MarkerKind, PlannerMapMarker } from "@/lib/providers/maps/contract
 
 import { GoogleStableMapMarker } from "./google-stable-map-marker";
 import { GoogleStablePin } from "./google-stable-pin";
+import { GoogleMarkerLabelBubble } from "./google-marker-label-bubble";
+import { needsMarkerLabelBubble } from "../../maps/marker-label";
 
 const markerStyles: Record<MarkerKind, { background: string; glyph: string; label: string }> = {
   activity: { background: "#d97706", glyph: "A", label: "activity" },
@@ -77,7 +79,22 @@ export function GooglePlannerMapMarkerOverlay({
       }
       zIndex={marker.zIndex ?? (selected ? 40 : 20)}
     >
-      {comparison ? (
+      {needsMarkerLabelBubble(glyph) && !cityRouteMarker ? (
+        <GoogleMarkerLabelBubble
+          background={
+            comparison
+              ? themedBackground
+              : planned
+                ? "#166534"
+                : routeMarker
+                  ? "#64748b"
+                  : themedBackground
+          }
+          color={themedGlyph}
+          label={glyph}
+          selected={selected || activeComparison}
+        />
+      ) : comparison ? (
         <GoogleStablePin
           background={marker.variantColor}
           borderColor="#ffffff"

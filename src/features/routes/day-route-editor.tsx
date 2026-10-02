@@ -201,6 +201,11 @@ export function DayRouteEditor({
           ) : null}
         </div>
 
+        {!route.canCalculate ? (
+          <p className="px-3 py-2 text-xs text-muted-foreground">
+            <T message="Select two different mapped places to calculate a route." />
+          </p>
+        ) : null}
         <AutoDismissAlert
           className="mt-3 rounded-md text-xs shadow-none"
           role="alert"
@@ -235,7 +240,7 @@ export function DayRouteEditor({
         ) : null}
         <Button
           className="ml-auto"
-          disabled={draft.itemIds.length < 2 || route.pending}
+          disabled={!route.canCalculate || route.pending}
           onClick={() => void route.saveAndCalculate()}
           size="sm"
           type="button"
