@@ -78,6 +78,30 @@ export function createGoogleRoutesProvider(options: GoogleRoutesProviderOptions)
       if (!travelMode) return googleStraightFallbackLeg(request, "unsupported_mode", now());
       if (!options.apiKey) throw googleRouteProviderError("missing_key");
 
+      // Co-located itinerary stops need no provider request. Google may omit
+      // default distance/polyline fields for these zero-length routes.
+      if (
+        request.origin.latitude === request.destination.latitude &&
+        request.origin.longitude === request.destination.longitude
+      ) {
+        return {
+          computedAt: now(),
+          distanceMeters: 0,
+          durationSeconds: 0,
+          geometry: {
+            coordinateSystem: "wgs84",
+            destination: request.destination,
+            origin: request.origin,
+            source: "straight",
+          },
+          legSignature: request.legSignature,
+          mode: request.mode,
+          position: request.position,
+          providerMode: travelMode,
+          warnings: routeModeWarnings(request),
+        };
+      }
+
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       let response: Response;

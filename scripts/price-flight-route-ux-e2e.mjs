@@ -42,6 +42,25 @@ const bundle = await build({
       }
       function Fixture() {
         const [arranging,setArranging] = React.useState(false);
+        const [orderPending,setOrderPending] = React.useState(false);
+        const [orderCommits,setOrderCommits] = React.useState(0);
+        const [orderItems,setOrderItems] = React.useState([
+          {...item('Paris 08:25','activity',0,35),start_time:'08:25:00',details:{flightEndpointParentId:'flight1',flightEndpointRole:'departure',flightEndpointDate:'2027-02-14'}},
+          {...item('Brussels 12:20','activity',1,35),start_time:'12:20:00',details:{flightEndpointParentId:'flight2',flightEndpointRole:'departure',flightEndpointDate:'2027-02-14'}},
+          {...item('Brussels 09:25','activity',2,35),start_time:'09:25:00',details:{flightEndpointParentId:'flight1',flightEndpointRole:'arrival',flightEndpointDate:'2027-02-14'}},
+          {...item('Beijing 04:40','activity',3,35),start_time:'04:40:00',details:{flightEndpointParentId:'flight2',flightEndpointRole:'arrival',flightEndpointDate:'2027-02-15'}},
+          item('First walk','activity',4,35),
+          item('Second walk','activity',5,35),
+          {...item('Passport note','note',6,35),notes:'Keep your passport handy'}
+        ]);
+        async function commitOrder(_day, ids) {
+          setOrderPending(true);
+          setOrderCommits(value=>value+1);
+          await new Promise(resolve=>{window.completeOrder=resolve;});
+          setOrderItems(items=>items.map(item=>({...item,sort_order:ids.indexOf(item.id)})));
+          setOrderPending(false);
+          return true;
+        }
         const [amount, setAmount] = React.useState('');
         const [currency, setCurrency] = React.useState('USD');
         const [saved, setSaved] = React.useState(null);
@@ -56,12 +75,8 @@ const bundle = await build({
           <form data-flight><JourneyFieldPages activeStepId="primary" category="flight"/></form>
           <RouteFixture/><AmapLabels/>
           <button onClick={()=>setArranging(true)}>Open two-flight arrangement</button>
-          <ArrangeActivitiesSheet open={arranging} onOpenChange={setArranging} onCommit={async()=>true} onReloadLatest={async()=>{}} pending={false} conflict={false} reloadPending={false} day={{id:'day',day_number:11,items:[
-            {...item('Paris 08:25','activity',0,35),start_time:'08:25:00',details:{flightEndpointParentId:'flight1',flightEndpointRole:'departure',flightEndpointDate:'2027-02-14'}},
-            {...item('Brussels 12:20','activity',1,35),start_time:'12:20:00',details:{flightEndpointParentId:'flight2',flightEndpointRole:'departure',flightEndpointDate:'2027-02-14'}},
-            {...item('Brussels 09:25','activity',2,35),start_time:'09:25:00',details:{flightEndpointParentId:'flight1',flightEndpointRole:'arrival',flightEndpointDate:'2027-02-14'}},
-            {...item('Beijing 04:40','activity',3,35),start_time:'04:40:00',details:{flightEndpointParentId:'flight2',flightEndpointRole:'arrival',flightEndpointDate:'2027-02-15'}}
-          ]}}/>
+          <output data-order-commits>{orderCommits}</output>
+          <ArrangeActivitiesSheet open={arranging} onOpenChange={setArranging} onCommit={commitOrder} onReloadLatest={async()=>{}} pending={orderPending} conflict={false} reloadPending={false} day={{id:'day',day_number:11,items:orderItems}}/>
           <GoogleMarkerLabelBubble background="#166534" color="#fff" label="出 · 1" selected={false}/>
           <GoogleMarkerLabelBubble background="#166534" color="#fff" label="到 · 2" selected/>
           <GoogleMarkerLabelBubble background="#166534" color="#fff" label="1 · 3 · 5 · 7 · 9 · 11 · 13 · 15 · 17 · 19" selected={false}/>
@@ -210,6 +225,36 @@ try {
       ),
       "Arrangement shows actual overnight flight chronology",
     );
+    assert.equal(await dialog.getByText("Passport note", { exact: true }).count(), 0);
+    await dialog.getByRole("button", { name: /First walk/ }).click();
+    await dialog.locator('[data-activity-gap="5"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector('[role="dialog"]').getAttribute("aria-busy") === "true",
+    );
+    assert.match(await dialog.getByRole("status").innerText(), /正在保存/);
+    assert.equal(await dialog.locator('[data-activity-gap]:not(:disabled)').count(), 0);
+    assert.equal(await dialog.getByRole("button", { name: "取消", exact: true }).isDisabled(), true);
+    assert.equal(await page.locator("[data-order-commits]").innerText(), "1");
+    await page.keyboard.press("Escape");
+    assert.equal(await dialog.isVisible(), true);
+    await page.evaluate(() => window.completeOrder());
+    await page.waitForFunction(() =>
+      document.querySelector('[role="dialog"]').getAttribute("aria-busy") === "false",
+    );
+    const moved = await dialog.innerText();
+    assert.ok(moved.indexOf("First walk") > moved.indexOf("Second walk"));
+    await dialog.getByRole("button", { name: /撤销/ }).click();
+    await page.waitForFunction(() =>
+      document.querySelector('[role="dialog"]').getAttribute("aria-busy") === "true",
+    );
+    assert.match(await dialog.getByRole("status").innerText(), /正在保存/);
+    assert.equal(await page.locator("[data-order-commits]").innerText(), "2");
+    await page.evaluate(() => window.completeOrder());
+    await page.waitForFunction(() =>
+      document.querySelector('[role="dialog"]').getAttribute("aria-busy") === "false",
+    );
+    const restored = await dialog.innerText();
+    assert.ok(restored.indexOf("First walk") < restored.indexOf("Second walk"));
     await page.keyboard.press("Escape");
     await dialog.waitFor({ state: "hidden" });
     assert.ok(
@@ -219,7 +264,7 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    "PASS price arithmetic submission, flight prefill, dropdown geometry, hotel defaults, distinct-place readiness and Chinese marker bubbles at 390/430/768px",
+    "PASS price arithmetic submission, flight prefill, dropdown geometry, hotel defaults, distinct-place readiness, reorder pending/undo, separate notes and Chinese marker bubbles at 390/430/768px",
   );
 } finally {
   await browser.close();
