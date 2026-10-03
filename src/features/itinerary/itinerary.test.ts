@@ -4725,7 +4725,10 @@ test("the item editor groups every type into short steps and gates required fiel
       );
     else if (type === "note") {
       assert.deepEqual(typeSteps[0].blocks, ["title", "notes"]);
-      assert.equal(typeSteps.some(({ blocks }) => blocks.includes("place")), false);
+      assert.equal(
+        typeSteps.some(({ blocks }) => blocks.includes("place")),
+        false,
+      );
     } else
       assert.ok(
         typeSteps.some(({ blocks }) => blocks.includes("place")),

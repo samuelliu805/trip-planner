@@ -517,7 +517,10 @@ test("Overview lays out a six-item mixed day in stable manual order with one fea
       ["Hotel", 4],
     ],
   );
-  assert.deepEqual(sections.notes.map(({ title }) => title), ["Note"]);
+  assert.deepEqual(
+    sections.notes.map(({ title }) => title),
+    ["Note"],
+  );
 });
 
 test("each Day presents one deterministic place cover while retaining item attachments", () => {

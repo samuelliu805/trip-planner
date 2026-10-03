@@ -180,11 +180,17 @@ test("standalone notes remain separate from every plan list, ordinal, count and 
   assert.deepEqual(editorialDaySections(day).notes, [note]);
   const overview = publicOverviewDaySections(day);
   assert.equal(overview.cards.length, plansBefore.length);
-  assert.deepEqual(overview.cards.map(({ order }) => order), [1, 2, 3]);
+  assert.deepEqual(
+    overview.cards.map(({ order }) => order),
+    [1, 2, 3],
+  );
   assert.deepEqual(overview.notes, [note]);
   const timeline = publicTimelineDayPresentation(day);
   assert.equal(timeline.nodes.length, plansBefore.length);
-  assert.deepEqual(timeline.nodes.map(({ ordinal }) => ordinal), [1, 2, 3]);
+  assert.deepEqual(
+    timeline.nodes.map(({ ordinal }) => ordinal),
+    [1, 2, 3],
+  );
   assert.deepEqual(timeline.notes, [note]);
   assert.ok(publicDayRoutePlan(source, day.ref).items.every(({ type }) => type !== "note"));
   assert.ok(buildPublicMarkers(source).every(({ itemIds }) => !itemIds.includes(note.ref)));

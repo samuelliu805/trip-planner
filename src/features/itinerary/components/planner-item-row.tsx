@@ -83,7 +83,7 @@ export function PlannerItemRow({
       data-planner-note={item.type === "note" ? item.id : undefined}
     >
       <button
-        className="flex min-h-11 min-w-0 flex-col rounded px-1.5 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-11 min-w-0 flex-col rounded px-1.5 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-[1200px]:min-h-8"
         data-edit-item={item.id}
         aria-pressed={selected}
         onClick={(event) => {

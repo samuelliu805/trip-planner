@@ -56,11 +56,13 @@ test("reordering and relocating a stop to the airport recalculates and caches th
     fetchImplementation: async () => {
       calls += 1;
       return Response.json({
-        routes: [{
-          distanceMeters: 1000,
-          duration: "60s",
-          polyline: { encodedPolyline: "_p~iF~ps|U_ulLnnqC_mqNvxq" },
-        }],
+        routes: [
+          {
+            distanceMeters: 1000,
+            duration: "60s",
+            polyline: { encodedPolyline: "_p~iF~ps|U_ulLnnqC_mqNvxq" },
+          },
+        ],
       });
     },
     now,
@@ -105,18 +107,25 @@ test("reordering and relocating a stop to the airport recalculates and caches th
   const second = await calculateRouteConfiguration(updated, previous, () => provider);
   assert.notEqual(second.configSignature, first.configSignature);
   assert.equal(second.legs.length, 3);
-  assert.deepEqual(second.legs.map((leg) => leg.position), [1, 2, 3]);
+  assert.deepEqual(
+    second.legs.map((leg) => leg.position),
+    [1, 2, 3],
+  );
   assert.equal(second.legs[2].distanceMeters, 0);
   assert.equal(second.legs[2].durationSeconds, 0);
   assert.equal(second.totalDistanceMeters, 2000);
   assert.equal(second.totalDurationSeconds, 120);
   assert.equal(calls, 5);
   assert.equal(JSON.stringify(previous), saved);
-  const cached = await calculateRouteConfiguration(updated, {
-    ...previous,
-    calculatedLegs: second.legs,
-    config_signature: second.configSignature,
-  }, () => provider);
+  const cached = await calculateRouteConfiguration(
+    updated,
+    {
+      ...previous,
+      calculatedLegs: second.legs,
+      config_signature: second.configSignature,
+    },
+    () => provider,
+  );
   assert.equal(cached.cache, "full");
   assert.equal(calls, 5);
 });
@@ -135,8 +144,10 @@ test("distinct Google stops still reject malformed responses and require a confi
       apiKey: "test-key",
       fetchImplementation: async () => Response.json({ routes: [route] }),
     });
-    await assert.rejects(provider.calculateLeg(distinct), (error) =>
-      error instanceof RouteProviderError && error.code === "invalid_response");
+    await assert.rejects(
+      provider.calculateLeg(distinct),
+      (error) => error instanceof RouteProviderError && error.code === "invalid_response",
+    );
   }
   await assert.rejects(
     createGoogleRoutesProvider({ apiKey: "" }).calculateLeg(request),

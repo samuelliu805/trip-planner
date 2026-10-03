@@ -132,9 +132,9 @@ export async function verifySharingUx({ page, app, token, directory }) {
         );
         await page.getByRole("tab", { name: "Timeline", exact: true }).click();
         const timeline = page.locator("#public-timeline-panel");
-        const noteDay = timeline.locator(
-          '[data-public-day-ref="' + fixture.days[0].ref + '"]',
-        ).first();
+        const noteDay = timeline
+          .locator('[data-public-day-ref="' + fixture.days[0].ref + '"]')
+          .first();
         assert.equal(await noteDay.locator("[data-public-note-ref]").count(), 1);
         assert.equal(
           await noteDay
@@ -211,10 +211,12 @@ export async function verifySharingUx({ page, app, token, directory }) {
         await assertPanelBoundaries(workspace, { template, width, phase: "day" });
         await selectRouteDay(page, drawer, 1);
         await drawer.getByRole("button", { name: "Calculate route", exact: true }).waitFor();
-        assert.ok(await drawer.locator("[data-public-route-stop]").count() >= 2);
-        const checkedStops = await drawer.getByRole("checkbox").evaluateAll((nodes) =>
-          nodes.filter((node) => node.getAttribute("data-state") === "checked").length,
-        );
+        assert.ok((await drawer.locator("[data-public-route-stop]").count()) >= 2);
+        const checkedStops = await drawer
+          .getByRole("checkbox")
+          .evaluateAll(
+            (nodes) => nodes.filter((node) => node.getAttribute("data-state") === "checked").length,
+          );
         assert.ok(checkedStops >= 2, "Mapped stops are ready without entering another setup step.");
         const travel = drawer.getByRole("combobox", { name: /^Travel from/ }).first();
         await travel.click();
@@ -302,7 +304,10 @@ export async function verifySharingUx({ page, app, token, directory }) {
         await drawer.getByRole("button", { name: "Calculate route", exact: true }).waitFor();
         assert.equal(
           (
-            await drawer.getByRole("combobox", { name: /^Travel from/ }).first().textContent()
+            await drawer
+              .getByRole("combobox", { name: /^Travel from/ })
+              .first()
+              .textContent()
           ).trim(),
           "Flight",
           "Editing restores this day's own travel modes.",
@@ -320,7 +325,10 @@ export async function verifySharingUx({ page, app, token, directory }) {
         );
         assert.equal(
           (
-            await drawer.getByRole("combobox", { name: /^Travel from/ }).first().textContent()
+            await drawer
+              .getByRole("combobox", { name: /^Travel from/ })
+              .first()
+              .textContent()
           ).trim(),
           "Flight",
           "Uncalculated edits survive day switching as well.",

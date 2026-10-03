@@ -153,7 +153,9 @@ export function PublicTable({
                             type={item.type}
                           />
                           {item.type === "note" && item.notes ? (
-                            <p className="mt-1 whitespace-pre-wrap break-words text-xs">{item.notes}</p>
+                            <p className="mt-1 whitespace-pre-wrap break-words text-xs">
+                              {item.notes}
+                            </p>
                           ) : null}
                           <PublicItemMediaGallery
                             media={orderedPublicItemMedia(item)}

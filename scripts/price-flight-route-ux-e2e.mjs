@@ -228,30 +228,33 @@ try {
     assert.equal(await dialog.getByText("Passport note", { exact: true }).count(), 0);
     await dialog.getByRole("button", { name: /First walk/ }).click();
     await dialog.locator('[data-activity-gap="5"]').click();
-    await page.waitForFunction(() =>
-      document.querySelector('[role="dialog"]').getAttribute("aria-busy") === "true",
+    await page.waitForFunction(
+      () => document.querySelector('[role="dialog"]').getAttribute("aria-busy") === "true",
     );
     assert.match(await dialog.getByRole("status").innerText(), /正在保存/);
-    assert.equal(await dialog.locator('[data-activity-gap]:not(:disabled)').count(), 0);
-    assert.equal(await dialog.getByRole("button", { name: "取消", exact: true }).isDisabled(), true);
+    assert.equal(await dialog.locator("[data-activity-gap]:not(:disabled)").count(), 0);
+    assert.equal(
+      await dialog.getByRole("button", { name: "取消", exact: true }).isDisabled(),
+      true,
+    );
     assert.equal(await page.locator("[data-order-commits]").innerText(), "1");
     await page.keyboard.press("Escape");
     assert.equal(await dialog.isVisible(), true);
     await page.evaluate(() => window.completeOrder());
-    await page.waitForFunction(() =>
-      document.querySelector('[role="dialog"]').getAttribute("aria-busy") === "false",
+    await page.waitForFunction(
+      () => document.querySelector('[role="dialog"]').getAttribute("aria-busy") === "false",
     );
     const moved = await dialog.innerText();
     assert.ok(moved.indexOf("First walk") > moved.indexOf("Second walk"));
     await dialog.getByRole("button", { name: /撤销/ }).click();
-    await page.waitForFunction(() =>
-      document.querySelector('[role="dialog"]').getAttribute("aria-busy") === "true",
+    await page.waitForFunction(
+      () => document.querySelector('[role="dialog"]').getAttribute("aria-busy") === "true",
     );
     assert.match(await dialog.getByRole("status").innerText(), /正在保存/);
     assert.equal(await page.locator("[data-order-commits]").innerText(), "2");
     await page.evaluate(() => window.completeOrder());
-    await page.waitForFunction(() =>
-      document.querySelector('[role="dialog"]').getAttribute("aria-busy") === "false",
+    await page.waitForFunction(
+      () => document.querySelector('[role="dialog"]').getAttribute("aria-busy") === "false",
     );
     const restored = await dialog.innerText();
     assert.ok(restored.indexOf("First walk") < restored.indexOf("Second walk"));

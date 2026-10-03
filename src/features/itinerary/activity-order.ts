@@ -19,9 +19,7 @@ export function compareActivityOrder(left: OrderableActivity, right: OrderableAc
 
 export function orderedDayActivities(items: ItineraryItem[]) {
   return orderOwnerFlightStops(
-    items
-      .filter(({ type }) => type !== "location" && type !== "note")
-      .sort(compareActivityOrder),
+    items.filter(({ type }) => type !== "location" && type !== "note").sort(compareActivityOrder),
   );
 }
 
