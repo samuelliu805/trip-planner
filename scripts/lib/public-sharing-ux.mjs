@@ -49,6 +49,37 @@ function fixtureFor(template) {
       type: "note",
     });
   });
+  const secondDay = fixture.days[1];
+  const previousHotel = fixture.days[0].items.find((item) => item.type === "hotel");
+  const hotel = secondDay.items.find((item) => item.type === "hotel");
+  const stops = [
+    previousHotel,
+    ...secondDay.items.filter((item) => ["activity", "meal", "car_rental"].includes(item.type)),
+    hotel,
+  ].map((item, index) => ({
+    displayName: item.place.displayName,
+    latitude: item.place.latitude,
+    longitude: item.place.longitude,
+    position: index + 1,
+    ref: item.ref,
+    title: item.title,
+    type: item.type,
+  }));
+  fixture.savedRoutes = [
+    {
+    dayNumber: secondDay.dayNumber,
+    dayRef: secondDay.ref,
+    legs: stops.slice(1).map((_, index) => ({
+      mode: "self_driving",
+      position: index + 1,
+    })),
+    ref: "c".repeat(64),
+    status: "saved",
+    stops,
+    totalDistanceMeters: null,
+    totalDurationSeconds: null,
+    },
+  ];
   fixture.trip.dayCount = fixture.days.length;
   return fixture;
 }
@@ -283,7 +314,7 @@ export async function verifySharingUx({ page, app, token, directory }) {
           await drawer.getByRole("button", { name: "Edit route", exact: true }).count(),
           0,
         );
-        assert.ok(await action.isEnabled(), "The next day can be calculated directly.");
+        assert.ok(await action.isEnabled(), "Saved configuration without a calculation needs no Edit/setup action.");
         const secondTravel = drawer.getByRole("combobox", { name: /^Travel from/ }).first();
         assert.equal((await secondTravel.textContent()).trim(), "Drive");
         await secondTravel.click();

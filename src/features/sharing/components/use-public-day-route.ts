@@ -33,7 +33,7 @@ function defaultDayState(
   return {
     modes,
     pending: false,
-    phase: route ? "shared" : "editing",
+    phase: route?.status === "calculated" ? "shared" : "editing",
     stops: defaultStops(plan),
   };
 }
@@ -133,7 +133,11 @@ export function usePublicDayRoute({
     localStops,
     onBackToShared: () => {
       if (state.pending) return;
-      updateState((current) => ({ ...current, error: undefined, phase: "shared" }));
+      updateState((current) => ({
+        ...current,
+        error: undefined,
+        phase: route?.status === "calculated" ? "shared" : "editing",
+      }));
     },
     onCalculate: calculate,
     onEdit: edit,
