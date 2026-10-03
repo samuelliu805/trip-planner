@@ -67,17 +67,17 @@ function fixtureFor(template) {
   }));
   fixture.savedRoutes = [
     {
-    dayNumber: secondDay.dayNumber,
-    dayRef: secondDay.ref,
-    legs: stops.slice(1).map((_, index) => ({
-      mode: "self_driving",
-      position: index + 1,
-    })),
-    ref: "c".repeat(64),
-    status: "saved",
-    stops,
-    totalDistanceMeters: null,
-    totalDurationSeconds: null,
+      dayNumber: secondDay.dayNumber,
+      dayRef: secondDay.ref,
+      legs: stops.slice(1).map((_, index) => ({
+        mode: "self_driving",
+        position: index + 1,
+      })),
+      ref: "c".repeat(64),
+      status: "saved",
+      stops,
+      totalDistanceMeters: null,
+      totalDurationSeconds: null,
     },
   ];
   fixture.trip.dayCount = fixture.days.length;
@@ -314,7 +314,10 @@ export async function verifySharingUx({ page, app, token, directory }) {
           await drawer.getByRole("button", { name: "Edit route", exact: true }).count(),
           0,
         );
-        assert.ok(await action.isEnabled(), "Saved configuration without a calculation needs no Edit/setup action.");
+        assert.ok(
+          await action.isEnabled(),
+          "Saved configuration without a calculation needs no Edit/setup action.",
+        );
         const secondTravel = drawer.getByRole("combobox", { name: /^Travel from/ }).first();
         assert.equal((await secondTravel.textContent()).trim(), "Drive");
         await secondTravel.click();
