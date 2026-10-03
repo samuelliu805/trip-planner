@@ -120,17 +120,19 @@ export async function verifyFullScreenMap({ page, app, token, directory, request
         "The calculation action scrolls with the route fields to preserve content height.",
       );
       assert.equal((await action.textContent()).trim(), "Calculate route");
-      await action.click();
-      await map.getByRole("button", { name: "Calculate", exact: true }).waitFor();
+      await map.locator("[data-public-route-stop]").first().waitFor();
       assert.ok(
         await action.isEnabled(),
         "Selecting local stops enables the panel calculation action.",
       );
-      assert.equal(await map.getByRole("button", { name: "Calculate", exact: true }).count(), 1);
+      assert.equal(
+        await map.getByRole("button", { name: "Calculate route", exact: true }).count(),
+        1,
+      );
       assert.equal(
         await map
           .locator(".public-map-panel")
-          .getByRole("button", { name: "Calculate", exact: true })
+          .getByRole("button", { name: "Calculate route", exact: true })
           .count(),
         1,
       );
@@ -152,8 +154,8 @@ export async function verifyFullScreenMap({ page, app, token, directory, request
       if (directory)
         await page.screenshot({ path: `${directory}/${template}-fullscreen-map-${width}.png` });
       await map.getByRole("button", { name: "Day route", exact: true }).click();
-      await action.click();
-      await map.getByRole("button", { name: "Calculate", exact: true }).waitFor();
+      await map.getByRole("button", { name: "Calculate route", exact: true }).waitFor();
+      await map.locator("[data-public-route-stop]").first().waitFor();
       // Scrolling the content must never turn into a dismissal at its top boundary.
       const body = drawer.locator(".overflow-y-auto");
       await body.evaluate((node) => {

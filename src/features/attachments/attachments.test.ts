@@ -311,6 +311,10 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     new URL("../../app/public-attachments.css", import.meta.url),
     "utf8",
   );
+  const publicNotes = await readFile(
+    new URL("../sharing/components/public-day-notes.tsx", import.meta.url),
+    "utf8",
+  );
   const publicViews = await Promise.all(
     [
       "../sharing/components/public-overview-card.tsx",
@@ -387,9 +391,11 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     /\.planner-item-dialog \{[\s\S]*overflow: hidden[\s\S]*overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto[\s\S]*touch-action: pan-y/,
   );
   assert.equal(
-    publicViews.every((source) => /PublicItemMediaGallery/.test(source)),
+    publicViews.every((source) => /PublicItemMediaGallery|PublicDayNotes/.test(source)),
     true,
   );
+  assert.match(publicNotes, /PublicItemMediaGallery/);
+  assert.match(publicNotes, /publicItemAttachments\(note\)/);
   assert.match(publicRoute, /service_public_asset_access_v2/);
   assert.match(publicRoute, /private, no-store/);
   // Export preparation retains permitted document names while excluding Google photo metadata.

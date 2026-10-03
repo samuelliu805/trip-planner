@@ -4074,7 +4074,7 @@ test("Activity ordering excludes transport support, anchors timed items, and fix
 
   assert.deepEqual(
     orderedDayActivities(items).map(({ id }) => id),
-    ["museum", "walk", "breakfast", "notes", "hotel"],
+    ["museum", "walk", "breakfast", "hotel"],
   );
   assert.deepEqual(
     orderedDestinationActivities(items).map(({ id }) => id),
@@ -4716,14 +4716,20 @@ test("the item editor groups every type into short steps and gates required fiel
     const typeSteps = plannerItemFormSteps({ ...rail, type });
     for (const step of typeSteps)
       assert.ok(step.blocks.length <= 3, `${type} step ${step.id} is too long`);
-    assert.equal(itemFormCapabilities(type, "pickup").supportsPlace, true);
+    assert.equal(itemFormCapabilities(type, "pickup").supportsPlace, type !== "note");
     if (["transport", "flight", "train"].includes(type))
       assert.equal(
         typeSteps.some(({ blocks }) => blocks.includes("place")),
         false,
         `${type} uses From and To instead of a Stop field`,
       );
-    else
+    else if (type === "note") {
+      assert.deepEqual(typeSteps[0].blocks, ["title", "notes"]);
+      assert.equal(
+        typeSteps.some(({ blocks }) => blocks.includes("place")),
+        false,
+      );
+    } else
       assert.ok(
         typeSteps.some(({ blocks }) => blocks.includes("place")),
         `${type} keeps its place field`,

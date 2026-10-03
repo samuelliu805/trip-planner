@@ -13,7 +13,8 @@ export function publicItemAttachments(item: PublicItineraryItem) {
 export function editorialDaySections(day: PublicItineraryDay) {
   const items = orderedPublicItems(day).filter(({ type }) => type !== "location");
   return {
-    plans: items.filter((item) => !isPublicTransfer(item)),
+    notes: items.filter(({ type }) => type === "note"),
+    plans: items.filter((item) => item.type !== "note" && !isPublicTransfer(item)),
     transport: items.filter(isPublicTransfer),
   };
 }
@@ -27,15 +28,17 @@ export function publicDisplayItinerary(itinerary: PublicItinerary): PublicItiner
       cityPhotoSource: itinerary.settings.showPlacePhotos ? day.cityPhotoSource : undefined,
       photoSource: itinerary.settings.showPlacePhotos ? day.photoSource : undefined,
       notes: itinerary.settings.showNotes ? meaningfulText(day.notes) : undefined,
-      items: day.items.map((item) => ({
-        ...item,
-        notes: itinerary.settings.showNotes ? meaningfulText(item.notes) : undefined,
-        media: item.media?.filter((media) =>
-          media.source === "attachment"
-            ? itinerary.settings.showAttachments
-            : itinerary.settings.showPlacePhotos === true,
-        ),
-      })),
+      items: day.items
+        .filter((item) => itinerary.settings.showNotes || item.type !== "note")
+        .map((item) => ({
+          ...item,
+          notes: itinerary.settings.showNotes ? meaningfulText(item.notes) : undefined,
+          media: item.media?.filter((media) =>
+            media.source === "attachment"
+              ? itinerary.settings.showAttachments
+              : itinerary.settings.showPlacePhotos === true,
+          ),
+        })),
     })),
   };
 }

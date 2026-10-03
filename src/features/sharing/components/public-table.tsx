@@ -129,8 +129,9 @@ export function PublicTable({
                       {items.map((item) => (
                         <div
                           aria-current={selectedItemRef === item.ref ? "true" : undefined}
-                          className={`public-item-focus flex min-h-11 flex-col cursor-default px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring min-[1200px]:min-h-8 ${selectedItemRef === item.ref ? "bg-primary/5" : ""}`}
+                          className={`public-item-focus flex min-h-11 flex-col cursor-default px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring min-[1200px]:min-h-8 ${item.type === "note" ? "rounded-sm border border-amber-200 bg-amber-50 text-amber-950 shadow-sm" : ""} ${selectedItemRef === item.ref ? "bg-primary/5" : ""}`}
                           data-public-item-ref={item.ref}
+                          data-public-note-ref={item.type === "note" ? item.ref : undefined}
                           key={item.ref}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -151,6 +152,11 @@ export function PublicTable({
                             transportMode={publicTransportMode(item)}
                             type={item.type}
                           />
+                          {item.type === "note" && item.notes ? (
+                            <p className="mt-1 whitespace-pre-wrap break-words text-xs">
+                              {item.notes}
+                            </p>
+                          ) : null}
                           <PublicItemMediaGallery
                             media={orderedPublicItemMedia(item)}
                             variant="table"

@@ -55,12 +55,14 @@ export function ActivityInsertionGap({
   gapCount,
   index,
   onPlace,
+  pending,
   scrollContainer,
 }: {
   autoFocus?: boolean;
   gapCount: number;
   index: number;
   onPlace: (index: number) => void;
+  pending?: boolean;
   scrollContainer: React.RefObject<HTMLDivElement | null>;
 }) {
   const intent = useRef<PointerIntent | null>(null);
@@ -93,6 +95,7 @@ export function ActivityInsertionGap({
         autoFocus={autoFocus}
         className={`absolute left-0 top-1/2 flex h-11 w-full -translate-y-1/2 items-center justify-center px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring xl:h-9 ${pressed ? "text-primary" : "text-muted-foreground"}`}
         data-activity-gap={index}
+        disabled={pending}
         onClick={(event) => {
           if (event.detail === 0 || confirmedPointerClick.current) {
             confirmedPointerClick.current = false;

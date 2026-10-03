@@ -1,7 +1,7 @@
 "use client";
 
 import { T, useI18n } from "@/features/i18n/i18n-provider";
-import { Copy, MoreHorizontal, Paperclip, Pencil, Trash2 } from "lucide-react";
+import { Copy, MoreHorizontal, NotebookText, Paperclip, Pencil, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -78,11 +78,12 @@ export function PlannerItemRow({
   const title = item.title;
   return (
     <div
-      className={`group/item grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center rounded ${selected ? "bg-primary/10 ring-1 ring-primary/40" : interactive ? "hover:bg-muted/70" : ""}`}
+      className={`group/item grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center rounded ${item.type === "note" ? "border border-amber-200 bg-amber-50 text-amber-950 shadow-sm" : ""} ${selected ? "bg-primary/10 ring-1 ring-primary/40" : interactive ? "hover:bg-muted/70" : ""}`}
       data-item-row={item.id}
+      data-planner-note={item.type === "note" ? item.id : undefined}
     >
       <button
-        className="flex min-h-8 min-w-0 flex-col rounded px-1.5 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-11 min-w-0 flex-col rounded px-1.5 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-[1200px]:min-h-8"
         data-edit-item={item.id}
         aria-pressed={selected}
         onClick={(event) => {
@@ -98,13 +99,27 @@ export function PlannerItemRow({
         tabIndex={interactive ? 0 : -1}
         type="button"
       >
-        <MatrixItemSummary
-          startTime={start}
-          subtitle={subtitle}
-          title={title}
-          transportMode={mode}
-          type={item.type}
-        />
+        {item.type === "note" ? (
+          <>
+            <span className="flex min-w-0 items-start gap-1.5 text-[15px] font-medium min-[1200px]:text-[13px]">
+              <NotebookText aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+              <span className="whitespace-pre-wrap break-words">{title}</span>
+            </span>
+            {item.notes ? (
+              <span className="mt-1 whitespace-pre-wrap break-words text-[13px] min-[1200px]:text-[11px]">
+                {item.notes}
+              </span>
+            ) : null}
+          </>
+        ) : (
+          <MatrixItemSummary
+            startTime={start}
+            subtitle={subtitle}
+            title={title}
+            transportMode={mode}
+            type={item.type}
+          />
+        )}
       </button>
       {item.attachments?.some(({ status }) => status === "ready") ? (
         <span

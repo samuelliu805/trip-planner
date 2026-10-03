@@ -1,7 +1,7 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { Undo2 } from "lucide-react";
+import { LoaderCircle, Undo2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -72,7 +72,7 @@ export function ArrangeActivitiesSheet({
   useEffect(() => {
     if (!movingItemId) return;
     const cancel = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || pending) return;
       if (initialMovingItemId && movingItemId === initialMovingItemId) {
         onInitialPlacementComplete?.();
         return;
@@ -82,7 +82,7 @@ export function ArrangeActivitiesSheet({
     };
     window.addEventListener("keydown", cancel);
     return () => window.removeEventListener("keydown", cancel);
-  }, [initialMovingItemId, movingItemId, onInitialPlacementComplete, t]);
+  }, [initialMovingItemId, movingItemId, onInitialPlacementComplete, pending, t]);
 
   async function place(index: number) {
     if (!day || !movingItemId || pending) return;
@@ -117,6 +117,7 @@ export function ArrangeActivitiesSheet({
   return (
     <Sheet
       onOpenChange={(nextOpen) => {
+        if (pending) return;
         if (!nextOpen) {
           setMovingItemId(undefined);
           setUndoOrder(undefined);
@@ -126,7 +127,7 @@ export function ArrangeActivitiesSheet({
       }}
       open={open}
     >
-      <SheetContent className="w-full p-0 sm:max-w-lg">
+      <SheetContent aria-busy={pending} className="w-full p-0 sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>
             {initialPlacementActive && movingItem
@@ -176,6 +177,7 @@ export function ArrangeActivitiesSheet({
               </div>
               <Button
                 className="min-h-11 shrink-0 xl:min-h-9"
+                disabled={pending}
                 onClick={() => {
                   if (initialPlacementActive)
                     finishInitialPlacement(t("Activity kept in its current position"));
@@ -199,6 +201,7 @@ export function ArrangeActivitiesSheet({
                 autoFocus={currentGapIndex === 0}
                 gapCount={gapCount}
                 index={0}
+                pending={pending}
                 onPlace={(index) => void place(index)}
                 scrollContainer={scrollContainer}
               />
@@ -212,6 +215,7 @@ export function ArrangeActivitiesSheet({
                       autoFocus={currentGapIndex === index + 1}
                       gapCount={gapCount}
                       index={index + 1}
+                      pending={pending}
                       onPlace={(gap) => void place(gap)}
                       scrollContainer={scrollContainer}
                     />
@@ -268,8 +272,19 @@ export function ArrangeActivitiesSheet({
         </div>
 
         <div className="flex min-h-14 items-center justify-between gap-3 border-t px-4 py-2">
-          <p aria-live="polite" className="text-sm text-muted-foreground" role="status">
-            {announcement}
+          <p
+            aria-live="polite"
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+            role="status"
+          >
+            {pending ? (
+              <>
+                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+                <T message={"Saving…"} />
+              </>
+            ) : (
+              announcement
+            )}
           </p>
           {undoOrder ? (
             <Button disabled={pending} onClick={() => void undo()} variant="ghost">

@@ -1,8 +1,9 @@
 "use client";
 
 import { editorialDaySections } from "../../editorial-presentation";
+import { PublicDayNotes } from "../public-day-notes";
 import { DayHeading } from "./day-heading";
-import { DayPlans, DayTransport, OptionalNote } from "./day-plans";
+import { DayPlans, DayTransport } from "./day-plans";
 import type { EditorialDayProps } from "./journal-day";
 
 export function EtherealDay({
@@ -11,7 +12,7 @@ export function EtherealDay({
   selectedItemRef,
   exporting = false,
 }: EditorialDayProps) {
-  const { plans, transport } = editorialDaySections(day);
+  const { notes, plans, transport } = editorialDaySections(day);
   const onSelect = (ref: string) => onSelectItem(ref, day.ref);
   return (
     <article
@@ -20,7 +21,6 @@ export function EtherealDay({
     >
       <div className="ethereal-chapter-lead">
         <DayHeading day={day} />
-        <OptionalNote text={day.notes} exporting={exporting} />
       </div>
       <div className="ethereal-chapter-flow">
         <DayPlans
@@ -31,6 +31,13 @@ export function EtherealDay({
         />
         <DayTransport items={transport} onSelect={onSelect} exporting={exporting} />
       </div>
+      <PublicDayNotes
+        dayNotes={day.notes}
+        exporting={exporting}
+        notes={notes}
+        onSelect={onSelect}
+        selectedItemRef={selectedItemRef}
+      />
     </article>
   );
 }

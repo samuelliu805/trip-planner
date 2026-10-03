@@ -19,7 +19,7 @@ export function compareActivityOrder(left: OrderableActivity, right: OrderableAc
 
 export function orderedDayActivities(items: ItineraryItem[]) {
   return orderOwnerFlightStops(
-    items.filter(({ type }) => type !== "location").sort(compareActivityOrder),
+    items.filter(({ type }) => type !== "location" && type !== "note").sort(compareActivityOrder),
   );
 }
 
@@ -62,7 +62,11 @@ function canonicalFullOrder(items: ItineraryItem[], visibleOrder: ItineraryItem[
   const legacy = items
     .filter(({ type }) => type === "location")
     .sort((left, right) => left.sort_order - right.sort_order || left.id.localeCompare(right.id));
-  return [...legacy, ...visibleOrder].map((item, sort_order) => ({ ...item, sort_order }));
+  const remaining = [...visibleOrder];
+  const fullOrder = orderOwnerFlightStops(
+    items.filter(({ type }) => type !== "location").sort(compareActivityOrder),
+  ).map((item) => (item.type === "note" ? item : remaining.shift()!));
+  return [...legacy, ...fullOrder].map((item, sort_order) => ({ ...item, sort_order }));
 }
 
 export function canonicalActivityOrderIds(items: OrderableActivity[]) {

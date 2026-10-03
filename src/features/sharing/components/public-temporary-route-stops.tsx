@@ -1,20 +1,52 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { Bike, Car, Footprints, MapPinOff, TrainFront } from "lucide-react";
+import {
+  Bike,
+  BusFront,
+  Car,
+  CableCar,
+  Footprints,
+  MapPinOff,
+  Plane,
+  Route,
+  Ship,
+  TrainFront,
+} from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
-import type { RouteLegMode } from "@/features/routes/types";
+import { transportModeLabels } from "@/features/itinerary/types";
+import { selectableRouteLegModes, type RouteLegMode } from "@/features/routes/types";
 
 import type { PublicItineraryItem } from "../types";
 
-const dayRouteModes = [
-  { Icon: Car, label: "Drive", value: "self_driving" },
-  { Icon: TrainFront, label: "Transit", value: "subway" },
-  { Icon: Bike, label: "Bike", value: "bike" },
-  { Icon: Footprints, label: "Walk", value: "walk" },
-] satisfies Array<{ Icon: typeof Car; label: string; value: RouteLegMode }>;
+const modeIcons: Partial<Record<RouteLegMode, typeof Car>> = {
+  bike: Bike,
+  bus: BusFront,
+  cable_car: CableCar,
+  ferry: Ship,
+  flight: Plane,
+  self_driving: Car,
+  shuttle: BusFront,
+  subway: TrainFront,
+  taxi: Car,
+  train: TrainFront,
+  tram: TrainFront,
+  walk: Footprints,
+};
+const dayRouteModes = selectableRouteLegModes.map((mode) => ({
+  Icon: modeIcons[mode] ?? Route,
+  label:
+    mode === "subway"
+      ? "Transit"
+      : mode === "bike"
+        ? "Bike"
+        : mode === "walk"
+          ? "Walk"
+          : transportModeLabels[mode],
+  value: mode,
+}));
 
 export function PublicTemporaryRouteStops({
   candidates,
@@ -82,7 +114,7 @@ export function PublicTemporaryRouteStops({
                       from: item.title,
                       to: nextItem.title,
                     })}
-                    className="h-9"
+                    className="min-h-11"
                   >
                     <span className="flex items-center gap-1.5 truncate text-xs">
                       <ModeIcon aria-hidden="true" className="size-3.5 shrink-0" />

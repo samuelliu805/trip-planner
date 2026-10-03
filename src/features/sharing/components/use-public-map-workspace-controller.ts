@@ -1,16 +1,14 @@
 import { useMemo, useState, useTransition } from "react";
 
 import { useI18n } from "@/features/i18n/i18n-provider";
-import type { OverviewRouteMode, RouteLegMode } from "@/features/routes/types";
+import type { OverviewRouteMode } from "@/features/routes/types";
 
-import { canCalculateRouteStops } from "@/features/routes/route-readiness";
-import { calculatePublicOverviewRoute, calculatePublicRoute } from "../actions";
+import { calculatePublicOverviewRoute } from "../actions";
 import { focusPublicMapItem } from "../public-map-focus";
 import {
   buildPublicMarkers,
   buildPublicOverviewLines,
   buildPublicRouteLines,
-  orderedPublicDayStopRefs,
   publicDayRoutePlan,
   publicOverviewDefaultModes,
   publicOverviewStops,
@@ -18,6 +16,7 @@ import {
 import { publicDayRoutePresentation } from "../public-route-presentation";
 import type { PublicRouteCalculation } from "../types";
 import type { PublicMapWorkspaceProps } from "./public-map-workspace-types";
+import { usePublicDayRoute } from "./use-public-day-route";
 
 const publicMapThemes = {
   bento: { color: "#58f58b", glyphColor: "#06100a" },
@@ -47,15 +46,10 @@ export function usePublicMapWorkspaceController(
     view: typeof activeView;
   }>();
   const [dayRef, setDayRef] = useState(defaultDayRef);
-  const [exploringDayRef, setExploringDayRef] = useState<string>();
-  const [dayModes, setDayModes] = useState<Record<string, RouteLegMode>>({});
-  const [localStops, setLocalStops] = useState<string[]>([]);
-  const [dayCalculation, setDayCalculation] = useState<PublicRouteCalculation>();
   const [overviewCalculation, setOverviewCalculation] = useState<PublicRouteCalculation>();
   const [overviewModes, setOverviewModes] = useState<OverviewRouteMode[]>(() =>
     publicOverviewDefaultModes(itinerary),
   );
-  const [dayError, setDayError] = useState<string>();
   const [overviewError, setOverviewError] = useState<string>();
   const [pending, startTransition] = useTransition();
 
@@ -81,15 +75,26 @@ export function usePublicMapWorkspaceController(
           : "overview");
   const dayPlan = publicDayRoutePlan(itinerary, selectedDayRef ?? dayRef);
   const day = dayPlan.day;
-  const exploring = routeScope === "day" && exploringDayRef === day?.ref;
   const candidates = dayPlan.items;
-  const { omittedActivityCount, routeSetupItems, savedLines, savedRoute, temporaryDayLines } =
-    publicDayRoutePresentation(itinerary, dayPlan, dayCalculation, routeColor);
+  const { omittedActivityCount, routeSetupItems, savedLines, savedRoute } =
+    publicDayRoutePresentation(itinerary, dayPlan, undefined, routeColor);
+  const dayRoute = usePublicDayRoute({
+    active: routeScope === "day",
+    allowExplore: itinerary.settings.allowRouteExplore,
+    onCalculated,
+    plan: dayPlan,
+    route: savedRoute,
+    token,
+  });
+  const { calculation: dayCalculation, exploring } = dayRoute;
   const calculatedOverviewLines = overviewCalculation
     ? buildPublicRouteLines(overviewCalculation.legs, routeColor, "temporary:overview")
     : [];
   const overviewLines = overviewCalculation ? calculatedOverviewLines : straightOverviewLines;
-  const dayLines = exploring && dayCalculation ? temporaryDayLines : savedLines;
+  const dayLines =
+    exploring && dayCalculation
+      ? buildPublicRouteLines(dayCalculation.legs, routeColor, `temporary:${day?.ref}`)
+      : savedLines;
   const lines = routeScope === "overview" ? overviewLines : dayLines;
   const dayMarkerRefs = new Set([
     ...candidates.map(({ ref }) => ref),
@@ -100,56 +105,6 @@ export function usePublicMapWorkspaceController(
     routeScope === "overview"
       ? markers.filter(({ entries }) => entries.some(({ kind }) => kind === "city"))
       : markers.filter(({ itemIds }) => itemIds.some((ref) => dayMarkerRefs.has(ref)));
-  const dayLegModes = localStops
-    .slice(0, -1)
-    .map((ref, index) => dayModes[`${ref}:${localStops[index + 1]}`] ?? "self_driving");
-
-  function defaultStops(nextDayRef = day?.ref) {
-    return publicDayRoutePlan(itinerary, nextDayRef).items.map(({ ref }) => ref);
-  }
-
-  function resetDay(nextDayRef = day?.ref) {
-    setLocalStops(defaultStops(nextDayRef));
-    setDayModes({});
-    setDayCalculation(undefined);
-    setDayError(undefined);
-  }
-
-  function toggleStop(ref: string, include: boolean) {
-    setDayCalculation(undefined);
-    setLocalStops((current) => {
-      const selected = new Set(current);
-      if (include) selected.add(ref);
-      else selected.delete(ref);
-      return orderedPublicDayStopRefs(dayPlan, selected);
-    });
-  }
-
-  const canCalculateDay = canCalculateRouteStops(
-    localStops.map((ref) => candidates.find((item) => item.ref === ref)?.place),
-  );
-
-  function calculateDay() {
-    if (!day || !canCalculateDay) {
-      setDayError("Select two different mapped places to calculate a route.");
-      return;
-    }
-    setDayError(undefined);
-    startTransition(async () => {
-      const result = await calculatePublicRoute({
-        dayRef: day.ref,
-        legModes: dayLegModes,
-        stopRefs: localStops,
-        token,
-      });
-      if ("error" in result) {
-        setDayError(result.error);
-        return;
-      }
-      setDayCalculation(result.data);
-      onCalculated?.();
-    });
-  }
 
   function calculateOverview() {
     if (overviewStops.length < 2 || overviewStops.length > 20) {
@@ -178,54 +133,22 @@ export function usePublicMapWorkspaceController(
 
   function selectDay(nextDayRef: string) {
     setDayRef(nextDayRef);
-    setExploringDayRef(undefined);
-    resetDay(nextDayRef);
     onSelectionChange({ dayRef: nextDayRef, scope: "day" });
   }
 
   function selectScope(scope: "day" | "overview") {
     setRouteScopeOverride({ scope, view: activeView });
-    if (scope === "overview") setExploringDayRef(undefined);
     onSelectionChange(scope === "day" ? { dayRef: day?.ref, scope } : { scope });
   }
 
   return {
     dayPanel: {
       allowExplore: itinerary.settings.allowRouteExplore,
-      calculation: dayCalculation,
+      ...dayRoute,
       candidates,
-      canCalculate: canCalculateDay,
-      legModes: dayLegModes,
       days: itinerary.days,
-      error: dayError,
-      exploring,
-      localStops,
       omittedActivityCount,
-      onBackToShared: () => {
-        setExploringDayRef(undefined);
-        setDayCalculation(undefined);
-        setDayError(undefined);
-      },
-      onCalculate: calculateDay,
-      onEdit: () => {
-        setDayCalculation(undefined);
-        setDayError(undefined);
-      },
-      onExplore: () => {
-        resetDay(day?.ref);
-        setExploringDayRef(day?.ref);
-      },
-      onModeChange: (index: number, mode: RouteLegMode) => {
-        const from = localStops[index];
-        const to = localStops[index + 1];
-        if (!from || !to) return;
-        setDayModes((current) => ({ ...current, [`${from}:${to}`]: mode }));
-        setDayCalculation(undefined);
-      },
-      onReset: () => resetDay(day?.ref),
       onSelectDay: selectDay,
-      onToggleStop: toggleStop,
-      pending,
       plan: dayPlan,
       route: savedRoute,
       routeSetupItems,

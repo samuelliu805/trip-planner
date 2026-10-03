@@ -6,7 +6,7 @@ import { editorialDaySections } from "../../editorial-presentation";
 import type { PublicItinerary, PublicItineraryDay } from "../../types";
 import { EditionCover } from "./edition-cover";
 import { EditionDate, editionDayTitle } from "./edition-navigation";
-import { OptionalNote } from "./day-plans";
+import { PublicDayNotes } from "../public-day-notes";
 import { DayPhoto } from "./day-photo";
 import { editionTripTowns } from "../../edition-destinations";
 
@@ -14,13 +14,15 @@ function OverviewDayCard({
   day,
   journal,
   onSelectDay,
+  onSelectItem,
 }: {
   day: PublicItineraryDay;
   journal: boolean;
   onSelectDay: (ref: string) => void;
+  onSelectItem: (ref: string, dayRef: string) => void;
 }) {
   const { t } = useI18n();
-  const { plans, transport } = editorialDaySections(day);
+  const { notes, plans, transport } = editorialDaySections(day);
   return (
     <article className="edition-overview-day-card" data-public-day-ref={day.ref}>
       <div className="edition-overview-day-copy">
@@ -44,7 +46,11 @@ function OverviewDayCard({
               ))
             : t("No shared plans for this day.")}
         </p>
-        {journal ? <OptionalNote text={day.notes} /> : null}
+        <PublicDayNotes
+          dayNotes={day.notes}
+          notes={notes}
+          onSelect={(ref) => onSelectItem(ref, day.ref)}
+        />
         <button
           className="edition-overview-open"
           data-public-day-target={day.ref}
@@ -69,6 +75,7 @@ function OverviewDayCard({
 export function OverviewEdition({
   itinerary,
   onSelectDay,
+  onSelectItem,
   templateId,
 }: {
   itinerary: PublicItinerary;
@@ -109,7 +116,13 @@ export function OverviewEdition({
       </div>
       <div className="edition-overview-cards">
         {itinerary.days.map((day) => (
-          <OverviewDayCard key={day.ref} day={day} journal={journal} onSelectDay={onSelectDay} />
+          <OverviewDayCard
+            key={day.ref}
+            day={day}
+            journal={journal}
+            onSelectDay={onSelectDay}
+            onSelectItem={onSelectItem}
+          />
         ))}
       </div>
       {itinerary.trip.dayCount > itinerary.days.length ? (
