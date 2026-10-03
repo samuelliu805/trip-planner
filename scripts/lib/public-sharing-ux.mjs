@@ -40,21 +40,33 @@ function fixtureFor(template) {
     sortOrder: index,
     place: { ...activity.place, localityName },
   }));
+  fixture.days.forEach((day, index) => {
+    day.items.push({
+      ref: (20000 + index).toString(16).padStart(64, "0"),
+      sortOrder: 0,
+      title: "Reminder for day " + (index + 1),
+      notes: "Keep your passport in your bag.",
+      type: "note",
+    });
+  });
   fixture.trip.dayCount = fixture.days.length;
   return fixture;
 }
 
 export async function verifySharingUx({ page, app, token, directory }) {
   let calculations = 0;
+  const calculationInputs = [];
   const routePattern = `${app.baseUrl}/share/**`;
   await page.route(routePattern, async (route) => {
     if (route.request().method() !== "POST" || !route.request().headers()["next-action"])
       return route.fallback();
     calculations++;
+    const [input] = JSON.parse(route.request().postData());
+    calculationInputs.push(input);
     const calculation = {
       legs: Array.from({ length: 6 }, (_, index) => ({
         position: index + 1,
-        mode: "self_driving",
+        mode: input.legModes[index] ?? "self_driving",
         distanceMeters: 200,
         durationSeconds: 40,
         geometry: {
@@ -107,8 +119,31 @@ export async function verifySharingUx({ page, app, token, directory }) {
           assert.ok(dots.length > 0);
           assert.ok(dots.every(({ count, gap }) => count === 3 && gap === "5px"));
         }
+        const overviewNote = dayCard.locator("[data-public-note-ref]");
+        assert.equal(await overviewNote.count(), 1, "Overview has one independent note.");
+        assert.ok((await overviewNote.textContent()).includes("Keep your passport"));
+        assert.equal(
+          await dayCard
+            .locator(".edition-overview-stops, .public-overview-board")
+            .getByText("Reminder for day 4", { exact: true })
+            .count(),
+          0,
+          "Notes never enter the overview plans.",
+        );
         await page.getByRole("tab", { name: "Timeline", exact: true }).click();
         const timeline = page.locator("#public-timeline-panel");
+        const noteDay = timeline.locator(
+          '[data-public-day-ref="' + fixture.days[0].ref + '"]',
+        ).first();
+        assert.equal(await noteDay.locator("[data-public-note-ref]").count(), 1);
+        assert.equal(
+          await noteDay
+            .locator(".edition-plan-list, .timeline-node-list-v4")
+            .getByText("Reminder for day 1", { exact: true })
+            .count(),
+          0,
+          "Timeline notes have no activity ordinal.",
+        );
         const heading = timeline
           .locator(`[data-public-day-ref="${fixture.days[3].ref}"]`)
           .first()
@@ -174,7 +209,18 @@ export async function verifySharingUx({ page, app, token, directory }) {
         );
         await drawer.getByRole("button", { name: "Day route", exact: true }).click();
         await assertPanelBoundaries(workspace, { template, width, phase: "day" });
+        await selectRouteDay(page, drawer, 1);
         await drawer.getByRole("button", { name: "Calculate route", exact: true }).waitFor();
+        assert.ok(await drawer.locator("[data-public-route-stop]").count() >= 2);
+        const checkedStops = await drawer.getByRole("checkbox").evaluateAll((nodes) =>
+          nodes.filter((node) => node.getAttribute("data-state") === "checked").length,
+        );
+        assert.ok(checkedStops >= 2, "Mapped stops are ready without entering another setup step.");
+        const travel = drawer.getByRole("combobox", { name: /^Travel from/ }).first();
+        await travel.click();
+        for (const mode of ["Flight", "Ferry", "Cable car", "Other"])
+          assert.equal(await page.getByRole("option", { name: mode, exact: true }).count(), 1);
+        await page.getByRole("option", { name: "Flight", exact: true }).click();
         const daySelect = await drawer
           .getByRole("combobox", { name: "Route day", exact: true })
           .boundingBox();
@@ -183,8 +229,6 @@ export async function verifySharingUx({ page, app, token, directory }) {
           daySelect.y + daySelect.height <= calculateBounds.y + 1,
           "Day selection precedes route calculation.",
         );
-        await action.click();
-        await drawer.getByRole("button", { name: "Calculate", exact: true }).waitFor();
         const setup = await drawer.evaluate((node) => ({
           panel: node.clientHeight,
           body: node.querySelector(".public-map-panel-body").clientHeight,
@@ -228,8 +272,59 @@ export async function verifySharingUx({ page, app, token, directory }) {
           1,
           "Calculated routes expose exactly one edit action",
         );
+        const firstDayRequest = calculationInputs.at(-1);
+        assert.equal(firstDayRequest.dayRef, fixture.days[0].ref);
+        assert.equal(firstDayRequest.legModes[0], "flight");
+        await selectRouteDay(page, drawer, 2);
+        await drawer.getByRole("button", { name: "Calculate route", exact: true }).waitFor();
+        assert.equal(
+          await drawer.getByRole("button", { name: "Edit route", exact: true }).count(),
+          0,
+        );
+        assert.ok(await action.isEnabled(), "The next day can be calculated directly.");
+        const secondTravel = drawer.getByRole("combobox", { name: /^Travel from/ }).first();
+        assert.equal((await secondTravel.textContent()).trim(), "Drive");
+        await secondTravel.click();
+        await page.getByRole("option", { name: "Ferry", exact: true }).click();
+        const beforeSecondDay = calculations;
         await action.click();
-        await drawer.getByRole("button", { name: "Calculate", exact: true }).waitFor();
+        await workspace.getByRole("button", { name: "Open route panel", exact: true }).waitFor();
+        assert.equal(calculations, beforeSecondDay + 1, "One action calculates the next day.");
+        assert.equal(calculationInputs.at(-1).dayRef, fixture.days[1].ref);
+        assert.equal(calculationInputs.at(-1).legModes[0], "ferry");
+        await workspace.getByRole("button", { name: "Open route panel", exact: true }).click();
+        await drawer.getByRole("button", { name: "Edit route", exact: true }).waitFor();
+        await selectRouteDay(page, drawer, 1);
+        await drawer.getByRole("button", { name: "Edit route", exact: true }).waitFor();
+        await assertExpandedLegs(drawer, { template, width, scope: "returned-day" });
+        assert.equal(calculations, beforeSecondDay + 1, "Returning reuses the calculated day.");
+        await action.click();
+        await drawer.getByRole("button", { name: "Calculate route", exact: true }).waitFor();
+        assert.equal(
+          (
+            await drawer.getByRole("combobox", { name: /^Travel from/ }).first().textContent()
+          ).trim(),
+          "Flight",
+          "Editing restores this day's own travel modes.",
+        );
+        const checkbox = drawer.getByRole("checkbox").last();
+        const excludedRef = await checkbox.getAttribute("id");
+        await checkbox.click();
+        await selectRouteDay(page, drawer, 2);
+        await drawer.getByRole("button", { name: "Edit route", exact: true }).waitFor();
+        await selectRouteDay(page, drawer, 1);
+        await drawer.getByRole("button", { name: "Calculate route", exact: true }).waitFor();
+        assert.equal(
+          await drawer.locator('[id="' + excludedRef + '"]').getAttribute("data-state"),
+          "unchecked",
+        );
+        assert.equal(
+          (
+            await drawer.getByRole("combobox", { name: /^Travel from/ }).first().textContent()
+          ).trim(),
+          "Flight",
+          "Uncalculated edits survive day switching as well.",
+        );
         if (width <= 430) {
           const rect = await body.boundingBox();
           const top = (await drawer.boundingBox()).y;
@@ -276,8 +371,8 @@ export async function verifySharingUx({ page, app, token, directory }) {
     }
     assert.equal(
       calculations,
-      84,
-      "Every template and viewport completed the calculation/edit flow",
+      126,
+      "Every template and viewport calculated two days and the whole trip",
     );
     console.log(
       "PASS all six template day titles, non-sticky touch headers, compact route panels, scrolling controls and unique edit actions at seven viewports",
@@ -286,6 +381,12 @@ export async function verifySharingUx({ page, app, token, directory }) {
   } finally {
     await page.unroute(routePattern);
   }
+}
+
+async function selectRouteDay(page, drawer, dayNumber) {
+  const select = drawer.getByRole("combobox", { name: "Route day", exact: true });
+  await select.click();
+  await page.getByRole("option", { name: new RegExp("^Day " + dayNumber + " ·") }).click();
 }
 
 async function assertPanelBoundaries(workspace, context) {

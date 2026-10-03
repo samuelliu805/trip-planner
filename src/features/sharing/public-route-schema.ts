@@ -3,7 +3,7 @@ import { z } from "zod";
 import { routeGeometryFromJson } from "../../lib/providers/routes/geometry.ts";
 
 import { itineraryItemTypes } from "../itinerary/item-schema.ts";
-import { overviewRouteModes, routeLegModes } from "../routes/types.ts";
+import { overviewRouteModes, routeLegModes, selectableRouteLegModes } from "../routes/types.ts";
 
 const routeGeometrySchema = z.unknown().transform((value, context) => {
   const geometry = routeGeometryFromJson(value);
@@ -50,10 +50,7 @@ export const publicSavedRouteSchema = z
 export const publicRouteCalculationInputSchema = z
   .object({
     dayRef: z.string().length(64),
-    legModes: z
-      .array(z.enum(["self_driving", "subway", "bike", "walk"]))
-      .min(1)
-      .max(19),
+    legModes: z.array(z.enum(selectableRouteLegModes)).min(1).max(19),
     stopRefs: z.array(z.string().length(64)).min(2).max(20),
     token: z.uuid(),
   })

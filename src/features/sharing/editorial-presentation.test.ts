@@ -8,6 +8,9 @@ import {
 } from "./editorial-presentation.ts";
 import { publicItinerarySchema } from "./schema.ts";
 import { parisPublicItinerary } from "../landing/landing-public-fixture.ts";
+import { publicOverviewDaySections } from "./public-overview-presentation.ts";
+import { publicTimelineDayPresentation } from "./public-timeline-presentation.ts";
+import { buildPublicMarkers, publicDayRoutePlan } from "./public-map-model.ts";
 
 for (const notes of [undefined, null, "", "  \n\t "]) {
   test(`absent or blank text (${String(notes)}) remains a normal itinerary`, () => {
@@ -150,4 +153,44 @@ test("published accommodation cities supply photos while hotels and airport POIs
   hotel.type = "hotel";
   itinerary.settings.showPlacePhotos = false;
   assert.equal(withPublicCityPhotos(itinerary, []).days[0].cityPhotoSource, undefined);
+});
+
+test("standalone notes remain separate from every plan list, ordinal, count and map route", () => {
+  const source = publicItinerarySchema.parse(parisPublicItinerary);
+  const day = source.days[0];
+  const plansBefore = editorialDaySections(day).plans.map(({ ref }) => ref);
+  const note = {
+    ...day.items[2],
+    ref: "9".repeat(64),
+    type: "note" as const,
+    title: "Remember your passport",
+    notes: "Keep a copy in your bag.",
+    sortOrder: 0,
+    place: {
+      displayName: "A related place",
+      latitude: 48.85,
+      longitude: 2.35,
+    },
+  };
+  day.items.unshift(note);
+  assert.deepEqual(
+    editorialDaySections(day).plans.map(({ ref }) => ref),
+    plansBefore,
+  );
+  assert.deepEqual(editorialDaySections(day).notes, [note]);
+  const overview = publicOverviewDaySections(day);
+  assert.equal(overview.cards.length, plansBefore.length);
+  assert.deepEqual(overview.cards.map(({ order }) => order), [1, 2, 3]);
+  assert.deepEqual(overview.notes, [note]);
+  const timeline = publicTimelineDayPresentation(day);
+  assert.equal(timeline.nodes.length, plansBefore.length);
+  assert.deepEqual(timeline.nodes.map(({ ordinal }) => ordinal), [1, 2, 3]);
+  assert.deepEqual(timeline.notes, [note]);
+  assert.ok(publicDayRoutePlan(source, day.ref).items.every(({ type }) => type !== "note"));
+  assert.ok(buildPublicMarkers(source).every(({ itemIds }) => !itemIds.includes(note.ref)));
+  const original = structuredClone(source);
+  source.settings.showNotes = false;
+  const display = publicDisplayItinerary(source);
+  assert.ok(display.days[0].items.every(({ type }) => type !== "note"));
+  assert.deepEqual(source.days, original.days, "Published note data stays intact.");
 });

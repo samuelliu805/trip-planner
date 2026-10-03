@@ -38,7 +38,7 @@ export function buildPublicMarkers(
 ): PlannerMapMarker[] {
   const activityMarkers = itinerary.days.flatMap((day) =>
     day.items.flatMap((item) => {
-      if (item.type === "location") return [];
+      if (item.type === "location" || item.type === "note") return [];
       if (typeof item.place?.latitude !== "number" || typeof item.place.longitude !== "number")
         return [];
       const kind = markerKind(item.type, item.flightEndpoint?.role);

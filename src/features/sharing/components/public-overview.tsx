@@ -7,6 +7,7 @@ import { zhCN } from "date-fns/locale";
 import { publicDayCityLabel } from "../presentation";
 import { publicOverviewDaySections } from "../public-overview-presentation";
 import type { PublicItinerary } from "../types";
+import { PublicDayNotes } from "./public-day-notes";
 import { PublicOverviewCard } from "./public-overview-card";
 import { PublicOverviewTransportList } from "./public-overview-transport-list";
 
@@ -108,11 +109,17 @@ export function PublicOverview({
                     </div>
                   ) : null}
                 </>
-              ) : (
+              ) : sections.notes.length || day.notes ? null : (
                 <p className="public-overview-empty">
                   <T message={"No shared plans for this day."} />
                 </p>
               )}
+              <PublicDayNotes
+                dayNotes={day.notes}
+                notes={sections.notes}
+                onSelect={(ref) => onSelectItem(ref, day.ref)}
+                selectedItemRef={selectedItemRef}
+              />
             </article>
           );
         })}

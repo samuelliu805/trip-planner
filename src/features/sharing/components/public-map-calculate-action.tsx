@@ -31,7 +31,7 @@ export function PublicMapCalculateAction({ controller }: { controller: Controlle
           : "Calculate route"
         : overview
           ? "Calculate whole trip"
-          : "Calculate";
+          : "Calculate route";
   return (
     <Button
       aria-busy={panel.pending}
@@ -41,7 +41,7 @@ export function PublicMapCalculateAction({ controller }: { controller: Controlle
         if (editing) {
           if (overview) controller.overviewPanel.onReset();
           else day.onEdit();
-        } else if (settingUp) day.onExplore();
+        } else if (settingUp && day.route) day.onExplore();
         else panel.onCalculate();
       }}
       type="button"

@@ -1236,7 +1236,7 @@ test("public route exploration accepts only the modes exposed by each route UI",
     publicRouteCalculationInputSchema.safeParse({
       ...base,
       dayRef: ref("7"),
-      legModes: ["taxi"],
+      legModes: ["teleport"],
     }).success,
     false,
   );
@@ -2313,6 +2313,10 @@ test("route exploration is local-only and never exposes owner persistence contro
     new URL("./components/use-public-map-workspace-controller.ts", import.meta.url),
     "utf8",
   );
+  const dayRoute = await readFile(
+    new URL("./components/use-public-day-route.ts", import.meta.url),
+    "utf8",
+  );
   const dayPanel = await readFile(
     new URL("./components/public-day-route-panel.tsx", import.meta.url),
     "utf8",
@@ -2337,6 +2341,7 @@ test("route exploration is local-only and never exposes owner persistence contro
   const routeSources =
     workspace +
     workspaceController +
+    dayRoute +
     dayPanel +
     overviewPanel +
     routeSummary +
@@ -2349,8 +2354,8 @@ test("route exploration is local-only and never exposes owner persistence contro
   assert.doesNotMatch(overviewPanel, /Overview connections/);
   assert.match(routeSources, /Day route/);
   assert.match(temporaryStops, /data-route-leg-mode/);
-  assert.match(workspaceController, /dayLegModes/);
-  assert.match(workspaceController, /`\$\{ref\}:\$\{localStops\[index \+ 1\]\}`/);
+  assert.match(dayRoute, /dayLegModes/);
+  assert.match(dayRoute, /`\$\{ref\}:\$\{localStops\[index \+ 1\]\}`/);
   assert.match(temporaryStops, /onModeChange\(position, value as RouteLegMode\)/);
   assert.match(sharedRoute, /Edit route/);
   assert.match(routeSources, /Drive/);

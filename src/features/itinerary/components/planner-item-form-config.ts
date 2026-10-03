@@ -76,7 +76,7 @@ export function itemFormCapabilities(
 ) {
   return {
     supportsLink: !["location", "note"].includes(type),
-    supportsPlace: true,
+    supportsPlace: type !== "note",
     supportsPrice:
       !["location", "note"].includes(type) && !(type === "car_rental" && carAction === "return"),
     supportsTime: [

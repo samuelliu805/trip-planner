@@ -66,6 +66,7 @@ function basicsBlocks(
   journeySchedule: boolean,
   creating: boolean,
 ): ItemFormBlock[] {
+  if (type === "note") return ["title", "notes"];
   if (type === "location") return ["place", "title"];
   if (type === "hotel") return ["place", "title"];
   if (type === "meal") return ["place", "title"];

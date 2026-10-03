@@ -48,11 +48,12 @@ export function publicOverviewDayLayout(day: PublicItineraryDay) {
 export function publicOverviewDaySections(day: PublicItineraryDay) {
   const layout = publicOverviewDayLayout(day);
   const cards = layout
-    .filter(({ item }) => !publicOverviewTransportTypes.has(item.type))
+    .filter(({ item }) => item.type !== "note" && !publicOverviewTransportTypes.has(item.type))
     .map((presentation, index) => ({ ...presentation, order: index + 1 }));
 
   return {
     cards,
+    notes: layout.filter(({ item }) => item.type === "note").map(({ item }) => item),
     transport: layout.filter(({ item }) => publicOverviewTransportTypes.has(item.type)),
   };
 }
