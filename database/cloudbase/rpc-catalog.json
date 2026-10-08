@@ -3327,6 +3327,7 @@
     "history_order_item_snapshot(uuid,text)",
     "history_order_snapshot_list(uuid,jsonb)",
     "history_readable_order_changes(uuid,jsonb)",
+    "idea_flight_plan_segments(jsonb)",
     "idea_journey_groups(jsonb,text,text,text,date,date)",
     "idea_journey_groups_phase_direction_repair(jsonb,text,text,text,date,date)",
     "idea_journey_groups_phase_localized_labels(jsonb,text,text,text,date,date)",

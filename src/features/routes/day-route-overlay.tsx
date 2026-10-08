@@ -92,7 +92,7 @@ function DayRouteSummary({
           ) : (
             <RefreshCw aria-hidden="true" className="size-4" />
           )}
-          <Localized value={route.pending ? "Updating route…" : "Route changed · Update route"} />
+          <Localized value={route.pending ? "Calculating…" : "Compute route"} />
         </button>
       ) : null}
       {!route.canCalculate ? (

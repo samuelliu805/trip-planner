@@ -63,11 +63,8 @@ export default async function HomePage() {
               <Button asChild className="min-h-11 min-w-0 px-2 sm:px-3" variant="ghost">
                 <Link href="/account">
                   <UserRound aria-hidden="true" className="size-4 shrink-0" />
-                  <span className="hidden max-w-40 truncate sm:inline">
+                  <span className="max-w-28 truncate sm:max-w-40">
                     {appUserIdentityLabel(user)}
-                  </span>
-                  <span className="sm:hidden">
-                    <T message={"Account"} />
                   </span>
                 </Link>
               </Button>

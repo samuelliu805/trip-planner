@@ -495,8 +495,10 @@ test("apply previews repair an old stopover destination and include the final ar
       departureDate,
     ]),
     [
-      ["SHA", "SYD", "2026-12-25"],
-      ["SYD", "SHA", "2027-01-02"],
+      ["SHA", "HAK", "2026-12-25"],
+      ["HAK", "SYD", "2026-12-26"],
+      ["SYD", "HAK", "2027-01-02"],
+      ["HAK", "SHA", "2027-01-03"],
     ],
   );
   assert.equal(ideaJourneyDates(item).at(-1), "2027-01-03");

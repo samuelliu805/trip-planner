@@ -112,5 +112,19 @@ export function guestIdeaJourneys(idea: GuestIdea): GuestJourney[] {
       !journeys.every((journey) => journey.departureDate))
   )
     throw new Error("Review the outbound and return flight routes.");
-  return journeys;
+  if (value.category !== "flight") return journeys;
+  return journeys.flatMap((journey) =>
+    journey.segments.length
+      ? journey.segments.map((segment) => ({
+          arrivalDate: segment.arrivalDate || segment.departureDate || null,
+          arrivalTime: segment.arrivalTime || null,
+          departureDate: segment.departureDate || null,
+          departureTime: segment.departureTime || null,
+          destination: segment.destination || null,
+          origin: segment.origin || null,
+          segments: [segment],
+          serviceNumber: [segment.carrier, segment.serviceNumber].filter(Boolean).join(" ") || null,
+        }))
+      : [journey],
+  );
 }

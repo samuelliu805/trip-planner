@@ -12,7 +12,6 @@ import { eligibleDayRouteItems } from "./day-route-map";
 import { savedDayRouteDraft as savedDraft, defaultDayRouteDraft } from "./day-route-default-draft";
 import { fixedDayRouteDraft } from "./day-route-order";
 import { synchronizeSavedDayRouteDraft } from "./day-route-synchronization";
-import { resolveRouteCalculationConfig } from "./plan-config";
 import { dayRouteStatus, type DayRouteStatus } from "./status";
 import { suggestedDraftLegMode } from "./transport-suggestion";
 import { useDayRouteActions } from "./use-day-route-actions";
@@ -120,6 +119,7 @@ export function useDayRoute(
     () => defaultDayRouteDraft(eligibleItems, suggestedMode, previousHotel),
     [eligibleItems, previousHotel, suggestedMode],
   );
+  const computeDraft = synchronized?.draft ?? defaultDraft;
   const displayDraft = draft ?? synchronized?.draft ?? (plan ? null : defaultDraft);
   const variantId = workspace.variant.id;
   function setError(value?: string) {
@@ -248,7 +248,6 @@ export function useDayRoute(
   );
   const status =
     baseStatus === "needs_edit" ? baseStatus : synchronizedChanged ? "stale" : baseStatus;
-  const resolved = plan ? resolveRouteCalculationConfig(workspace, plan) : undefined;
 
   return {
     activeDay,
@@ -258,22 +257,22 @@ export function useDayRoute(
       setError(undefined);
     },
     canCalculate: canCalculateDayRouteDraft(displayDraft, stopItems),
-    canComputeDefault: canCalculateDayRouteDraft(defaultDraft, stopItems),
+    canComputeDefault: canCalculateDayRouteDraft(computeDraft, stopItems),
     clearRoute,
     computeDefault: async () => {
       if (requestRouteAccountIfNeeded()) return;
-      await persistAndCalculate(defaultDraft);
+      await persistAndCalculate(computeDraft);
     },
     conflict,
     displayDraft,
     draft,
     editing: draft !== null,
     eligibleItems,
-    error: error ?? (!resolved?.config && plan ? resolved?.error : undefined),
+    error,
     fitKey: plan?.calculation?.computed_at
       ? `day-route:${activeDay?.id}:${plan.calculation.computed_at}`
       : undefined,
-    hasCalculation: Boolean(plan?.calculation),
+    hasCalculation: Boolean(plan?.calculation) && status === "current",
     openCreate: () => {
       if (requestRouteAccountIfNeeded()) return;
       setDraft(defaultDraft);

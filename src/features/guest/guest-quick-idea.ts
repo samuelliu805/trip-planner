@@ -1,5 +1,6 @@
 import { classifyIdeaInput, parseReliableIdeaFields } from "../research/idea-input.ts";
 import type { ResearchCategory } from "../research/types.ts";
+import { defaultJourneyIdeaName } from "../research/default-name.ts";
 
 export function guestQuickIdeaInput(text: string, category: ResearchCategory, tripId: string) {
   const classification = classifyIdeaInput(text);
@@ -13,10 +14,13 @@ export function guestQuickIdeaInput(text: string, category: ResearchCategory, tr
         ? category
         : classification.kind;
   const titleText = sourceUrl ? text.replace(sourceUrl, "").trim() : text;
-  const route =
-    parsed.originText && parsed.destinationText
-      ? `${parsed.originText} → ${parsed.destinationText}`
-      : null;
+  const route = defaultJourneyIdeaName({
+    origin: parsed.originText,
+    destination: parsed.destinationText,
+    departureDate: parsed.startDate,
+    journeyType: parsed.journeyType,
+    segments: parsed.segments,
+  });
   const title = titleText || route || (sourceUrl ? new URL(sourceUrl).hostname : text);
   return {
     category: detectedCategory,

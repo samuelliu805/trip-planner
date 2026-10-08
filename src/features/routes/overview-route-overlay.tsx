@@ -52,6 +52,8 @@ export function OverviewRouteOverlay({
   const hasPendingCalculation = route.segments.some(({ calculatedLeg, mode }) =>
     Boolean(mode && !calculatedLeg),
   );
+  const hasCalculation =
+    route.segments.some(({ calculatedLeg }) => calculatedLeg) && !hasPendingCalculation;
   const legDetails = route.segments.flatMap(({ calculatedLeg, from, to }) =>
     calculatedLeg
       ? [
@@ -84,15 +86,33 @@ export function OverviewRouteOverlay({
             >
               <X className="size-4" />
             </RouteIconButton>
-          ) : (
+          ) : hasCalculation ? (
             <RouteIconButton
               className="col-start-2 row-start-1"
-              label={hasPendingCalculation ? "Set up route" : "Edit Overview route"}
+              label="Edit Overview route"
               onClick={() => route.setEditing(true)}
-              title={hasPendingCalculation ? "Set up route" : "Edit Overview route"}
-              variant={hasPendingCalculation ? "primary" : "secondary"}
+              title="Edit Overview route"
+              variant="secondary"
             >
               <Pencil className="size-4" />
+            </RouteIconButton>
+          ) : (
+            <RouteIconButton
+              className="col-start-2 row-start-1 w-auto gap-2 px-3"
+              disabled={route.pending}
+              label="Compute route"
+              title="Compute route"
+              variant="primary"
+              onClick={() =>
+                void (hasPendingCalculation ? route.calculate() : route.setEditing(true))
+              }
+            >
+              {route.pending ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <Route className="size-4" />
+              )}
+              <T message="Compute route" />
             </RouteIconButton>
           )}
           {!route.editing ? (

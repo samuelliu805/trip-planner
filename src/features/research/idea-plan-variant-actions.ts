@@ -9,6 +9,8 @@ import {
   duplicateRouteVariant,
 } from "@/features/variants/actions";
 import { variantColorPalette } from "@/features/variants/schema";
+import { clonedVariantName, nextVariantName } from "@/features/variants/default-name";
+import { getRequestLocale } from "@/features/i18n/server";
 import { getRelationalDatabase } from "@/platform/composition/server";
 
 import { loadResearchItem } from "./actions";
@@ -39,11 +41,10 @@ async function copyPlanAndApply(
       !variants.data?.some((variant) => variant.color.toLowerCase() === candidate.value),
   )?.value;
   if (!color) return { error: "This trip has no space for another Plan." };
-  const names = new Set(variants.data?.map((variant) => variant.name.toLowerCase()));
-  const baseName = `${source.name} ${creation === "blank" ? "idea" : "flights"}`.slice(0, 75);
-  let name = baseName;
-  for (let number = 2; names.has(name.toLowerCase()); number += 1)
-    name = `${baseName} ${number}`.slice(0, 80);
+  const name =
+    creation === "blank"
+      ? nextVariantName(variants.data ?? [], await getRequestLocale())
+      : clonedVariantName(source.name, variants.data ?? []);
   const create = creation === "blank" ? createRouteVariant : duplicateRouteVariant;
   const copy = await create({
     color,

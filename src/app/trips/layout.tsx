@@ -35,14 +35,9 @@ export default async function TripsLayout({ children }: { children: React.ReactN
           <div className="flex min-w-0 items-center gap-1 sm:gap-2">
             <LanguageSwitcher />
             <Button asChild className="min-h-11 min-w-0 px-2 sm:px-3" variant="ghost">
-              <Link href="/account">
+              <Link href="/account" title={appUserIdentityLabel(user)}>
                 <UserRound aria-hidden="true" className="size-4 shrink-0" />
-                <span className="hidden max-w-64 truncate sm:inline">
-                  {appUserIdentityLabel(user)}
-                </span>
-                <span className="sm:hidden">
-                  <T message={"Account"} />
-                </span>
+                <span className="max-w-28 truncate sm:max-w-64">{appUserIdentityLabel(user)}</span>
               </Link>
             </Button>
             <form action={logout}>

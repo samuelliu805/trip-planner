@@ -50,7 +50,8 @@ export function TripMenuAccountActions({
             variant="ghost"
           >
             <Link href="/account" onClick={onNavigate}>
-              <UserRound aria-hidden="true" className="size-4" /> <T message="Account" />
+              <UserRound aria-hidden="true" className="size-4 shrink-0" />{" "}
+              <span className="truncate">{accountEmail}</span>
             </Link>
           </Button>
           <Button
@@ -68,7 +69,8 @@ export function TripMenuAccountActions({
         <>
           <DropdownMenuItem asChild>
             <Link href="/account">
-              <UserRound aria-hidden="true" className="size-4" /> <T message="Account" />
+              <UserRound aria-hidden="true" className="size-4 shrink-0" />{" "}
+              <span className="truncate">{accountEmail}</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem

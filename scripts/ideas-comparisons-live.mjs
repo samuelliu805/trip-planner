@@ -178,6 +178,14 @@ async function run() {
       provider: "google",
       providerPlaceId: `${label}-mxp`,
     };
+    const istPlace = {
+      coordinateSystem: "wgs84",
+      displayName: "Istanbul Airport",
+      latitude: 41.2618,
+      longitude: 28.7278,
+      provider: "google",
+      providerPlaceId: `${label}-ist`,
+    };
     const roundTrip = await capture(first.db, tripId, "flight", "Shanghai to Milan return", {
       destinationText: "MXP",
       endDate: "2026-10-05",
@@ -188,6 +196,7 @@ async function run() {
           carrier: "TK",
           departureDate: "2026-09-30",
           destination: "IST",
+          destinationPlace: istPlace,
           journeyIndex: 0,
           origin: "PVG",
           originPlace: pvgPlace,
@@ -199,6 +208,7 @@ async function run() {
           destination: "MXP",
           journeyIndex: 0,
           origin: "IST",
+          originPlace: istPlace,
           destinationPlace: mxpPlace,
           serviceNumber: "1873",
         },
@@ -206,6 +216,7 @@ async function run() {
           carrier: "TK",
           departureDate: "2026-10-05",
           destination: "IST",
+          destinationPlace: istPlace,
           journeyIndex: 1,
           origin: "MXP",
           originPlace: mxpPlace,
@@ -217,6 +228,7 @@ async function run() {
           destination: "PVG",
           journeyIndex: 1,
           origin: "IST",
+          originPlace: istPlace,
           destinationPlace: pvgPlace,
           serviceNumber: "26",
         },
@@ -331,7 +343,7 @@ async function run() {
       "confirmed round-trip apply",
     );
     assert.equal(roundTripResult.status, "applied");
-    assert.equal(roundTripResult.itemIds.length, 2);
+    assert.equal(roundTripResult.itemIds.length, 4);
     const roundTripItems = rows(
       await first.db
         .from("itinerary_items")
@@ -339,7 +351,12 @@ async function run() {
         .eq("variant_id", variant.id),
       "round-trip Plan lookup",
     ).filter((item) => item.details?.ideaResearchItemId === roundTrip);
-    assert.deepEqual(roundTripItems.map((item) => item.title).sort(), ["MXP → PVG", "PVG → MXP"]);
+    assert.deepEqual(roundTripItems.map((item) => item.title).sort(), [
+      "IST → MXP",
+      "IST → PVG",
+      "MXP → IST",
+      "PVG → IST",
+    ]);
     const flightStops = rows(
       await first.db
         .from("itinerary_items")
@@ -349,9 +366,21 @@ async function run() {
     ).filter((item) =>
       roundTripItems.some((flight) => item.details?.flightEndpointParentId === flight.id),
     );
-    assert.equal(flightStops.length, 4, "round trip needs departure and arrival on each Plan day");
+    assert.equal(flightStops.length, 8, "each connecting flight needs departure and arrival stops");
+    for (const flight of roundTripItems) {
+      const stops = flightStops.filter((stop) => stop.details.flightEndpointParentId === flight.id);
+      assert.deepEqual(stops.map((stop) => stop.details.flightEndpointRole).sort(), [
+        "arrival",
+        "departure",
+      ]);
+      assert.ok(stops.every((stop) => stop.day_id === flight.day_id));
+    }
     assert.ok(flightStops.every((stop) => stop.place_id && stop.place?.display_name));
     assert.deepEqual(flightStops.map((stop) => stop.place.display_name).sort(), [
+      "Istanbul Airport",
+      "Istanbul Airport",
+      "Istanbul Airport",
+      "Istanbul Airport",
       "Milan Malpensa Airport",
       "Milan Malpensa Airport",
       "Shanghai Pudong Airport",
@@ -372,7 +401,7 @@ async function run() {
     ]);
     assert.deepEqual(
       roundTripItems.map((item) => expandedDays.find((day) => day.id === item.day_id)?.date).sort(),
-      ["2026-09-30", "2026-10-05"],
+      ["2026-09-30", "2026-09-30", "2026-10-05", "2026-10-05"],
     );
     const tripCalendar = rows(
       await first.db.from("trips").select("start_date,end_date,day_count").eq("id", tripId),
@@ -449,8 +478,8 @@ async function run() {
         .eq("variant_id", blank.variantId),
       "empty Plan after Idea apply",
     );
-    assert.equal(blankItems.filter((item) => item.type === "flight").length, 2);
-    assert.equal(blankItems.filter((item) => item.details?.flightEndpointRole).length, 4);
+    assert.equal(blankItems.filter((item) => item.type === "flight").length, 4);
+    assert.equal(blankItems.filter((item) => item.details?.flightEndpointRole).length, 8);
     assert.ok(
       blankItems.filter((item) => item.details?.flightEndpointRole).every((item) => item.place_id),
     );

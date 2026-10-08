@@ -3790,7 +3790,10 @@ async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEv
   }
   await waitFor(
     browser,
-    `Boolean(document.querySelector('button[data-route-update]'))`,
+    `Boolean(document.querySelector('button[aria-label="Compute route"]')) &&
+      !document.querySelector('button[aria-label="Edit route"]') &&
+      ![...document.querySelectorAll('[role="alert"]')].some((alert) =>
+        alert.getClientRects().length && alert.textContent.trim())`,
     "route refresh control after adding an activity",
     45_000,
   );
@@ -3803,13 +3806,14 @@ async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEv
   );
   await clickElement(
     browser,
-    `document.querySelector('button[data-route-update]')`,
-    "Update route after adding an activity",
+    `document.querySelector('button[aria-label="Compute route"]')`,
+    "Compute route after adding an activity",
   );
   try {
     await waitFor(
       browser,
-      `!document.querySelector('button[data-route-update]') &&
+      `!document.querySelector('button[aria-label="Compute route"]') &&
+        Boolean(document.querySelector('button[aria-label="Edit route"]')) &&
         Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0`,
       "updated AMap route after adding an activity",
       60_000,
@@ -3825,7 +3829,7 @@ async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEv
           .slice(-3),
         lineCount: Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount ?? -1),
         updateAction: (() => {
-          const button = document.querySelector('button[data-route-update]');
+          const button = document.querySelector('button[aria-label="Compute route"]');
           return button ? {
             disabled: button.disabled,
             label: button.getAttribute('aria-label'),
@@ -3897,6 +3901,19 @@ async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId) {
   );
   await waitFor(
     browser,
+    `Boolean(document.querySelector('button[aria-label="Compute route"]')) &&
+      !document.querySelector('button[aria-label="Edit route"]') &&
+      ![...document.querySelectorAll('[role="alert"]')].some((alert) =>
+        alert.getClientRects().length && alert.textContent.trim())`,
+    "deleted activity invalidates the route without a warning",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('button[aria-label="Compute route"]')`,
+    "Compute route after activity delete",
+  );
+  await waitFor(
+    browser,
     `[...document.querySelectorAll('button')].some((button) =>
       button.getAttribute("aria-label") === "Edit route" &&
       button.getClientRects().length
@@ -3952,6 +3969,12 @@ async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId) {
   const persisted = await loadPersistedAmapEvidence(tripId);
   assert.equal(persisted.items.length, before.itemCount - 1);
   assert.equal(persisted.calculations.length, 1);
+  assert.equal(persisted.stops.length, persisted.items.length);
+  assert.ok(
+    persisted.stops.every((stop) => persisted.items.some((item) => item.id === stop.item_id)),
+    "The recalculated route retained a deleted activity.",
+  );
+  assert.equal(persisted.calculations[0]?.calculated_legs?.length, persisted.stops.length - 1);
 }
 
 async function generateLongImageThroughUi(browser) {

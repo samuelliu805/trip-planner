@@ -151,6 +151,10 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
         ? t("Added to Plan")
         : t("Added to {count} Plans", { count: selectedPlans.length }),
     );
+    const targetId = selectedIds.includes(plan.variantId)
+      ? plan.variantId
+      : selectedPlans[0].variantId;
+    router.push(`/trips/${item.trip_id}?variant=${encodeURIComponent(targetId)}`);
     router.refresh();
   }
 
@@ -170,7 +174,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
       if (!result.data) setError(result.error);
       else {
         setOpen(false);
-        window.location.assign(`${window.location.pathname}?variant=${result.data.variantId}`);
+        router.push(`/trips/${item.trip_id}?variant=${encodeURIComponent(result.data.variantId)}`);
       }
     } catch {
       setError(t("The new Plan could not be created."));

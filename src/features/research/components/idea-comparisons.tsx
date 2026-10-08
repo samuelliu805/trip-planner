@@ -198,10 +198,11 @@ export function IdeaComparisons({
       { actorType: "authenticated" },
     );
     if (destination !== "current" && "variantId" in result.data) {
-      window.location.assign(`${window.location.pathname}?variant=${result.data.variantId}`);
+      router.push(`/trips/${tripId}?variant=${encodeURIComponent(String(result.data.variantId))}`);
       return;
     }
     void queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId, plan.variantId) });
+    router.push(`/trips/${tripId}?variant=${encodeURIComponent(plan.variantId)}`);
     router.refresh();
     setView(undefined);
     setNotice(t("Added to Plan. Other choices stay here, so you can switch later."));

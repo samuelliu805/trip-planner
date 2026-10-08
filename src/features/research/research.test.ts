@@ -3,6 +3,53 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { plannerResearchCategory } from "./planner-context.ts";
+import { defaultJourneyIdeaName } from "./default-name.ts";
+import { clonedVariantName } from "../variants/default-name.ts";
+
+test("automatic idea names include every connection and the first date while clones use unique source names", () => {
+  const segments = [
+    { origin: "SHA", destination: "HKG", departureDate: "2027-02-02" },
+    { origin: "HKG", destination: "AKL", departureDate: "2027-02-03" },
+    { origin: "AKL", destination: "SHA", departureDate: "2027-02-12" },
+  ];
+  assert.equal(
+    defaultJourneyIdeaName({ segments, journeyType: "round_trip" }),
+    "SHA → HKG → AKL → SHA Feb 2 2027",
+  );
+  assert.equal(
+    defaultJourneyIdeaName({ segments: [segments[0], segments[1]], journeyType: "one_way" }),
+    "SHA → HKG → AKL Feb 2 2027",
+  );
+  assert.equal(
+    defaultJourneyIdeaName({ segments, journeyType: "multi_city" }),
+    "SHA → HKG → AKL → SHA Feb 2 2027",
+  );
+  assert.equal(
+    defaultJourneyIdeaName({
+      origin: "SHA",
+      destination: "AKL",
+      departureDate: "2027-02-02",
+      journeyType: "round_trip",
+    }),
+    "SHA ↔ AKL Feb 2 2027",
+  );
+  assert.equal(
+    defaultJourneyIdeaName({
+      segments: [{ ...segments[0], destination: "AKL" }, segments[2]],
+      journeyType: "round_trip",
+    }),
+    "SHA ↔ AKL Feb 2 2027",
+  );
+  assert.equal(defaultJourneyIdeaName({ origin: "SHA", destination: "AKL" }), "SHA → AKL");
+  assert.equal(clonedVariantName("My Plan", []), "My Plan 1");
+  assert.equal(
+    clonedVariantName("My Plan", [{ name: "my plan 1" }, { name: "My Plan 3" }]),
+    "My Plan 2",
+  );
+  const long = "x".repeat(80);
+  assert.equal(clonedVariantName(long, []), "x".repeat(78) + " 1");
+  assert.equal(clonedVariantName(long, [{ name: "x".repeat(78) + " 1" }]), "x".repeat(78) + " 2");
+});
 import {
   bookingSearchDetails,
   bookingSitesForCategory,
@@ -654,7 +701,7 @@ test("flight ideas save without an option name, airline, or flight number", () =
     form: route,
     tripId: ids.trip,
   });
-  assert.equal(routeInput.title, "SHA → SYD");
+  assert.equal(routeInput.title, "SHA → SYD Dec 25 2026");
   assert.equal(routeInput.segments[0].carrier, null);
   assert.equal(routeInput.segments[0].serviceNumber, null);
   assert.equal(
@@ -887,6 +934,7 @@ test("each dated flight journey must have its own Plan day", () => {
     ],
   });
   assert.deepEqual(missingJourneyDates(flight, { ...plan(), days: plan().days.slice(0, 1) }), [
+    "2026-09-04",
     "2026-09-12",
   ]);
 });

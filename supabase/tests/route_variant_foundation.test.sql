@@ -224,9 +224,9 @@ select ok(
   not exists (
     select 1 from public.trip_days
     where variant_id = (select id from phase_5a_state where key = 'route_b')
-      and (title is not null or notes is not null)
+      and (date is not null or title is not null or notes is not null)
   ),
-  'blank days intentionally clear title and notes'
+  'blank days intentionally clear dates, title, and notes'
 );
 
 insert into phase_5a_state (key, id)
