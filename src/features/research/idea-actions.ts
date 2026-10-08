@@ -7,7 +7,7 @@ import { getAuthProvider, getRelationalDatabase } from "@/platform/composition/s
 import type { Json } from "@/types/database";
 
 import { loadResearchItem } from "./actions";
-import { canonicalIdeaUrl, classifyIdeaInput } from "./idea-input";
+import { canonicalIdeaUrl } from "./idea-input";
 import { fetchIdeaPageMetadata } from "./idea-page-metadata";
 import { captureIdea as captureIdeaInput } from "./idea-capture-actions";
 import type { ResearchItem, ResearchMutationResult } from "./types";
