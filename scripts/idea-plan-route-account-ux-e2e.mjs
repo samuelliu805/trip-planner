@@ -18,6 +18,7 @@ import {buildRouteConfigSignature} from './src/features/routes/signatures';
 import {AddIdeaToPlan} from './src/features/research/components/add-idea-to-plan';
 import {RouteVariantEditorDialog} from './src/features/variants/components/route-variant-editor-dialog';
 import {TripMenuAccountActions} from './src/features/trips/components/trip-menu-account-actions';
+import {QuickIdeaInput} from './src/features/research/components/quick-idea-input';
 const plans = ['Plan A','Plan B'].map((variantName,index)=>({variantId:'plan'+index,variantName,days:[{id:'day'+index,dayNumber:1,date:'2027-02-02',items:[]}]}));
 window.fixturePlans=plans;
 const variants = plans.map((p,index)=>({id:p.variantId,name:p.variantName,color:index?'#2563eb':'#166534',version:1,days_version:1,items_version:1,content_version:1}));
@@ -53,6 +54,7 @@ function Fixture() {
     <button onClick={()=>setEditing(true)}>Clone Plan</button>
     {editing?<RouteVariantEditorDialog activeVariant={variants[0]} mode="duplicate" open onOpenChange={setEditing} tripId="trip" variants={variants}/>:null}
     <TripMenuAccountActions mobile accountEmail="alice@example.com"/>
+    <div data-quick><QuickIdeaInput items={[]} tripId="99999999-9999-4999-8999-999999999999" onSaved={item=>window.quickSaved=item}/></div>
   </main></I18nProvider></QueryClientProvider>;
 }
 createRoot(document.getElementById('fixture')).render(<Fixture/>);
@@ -72,6 +74,11 @@ const bundle = await build({
     {
       name: "fixture-boundaries",
       setup(builder) {
+        builder.onResolve({ filter: /idea-page-metadata$/ }, (args) =>
+          args.importer.endsWith("idea-capture-actions.ts")
+            ? { path: "capture-metadata", namespace: "fixture" }
+            : undefined,
+        );
         builder.onResolve({ filter: /next\/(navigation|link)$/ }, (args) => ({
           path: args.path,
           namespace: "fixture",
@@ -83,6 +90,12 @@ const bundle = await build({
           },
           (args) => {
             const path = args.path;
+            if (args.importer.endsWith("idea-capture-actions.ts"))
+              return { path: "capture-storage", namespace: "fixture" };
+            if (args.importer.endsWith("quick-idea-input.tsx"))
+              return { path: "quick-capture", namespace: "fixture" };
+            if (args.importer.endsWith("idea-link-preview.tsx"))
+              return { path: "capture-metadata", namespace: "fixture" };
             if (args.importer.endsWith("i18n-provider.tsx"))
               return { path: "locale", namespace: "fixture" };
             if (args.importer.endsWith("planner-query.ts"))
@@ -104,27 +117,33 @@ const bundle = await build({
           loader: "jsx",
           resolveDir: process.cwd(),
           contents:
-            args.path === "next/navigation"
-              ? "export function useRouter(){return {push:url=>window.lastNavigation=url,refresh:()=>{}}}"
-              : args.path === "next/link"
-                ? "import React from 'react';export default function Link(props){return <a {...props}/>}"
-                : args.path === "locale"
-                  ? "export async function persistLocale(){}"
-                  : args.path === "logout"
-                    ? "export async function logout(){}"
-                    : args.path === "planner-actions"
-                      ? "export async function loadPlannerWorkspace(){return {data:null}}"
-                      : args.path === "variants-query"
-                        ? "const mutation={isPending:false,mutateAsync:async input=>{window.cloneInput=input;return {variantId:'clone'}}};export const useCreateRouteVariant=()=>mutation,useDuplicateRouteVariant=()=>mutation,useUpdateRouteVariant=()=>mutation;export const variantListQueryKey=()=>['variants'];"
-                        : args.path === "variants-actions"
-                          ? "export async function loadRouteVariants(){return {data:window.fixtureVariants}}"
-                          : args.path === "day-actions"
-                            ? "export function useDayRouteActions(){return {pending:false,persistAndCalculate:async draft=>{window.dayComputed=draft;return true},clearRoute:async()=>{},reloadLatest:async()=>{}}}"
-                            : args.path.endsWith("idea-variant-plan-actions")
-                              ? "export async function loadIdeaVariantPlans(){return {data:window.fixturePlans}}"
-                              : args.path.endsWith("idea-plan-variant-actions")
-                                ? "export async function applySingleIdeaToBlankVariant(){return {data:{variantId:'new-plan'}}};export const applySingleIdeaToNewVariant=applySingleIdeaToBlankVariant;"
-                                : "export async function applySingleIdea(input){window.appliedIdea=input;return {data:{status:'applied'}}};export const applySingleIdeaWithConfirmedCalendar=applySingleIdea;",
+            args.path === "capture-storage"
+              ? "export async function createResearchItem(input){return {data:input}}"
+              : args.path === "capture-metadata"
+                ? "export async function fetchIdeaPageMetadata(){return null};export async function previewIdeaLink(){return {status:'unsupported',title:null}}"
+                : args.path === "quick-capture"
+                  ? "export {captureIdea} from './src/features/research/idea-capture-actions';export async function mergeIdeaSource(){return {error:'Unused fixture action'}}"
+                  : args.path === "next/navigation"
+                    ? "export function useRouter(){return {push:url=>window.lastNavigation=url,refresh:()=>{}}}"
+                    : args.path === "next/link"
+                      ? "import React from 'react';export default function Link(props){return <a {...props}/>}"
+                      : args.path === "locale"
+                        ? "export async function persistLocale(){}"
+                        : args.path === "logout"
+                          ? "export async function logout(){}"
+                          : args.path === "planner-actions"
+                            ? "export async function loadPlannerWorkspace(){return {data:null}}"
+                            : args.path === "variants-query"
+                              ? "const mutation={isPending:false,mutateAsync:async input=>{window.cloneInput=input;return {variantId:'clone'}}};export const useCreateRouteVariant=()=>mutation,useDuplicateRouteVariant=()=>mutation,useUpdateRouteVariant=()=>mutation;export const variantListQueryKey=()=>['variants'];"
+                              : args.path === "variants-actions"
+                                ? "export async function loadRouteVariants(){return {data:window.fixtureVariants}}"
+                                : args.path === "day-actions"
+                                  ? "export function useDayRouteActions(){return {pending:false,persistAndCalculate:async draft=>{window.dayComputed=draft;return true},clearRoute:async()=>{},reloadLatest:async()=>{}}}"
+                                  : args.path.endsWith("idea-variant-plan-actions")
+                                    ? "export async function loadIdeaVariantPlans(){return {data:window.fixturePlans}}"
+                                    : args.path.endsWith("idea-plan-variant-actions")
+                                      ? "export async function applySingleIdeaToBlankVariant(){return {data:{variantId:'new-plan'}}};export const applySingleIdeaToNewVariant=applySingleIdeaToBlankVariant;"
+                                      : "export async function applySingleIdea(input){window.appliedIdea=input;return {data:{status:'applied'}}};export const applySingleIdeaWithConfirmedCalendar=applySingleIdea;",
         }));
       },
     },
@@ -202,6 +221,17 @@ try {
       1,
     );
     assert.equal(await page.getByRole("link", { name: "Account", exact: true }).count(), 0);
+    const quick = page.locator("[data-quick]");
+    const booking =
+      "https://www.google.com/travel/flights/booking?tfs=CBwQAhqbARIKMjAyNi0xMi0yNSIgCgNTSEESCjIwMjYtMTItMjUaA0hBSyoCSFUyBDczMjAiHwoDSEFLEgoyMDI2LTEyLTI2GgNTWUQqAkhVMgM3NzUoAWoMCAMSCC9tLzBoc3FmagwIAhIIL20vMDZ3amZqDAgCEggvbS8wMTkxNGoHCAESA0NBTmoHCAESA0hLR3IMCAISCC9tLzA2eTU3GpsBEgoyMDI3LTAxLTAyIh8KA1NZRBIKMjAyNy0wMS0wMhoDSEFLKgJIVTIDNzc2IiAKA0hBSxIKMjAyNy0wMS0wMxoDU0hBKgJIVTIENzMxOSgBagwIAhIIL20vMDZ5NTdyDAgDEggvbS8waHNxZnIMCAISCC9tLzA2d2pmcgwIAhIIL20vMDE5MTRyBwgBEgNDQU5yBwgBEgNIS0dAAUgDYNCMAXABggELCP___________wGYAQGyAQkSBy9tLzBuMno&curr=CNY";
+    await quick.getByRole("textbox").fill(booking);
+    await quick.getByRole("button", { name: "Save Flight", exact: true }).click();
+    await page.waitForFunction(
+      () => window.quickSaved?.title === "SHA → HAK → SYD → HAK → SHA Dec 25 2026",
+    );
+    await quick.getByRole("textbox").fill(`New Zealand flights ${booking}`);
+    await quick.getByRole("button", { name: "Save Flight", exact: true }).click();
+    await page.waitForFunction(() => window.quickSaved?.title === "New Zealand flights");
     assert.deepEqual(errors, []);
     await page.close();
   }

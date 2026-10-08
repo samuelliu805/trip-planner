@@ -19,6 +19,7 @@ import {
 } from "../idea-input";
 import type { IdeaPageMetadata } from "../idea-page-metadata";
 import { propertyTitleFromIdeaSourceUrl } from "../idea-provider-url";
+import { quickIdeaCaptureTitle, quickIdeaRouteLabel } from "../quick-idea-title";
 import type { ResearchItem } from "../types";
 import { QuickIdeaDetails } from "./quick-idea-details";
 import { QuickIdeaDuplicateNotice } from "./quick-idea-duplicate-notice";
@@ -55,16 +56,7 @@ export function QuickIdeaInput({
     () => propertyTitleFromIdeaSourceUrl(classification.sourceUrl),
     [classification.sourceUrl],
   );
-  const routeText =
-    preview.originText && preview.destinationText
-      ? preview.originText === preview.destinationText
-        ? preview.originText
-        : `${preview.originText} → ${preview.destinationText}`
-      : preview.originText;
-  const route =
-    classification.kind === "car" && routeText
-      ? `${classification.provider ?? t("Car")} · ${routeText}`
-      : routeText;
+  const route = quickIdeaRouteLabel(preview, classification, t("Car"));
   const textCandidate = classification.sourceUrl
     ? input.replace(classification.sourceUrl, "").trim()
     : input.trim();
@@ -155,7 +147,7 @@ export function QuickIdeaInput({
       operationId,
       shareText,
       sourceUrl: classification.sourceUrl,
-      title: textOnly ? textOnly.slice(0, 300) : classification.kind === "car" ? null : route,
+      title: quickIdeaCaptureTitle(textOnly, classification.kind, route),
       tripId,
     });
     setPending(false);
