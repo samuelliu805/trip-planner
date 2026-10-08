@@ -43,7 +43,11 @@ export function IdeaCopyPlanFields({
         <>
           <label className="block text-sm font-medium">
             <T message={item.category === "flight" ? "First flight on" : "Idea starts on"} />
-            <PlanAnchorDaySelect days={plan.days} onChange={onAnchorChange} value={anchor} />
+            <PlanAnchorDaySelect
+              days={blank ? plan.days.map((day) => ({ ...day, date: null })) : plan.days}
+              onChange={onAnchorChange}
+              value={anchor}
+            />
           </label>
           <p className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
             {range && anchor ? (

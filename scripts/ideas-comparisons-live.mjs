@@ -331,7 +331,7 @@ async function run() {
       "confirmed round-trip apply",
     );
     assert.equal(roundTripResult.status, "applied");
-    assert.equal(roundTripResult.itemIds.length, 2);
+    assert.equal(roundTripResult.itemIds.length, 4);
     const roundTripItems = rows(
       await first.db
         .from("itinerary_items")
@@ -339,7 +339,12 @@ async function run() {
         .eq("variant_id", variant.id),
       "round-trip Plan lookup",
     ).filter((item) => item.details?.ideaResearchItemId === roundTrip);
-    assert.deepEqual(roundTripItems.map((item) => item.title).sort(), ["MXP → PVG", "PVG → MXP"]);
+    assert.deepEqual(roundTripItems.map((item) => item.title).sort(), [
+      "IST → MXP",
+      "IST → PVG",
+      "MXP → IST",
+      "PVG → IST",
+    ]);
     const flightStops = rows(
       await first.db
         .from("itinerary_items")
@@ -372,7 +377,7 @@ async function run() {
     ]);
     assert.deepEqual(
       roundTripItems.map((item) => expandedDays.find((day) => day.id === item.day_id)?.date).sort(),
-      ["2026-09-30", "2026-10-05"],
+      ["2026-09-30", "2026-09-30", "2026-10-05", "2026-10-05"],
     );
     const tripCalendar = rows(
       await first.db.from("trips").select("start_date,end_date,day_count").eq("id", tripId),

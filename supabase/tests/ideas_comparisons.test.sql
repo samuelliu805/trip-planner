@@ -118,14 +118,14 @@ select is((public.apply_single_idea_v1(
   '7d100000-0000-4000-8000-000000000005', null, null, gen_random_uuid()
 )->>'status'), 'applied', 'a round trip enters Plan');
 select is((select count(*)::int from public.idea_single_plan_items
-  where research_item_id = '7d100000-0000-4000-8000-000000000005'), 2,
-  'one source tracks both direction items');
+  where research_item_id = '7d100000-0000-4000-8000-000000000005'), 4,
+  'one source tracks all connecting flight items');
 select results_eq(
   $$select title from public.itinerary_items
     where details ->> 'ideaResearchItemId' = '7d100000-0000-4000-8000-000000000005'
     order by details ->> 'ideaJourneyIndex'$$,
-  $$values ('PVG → MXP'::text), ('MXP → PVG'::text)$$,
-  'round trip directions are separate Plan items while stopovers stay grouped'
+  $$values ('PVG → IST'::text), ('IST → MXP'::text), ('MXP → IST'::text), ('IST → PVG'::text)$$,
+  'round trip connections are separate Plan items'
 );
 select is((select sum(price_amount) from public.itinerary_items
   where details ->> 'ideaResearchItemId' = '7d100000-0000-4000-8000-000000000005'),
@@ -134,8 +134,8 @@ select results_eq(
   $$select details ->> 'serviceNumber' from public.itinerary_items
     where details ->> 'ideaResearchItemId' = '7d100000-0000-4000-8000-000000000005'
     order by details ->> 'ideaJourneyIndex'$$,
-  $$values ('TK 27 / TK 1873'::text), ('TK 1874 / TK 26'::text)$$,
-  'each direction retains every connecting flight'
+  $$values ('TK 27'::text), ('TK 1873'::text), ('TK 1874'::text), ('TK 26'::text)$$,
+  'each connecting flight retains its own service number'
 );
 
 select set_config(

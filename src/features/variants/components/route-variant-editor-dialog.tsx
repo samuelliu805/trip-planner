@@ -2,7 +2,6 @@
 
 import { Localized, useI18n } from "@/features/i18n/i18n-provider";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
 import { useId, useState } from "react";
 
 import {
@@ -22,7 +21,6 @@ import { PlannerEditorScreen } from "@/features/itinerary/components/planner-edi
 import { ItineraryMutationError } from "@/features/itinerary/query-cache";
 import type { PlannerVariant } from "@/features/itinerary/types";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
-import { cn } from "@/lib/utils";
 
 import {
   useCreateRouteVariant,
@@ -31,46 +29,11 @@ import {
   variantListQueryKey,
 } from "../queries";
 import { loadRouteVariants } from "../actions";
-import { nextVariantName } from "../default-name";
+import { clonedVariantName, nextVariantName } from "../default-name";
 import { variantColorPalette } from "../schema";
+import { VariantColorPalette } from "./variant-color-palette";
 
 export type VariantEditorMode = "blank" | "duplicate" | "metadata";
-
-function ColorPalette({ color, onChange }: { color: string; onChange: (color: string) => void }) {
-  const { t } = useI18n();
-  return (
-    <div
-      className="grid grid-cols-5 gap-2"
-      role="group"
-      aria-label="Plan color"
-      data-i18n-aria-label={"Plan color"}
-    >
-      {variantColorPalette.map((option) => (
-        <button
-          aria-label={`${t(option.label)}${color === option.value ? t(", selected") : ""}`}
-          aria-pressed={color === option.value}
-          className={cn(
-            "flex min-h-11 items-center justify-center rounded-md border-2 bg-background outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            color === option.value ? "border-foreground" : "border-transparent",
-          )}
-          key={option.value}
-          onClick={() => onChange(option.value)}
-          type="button"
-        >
-          <span
-            className="flex size-7 items-center justify-center rounded-full text-white"
-            style={{ backgroundColor: option.value }}
-          >
-            {color === option.value ? <Check className="size-4" /> : null}
-          </span>
-          <span className="sr-only">
-            <Localized value={option.label} />
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function nextVariantDefaults(variants: PlannerVariant[], locale: "en" | "zh-CN") {
   const color =
@@ -101,7 +64,13 @@ export function RouteVariantEditorDialog({
   const [initialValues] = useState(() =>
     mode === "metadata"
       ? { color: activeVariant.color.toLowerCase(), name: activeVariant.name }
-      : nextVariantDefaults(variants, locale),
+      : {
+          ...nextVariantDefaults(variants, locale),
+          name:
+            mode === "duplicate"
+              ? clonedVariantName(activeVariant.name, variants)
+              : nextVariantName(variants, locale),
+        },
   );
   const [name, setName] = useState(initialValues.name);
   const [color, setColor] = useState(initialValues.color);
@@ -277,7 +246,17 @@ export function RouteVariantEditorDialog({
         ) : null}
         {mode === "duplicate" ? (
           <PlannerEditorField id={`${nameId}-source`} label="Copy from">
-            <Select onValueChange={setSourceVariantId} value={sourceVariantId}>
+            <Select
+              onValueChange={(id) => {
+                const available = latestVariants ?? variants;
+                const previous = available.find((variant) => variant.id === sourceVariantId);
+                const source = available.find((variant) => variant.id === id);
+                if (source && previous && name === clonedVariantName(previous.name, available))
+                  setName(clonedVariantName(source.name, available));
+                setSourceVariantId(id);
+              }}
+              value={sourceVariantId}
+            >
               <SelectTrigger id={`${nameId}-source`}>
                 <SelectValue />
               </SelectTrigger>
@@ -306,7 +285,7 @@ export function RouteVariantEditorDialog({
           id={`${nameId}-color`}
           label="Plan color"
         >
-          <ColorPalette color={color} onChange={setColor} />
+          <VariantColorPalette color={color} onChange={setColor} />
         </PlannerEditorField>
       </PlannerEditorForm>
     </PlannerEditorScreen>

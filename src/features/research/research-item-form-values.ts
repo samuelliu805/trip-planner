@@ -3,6 +3,7 @@ import { priceFromExpression } from "../../lib/price-expression.ts";
 
 import { firstPresentIsoDate } from "./date-range.ts";
 import { parseResearchLinks } from "./links.ts";
+import { defaultJourneyIdeaName } from "./default-name.ts";
 import type { ResearchCategory, ResearchItem } from "./types.ts";
 
 type ProviderPlaceSnapshot = PlaceSnapshot;
@@ -52,6 +53,8 @@ function journeyTitle({
   origin,
   price,
   segment,
+  segments,
+  journeyType,
 }: {
   category: "flight" | "train";
   currency: string | null;
@@ -60,9 +63,17 @@ function journeyTitle({
   origin?: string | null;
   price: string | null;
   segment?: { carrier?: string | null; serviceNumber?: string | null };
+  segments: import("./types.ts").ResearchSegment[];
+  journeyType: string | null;
 }) {
-  if (origin && destination && destination !== origin) return `${origin} → ${destination}`;
-  if (origin || destination) return origin ?? destination;
+  const route = defaultJourneyIdeaName({
+    origin,
+    destination,
+    departureDate,
+    segments,
+    journeyType,
+  });
+  if (route) return route;
   const service = [segment?.carrier, segment?.serviceNumber].filter(Boolean).join(" ");
   if (service) return service;
   const label = category === "flight" ? "Flight" : "Train";
@@ -161,6 +172,8 @@ export function researchItemInputFromForm({
             origin: originText,
             price,
             segment: firstSegment,
+            segments: rawSegments,
+            journeyType,
           })
         : originText
           ? destinationText && destinationText !== originText

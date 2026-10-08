@@ -50,7 +50,9 @@ export function ideaJourneyPreview(item: FlightIdea) {
     const split = repeatedDestination && midpoint > 0 ? midpoint : turn > 0 ? turn : midpoint;
     groups = split > 0 ? [segments.slice(0, split), segments.slice(split)] : [segments];
   } else groups = item.journey_type === "multi_city" ? segments.map((leg) => [leg]) : [segments];
-  return groups
+  const itemGroups =
+    item.category === "flight" ? groups.flatMap((legs) => legs.map((leg) => [leg])) : groups;
+  return itemGroups
     .filter((legs) => legs.length)
     .map((legs) => ({
       origin: legs[0].origin,

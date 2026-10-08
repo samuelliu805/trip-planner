@@ -43,21 +43,21 @@ select is((public.apply_single_idea_v1(state.trip_id, state.variant_id,
   'applied', 'old connecting round trip applies to an empty Plan')
   from flight_repair_state state;
 select is((select count(*)::int from public.idea_single_plan_items
-  where research_item_id = '7e100000-0000-4000-8000-000000000001'), 2,
-  'both directions create Plan items');
+  where research_item_id = '7e100000-0000-4000-8000-000000000001'), 4,
+  'each connecting flight creates its own Plan item');
 select results_eq(
   $$select title from public.itinerary_items
     where details ->> 'ideaResearchItemId' = '7e100000-0000-4000-8000-000000000001'
     order by details ->> 'ideaJourneyIndex'$$,
-  $$values ('SHA → SYD'::text), ('SYD → SHA'::text)$$,
-  'the stopover does not become the destination');
+  $$values ('SHA → HAK'::text), ('HAK → SYD'::text), ('SYD → HAK'::text), ('HAK → SHA'::text)$$,
+  'all connecting flight endpoints remain in order');
 select results_eq(
   $$select day.date::text from public.itinerary_items item
     join public.trip_days day on day.id = item.day_id
     where item.details ->> 'ideaResearchItemId' = '7e100000-0000-4000-8000-000000000001'
     order by item.details ->> 'ideaJourneyIndex'$$,
-  $$values ('2026-12-25'::text), ('2027-01-02'::text)$$,
-  'outbound and return use their own departure days');
+  $$values ('2026-12-25'::text), ('2026-12-26'::text), ('2027-01-02'::text), ('2027-01-03'::text)$$,
+  'all flights use their own departure days');
 select is((select trip.start_date::text || '/' || trip.end_date::text
   from public.trips trip join flight_repair_state state on state.trip_id = trip.id),
   '2026-12-25/2027-01-03', 'Plan dates include the final arrival');

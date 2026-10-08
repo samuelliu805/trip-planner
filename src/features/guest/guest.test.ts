@@ -51,7 +51,7 @@ function draft(region: "cn" | "global" = "global", idStart = 0) {
   return createGuestTripDraft(region, "UTC", new Date("2026-09-05T12:00:00.000Z"), ids(idStart));
 }
 
-test("guest flight ideas survive local storage and add separate outbound and return items", () => {
+test("guest flight ideas survive local storage and apply each connecting flight separately", () => {
   const memory = new MemoryStorage();
   const storage = new GuestDraftStorage("global", memory as Storage);
   const initial = draft();
@@ -65,6 +65,8 @@ test("guest flight ideas survive local storage and add separate outbound and ret
       journeyType: "round_trip",
       operationId: createId(),
       originText: "SHA",
+      totalPriceAmount: 900,
+      currency: "USD",
       segments: [
         { origin: "SHA", destination: "HAK", departureDate: "2026-12-25", journeyIndex: 0 },
         { origin: "HAK", destination: "SYD", departureDate: "2026-12-26", journeyIndex: 0 },
@@ -90,11 +92,26 @@ test("guest flight ideas survive local storage and add separate outbound and ret
   const items = applied.workspace.days.flatMap((day) => day.items);
   assert.deepEqual(
     items.map((item) => item.title),
-    ["SHA → SYD", "SYD → SHA"],
+    ["SHA → HAK", "HAK → SYD", "SYD → HAK", "HAK → SHA"],
   );
   assert.deepEqual(
     items.map((item) => applied.workspace.days.find((day) => day.id === item.day_id)?.date),
-    ["2026-12-25", "2027-01-02"],
+    ["2026-12-25", "2026-12-26", "2027-01-02", "2027-01-03"],
+  );
+  assert.deepEqual(
+    items.map((item) => item.price_amount),
+    [900, null, null, null],
+  );
+  assert.deepEqual(
+    items.map((item) => item.price_currency),
+    ["USD", null, null, null],
+  );
+  assert.ok(
+    items.every(
+      (item) =>
+        Array.isArray((item.details as Record<string, unknown>).ideaSegments) &&
+        ((item.details as Record<string, unknown>).ideaSegments as unknown[]).length === 1,
+    ),
   );
   assert.equal(applied.trip.start_date, "2026-12-25");
   assert.equal(applied.trip.end_date, "2027-01-03");

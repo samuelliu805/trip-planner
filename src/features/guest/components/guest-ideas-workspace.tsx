@@ -97,6 +97,7 @@ export function GuestIdeasWorkspace({
       setReviewId(undefined);
       setNotice(t("Added to Plan"));
       setError(undefined);
+      onOpenPlan();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The idea could not be added.");
     }
