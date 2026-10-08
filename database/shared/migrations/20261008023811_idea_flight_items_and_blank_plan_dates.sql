@@ -44,13 +44,17 @@ DO $$
 DECLARE
   signature regprocedure;
   definition text;
-  marker text := 'item_type := (CASE source.category';
+  marker text;
 BEGIN
   FOREACH signature IN ARRAY ARRAY[
     'public.apply_single_idea_v1_phase_arrival_days(uuid,uuid,uuid,uuid,uuid,uuid)'::regprocedure,
     'public.apply_idea_choice_v1_phase_arrival_days(uuid,uuid,uuid,uuid,uuid,uuid)'::regprocedure
   ] LOOP
     definition := pg_get_functiondef(signature);
+    marker := CASE WHEN signature =
+      'public.apply_idea_choice_v1_phase_arrival_days(uuid,uuid,uuid,uuid,uuid,uuid)'::regprocedure
+      THEN 'journey_number := 0;'
+      ELSE 'item_type := (CASE source.category' END;
     IF strpos(definition, marker) = 0 THEN
       RAISE EXCEPTION 'Missing flight application insertion point: %', signature;
     END IF;

@@ -60,7 +60,8 @@ where choice.comparison_id=state.comparison_id and choice.position=0;
 update flight_item_state set operation_id=gen_random_uuid();
 update flight_item_state set result=public.apply_idea_choice_v1(trip_id,blank_id,comparison_id,choice_id,null,operation_id);
 select is(result->>'status','applied','comparison choice applies to an undated Plan') from flight_item_state;
-select is(jsonb_array_length(result->'itemIds'),2,'connecting one-way choice creates two flights') from flight_item_state;
+select is((select count(*)::int from public.itinerary_items item join flight_item_state state on item.variant_id=state.blank_id where item.type='flight'),2,
+  'connecting one-way choice creates two flights');
 select results_eq(
   $$select item.title from public.itinerary_items item join flight_item_state state on item.variant_id=state.blank_id where item.type='flight' order by (item.details->>'ideaJourneyIndex')::int$$,
   $$values ('SHA → HKG'::text),('HKG → AKL'::text)$$,'each flight has its own endpoints');
