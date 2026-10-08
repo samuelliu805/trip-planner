@@ -1160,7 +1160,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await waitFor(
     browser,
     `Boolean([...document.querySelectorAll('article')].find((item) =>
-      item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967')))`,
+      item.innerText.includes('PVG ↔ HND Nov 20 2026') && item.innerText.includes('NH 972 · NH 967')))`,
     "saved Google Flights booking idea",
     45_000,
   );
@@ -1168,7 +1168,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     browser,
     `(() => {
       const card = [...document.querySelectorAll('article')].find((item) =>
-        item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
+        item.innerText.includes('PVG ↔ HND Nov 20 2026') && item.innerText.includes('NH 972 · NH 967'));
       return card?.querySelector('button[aria-label^="Edit "]');
     })()`,
     "saved Google flight title",
@@ -1277,7 +1277,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     browser,
     `(() => {
       const card = [...document.querySelectorAll('article')].find((item) =>
-        item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
+        item.innerText.includes('PVG ↔ HND Nov 20 2026') && item.innerText.includes('NH 972 · NH 967'));
       return [...(card?.querySelectorAll('button') ?? [])].find((button) =>
         button.textContent.includes('Add to Plan'));
     })()`,
@@ -1383,7 +1383,11 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   const rebasedVariantId = await waitFor(
     browser,
-    `new URLSearchParams(location.search).get('variant') || ''`,
+    `(() => {
+      const id = new URLSearchParams(location.search).get('variant');
+      return location.pathname === '/trips/${tripId}' && id &&
+        id !== ${JSON.stringify(originalVariantId)} ? id : null;
+    })()`,
     "rebased flight Plan navigation",
     60_000,
   );
@@ -1400,7 +1404,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     browser,
     `(() => {
       const card = [...document.querySelectorAll('article')].find((item) =>
-        item.getClientRects().length && item.innerText.includes('PVG → HND') &&
+        item.getClientRects().length && item.innerText.includes('PVG ↔ HND Nov 20 2026') &&
         item.innerText.includes('NH 972 · NH 967'));
       return new URLSearchParams(location.search).get('variant') === ${JSON.stringify(originalVariantId)} &&
         [...(card?.querySelectorAll('button') ?? [])].some((button) =>
@@ -1414,7 +1418,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     browser,
     `(() => {
       const card = [...document.querySelectorAll('article')].find((item) =>
-        item.getClientRects().length && item.innerText.includes('PVG → HND') &&
+        item.getClientRects().length && item.innerText.includes('PVG ↔ HND Nov 20 2026') &&
         item.innerText.includes('NH 972 · NH 967'));
       return [...(card?.querySelectorAll('button') ?? [])].find((button) =>
         button.getClientRects().length && !button.disabled &&
@@ -1544,7 +1548,13 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     "closed",
     `Dated Google flight was not added to Plan: ${datedApplyResult.text ?? "unknown error"}`,
   );
-  await navigate(browser, baseUrl, `/trips/${tripId}?variant=${originalVariantId}`);
+  await waitFor(
+    browser,
+    `location.pathname === '/trips/${tripId}' &&
+      new URLSearchParams(location.search).get('variant') === ${JSON.stringify(originalVariantId)}`,
+    "Apply opens the selected original Plan",
+    60_000,
+  );
   await waitFor(
     browser,
     `(() => {
