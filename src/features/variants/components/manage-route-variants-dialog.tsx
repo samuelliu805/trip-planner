@@ -275,19 +275,23 @@ export function ManageRouteVariantsDialog({
         />
       ) : null}
 
-      <DeleteRouteVariantDialog
-        conflict={conflict}
-        deletePending={deletePending}
-        error={error}
-        notice={notice}
-        onDismissError={() => setError(undefined)}
-        onDismissNotice={() => setNotice(undefined)}
-        onOpenChange={(dialogOpen) => !dialogOpen && !deletePending && setDeleteVariant(undefined)}
-        onReload={() => void reloadLatest()}
-        onRemove={() => void removeVariant()}
-        reloadPending={reloadPending}
-        variant={deleteVariant}
-      />
+      {deleteVariant ? (
+        <DeleteRouteVariantDialog
+          conflict={conflict}
+          deletePending={deletePending}
+          error={error}
+          notice={notice}
+          onDismissError={() => setError(undefined)}
+          onDismissNotice={() => setNotice(undefined)}
+          onOpenChange={(dialogOpen) =>
+            !dialogOpen && !deletePending && setDeleteVariant(undefined)
+          }
+          onReload={() => void reloadLatest()}
+          onRemove={() => void removeVariant()}
+          reloadPending={reloadPending}
+          variant={deleteVariant}
+        />
+      ) : null}
     </>
   );
 }

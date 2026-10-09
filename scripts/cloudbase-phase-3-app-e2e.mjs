@@ -4276,10 +4276,18 @@ async function publishThroughUi(browser, tripId) {
       "share publish activation",
       10_000,
     );
+    await waitForTripOutbox(browser, tripId, {
+      evaluate,
+      waitFor,
+      domains: ["sharing"],
+      label: "share publishing confirmation",
+    });
     await waitFor(
       browser,
       `Boolean(document.querySelector('[aria-label="Published shareable page"]')) ||
-       Boolean(document.querySelector('[role="dialog"] [aria-live]'))`,
+       [...document.querySelectorAll('[role="dialog"] [role="alert"]')].some((element) =>
+         element.getClientRects().length && element.textContent?.trim()
+       )`,
       "share publish result",
       60_000,
     );
