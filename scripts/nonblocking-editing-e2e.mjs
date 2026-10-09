@@ -2167,6 +2167,43 @@ try {
         1,
         "reviewing and selecting never resends an application",
       );
+      const cdp = await page.context().newCDPSession(page);
+      for (const width of [390, 430]) {
+        await cdp.send("Emulation.setDeviceMetricsOverride", {
+          width,
+          height: 844,
+          deviceScaleFactor: 1,
+          mobile: false,
+        });
+        await page.waitForFunction(
+          () => {
+            const rect = document.querySelector('[role="dialog"]')?.getBoundingClientRect();
+            return (
+              rect &&
+              rect.left >= -0.5 &&
+              rect.right <= innerWidth + 0.5 &&
+              rect.top >= -0.5 &&
+              rect.bottom <= innerHeight + 0.5
+            );
+          },
+          null,
+          { timeout: 10000 },
+        );
+        assert.deepEqual(
+          await page.evaluate(() => {
+            const dialog = document.querySelector('[role="dialog"]');
+            return {
+              choices: dialog.querySelectorAll("input[data-variant-id]").length,
+              noHorizontalSwipe: document.documentElement.scrollWidth <= innerWidth,
+              touchTargets: [...dialog.querySelectorAll("button, section > label")]
+                .filter((element) => element.getClientRects().length)
+                .every((element) => element.getBoundingClientRect().height >= 44),
+            };
+          }),
+          { choices: 2, noHorizontalSwipe: true, touchTargets: true },
+        );
+      }
+      await cdp.send("Emulation.clearDeviceMetricsOverride");
       await confirm.click();
       await dialog.waitFor({ state: "hidden", timeout: 750 });
       assert.equal(

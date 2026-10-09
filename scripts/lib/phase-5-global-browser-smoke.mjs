@@ -1537,6 +1537,31 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       { deviceScaleFactor: 1, height: 844, mobile: false, width },
       browser.sessionId,
     );
+    // The dialog's visual-viewport constraint updates on the next animation frame.
+    try {
+      await waitFor(
+        browser,
+        `(() => {
+          const rect = document.querySelector('[role="dialog"]')?.getBoundingClientRect();
+          return Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
+            rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5;
+        })()`,
+        `multi-Plan dialog layout at ${width}px`,
+        10_000,
+      );
+    } catch (error) {
+      const bounds = await evaluate(
+        browser,
+        `(() => {
+          const dialog = document.querySelector('[role="dialog"]');
+          const rect = dialog?.getBoundingClientRect();
+          return { innerWidth, innerHeight, visualHeight: visualViewport?.height,
+            constraint: dialog?.style.getPropertyValue('--dialog-viewport-height'),
+            left: rect?.left, right: rect?.right, top: rect?.top, bottom: rect?.bottom };
+        })()`,
+      );
+      throw new Error(`${error.message}; ${JSON.stringify(bounds)}`, { cause: error });
+    }
     const layout = await evaluate(
       browser,
       `(() => {
