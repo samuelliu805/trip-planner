@@ -207,81 +207,83 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
         )}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-full overflow-x-hidden sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold">
-              <T
-                message={
-                  mode !== "existing"
-                    ? journeyDates.length || item.start_date
-                      ? "New Plan dates"
-                      : "Create empty Plan + idea"
-                    : journeyDates.length
-                      ? "Update Plan dates?"
-                      : "Add to Plan"
-                }
+        {open ? (
+          <DialogContent className="max-w-full overflow-x-hidden sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold">
+                <T
+                  message={
+                    mode !== "existing"
+                      ? journeyDates.length || item.start_date
+                        ? "New Plan dates"
+                        : "Create empty Plan + idea"
+                      : journeyDates.length
+                        ? "Update Plan dates?"
+                        : "Add to Plan"
+                  }
+                />
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                <T message="Choose where this belongs in your Plan." />
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[65dvh] space-y-4 overflow-x-hidden overflow-y-auto px-5 py-4 sm:px-6">
+              {mode === "existing" ? (
+                <IdeaVariantTargetList
+                  item={item}
+                  loading={loading}
+                  onPlacementChange={(variantId, placement) =>
+                    setPlacements((current) => ({ ...current, [variantId]: placement }))
+                  }
+                  onSelectedChange={(variantId, selected) =>
+                    setSelectedIds((current) =>
+                      selected ? [...current, variantId] : current.filter((id) => id !== variantId),
+                    )
+                  }
+                  placements={placements}
+                  plans={plans}
+                  results={results}
+                  selectedIds={selectedIds}
+                  variantName={plan.variantName}
+                />
+              ) : (
+                <IdeaCopyPlanFields
+                  anchor={copyAnchor}
+                  blank={mode === "blank"}
+                  item={item}
+                  onAnchorChange={setCopyAnchor}
+                  plan={plan}
+                />
+              )}
+              {error && (mode !== "existing" || !loading) ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {error}
+                </p>
+              ) : null}
+            </div>
+            <div className="px-5">
+              <LocalDraftStatus
+                draft={fields}
+                onDiscard={() => {
+                  fields.discard();
+                  setOpen(false);
+                }}
               />
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              <T message="Choose where this belongs in your Plan." />
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[65dvh] space-y-4 overflow-x-hidden overflow-y-auto px-5 py-4 sm:px-6">
-            {mode === "existing" ? (
-              <IdeaVariantTargetList
-                item={item}
-                loading={loading}
-                onPlacementChange={(variantId, placement) =>
-                  setPlacements((current) => ({ ...current, [variantId]: placement }))
-                }
-                onSelectedChange={(variantId, selected) =>
-                  setSelectedIds((current) =>
-                    selected ? [...current, variantId] : current.filter((id) => id !== variantId),
-                  )
-                }
-                placements={placements}
-                plans={plans}
-                results={results}
-                selectedIds={selectedIds}
-                variantName={plan.variantName}
-              />
-            ) : (
-              <IdeaCopyPlanFields
-                anchor={copyAnchor}
-                blank={mode === "blank"}
-                item={item}
-                onAnchorChange={setCopyAnchor}
-                plan={plan}
-              />
-            )}
-            {error && (mode !== "existing" || !loading) ? (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
-              </p>
-            ) : null}
-          </div>
-          <div className="px-5">
-            <LocalDraftStatus
-              draft={fields}
-              onDiscard={() => {
-                fields.discard();
-                setOpen(false);
-              }}
+            </div>
+            <IdeaApplyFooter
+              canApply={canApply}
+              copyAnchor={copyAnchor}
+              journeyDateCount={journeyDates.length}
+              mode={mode}
+              onApply={() => void (mode !== "existing" ? applyToNew() : applyToSelected())}
+              onModeChange={changeMode}
+              pending={pending}
+              remainingCount={remainingPlans.length}
+              retrying={selectedPlans.some((candidate) => results[candidate.variantId]?.status)}
+              selectedCount={selectedPlans.length}
             />
-          </div>
-          <IdeaApplyFooter
-            canApply={canApply}
-            copyAnchor={copyAnchor}
-            journeyDateCount={journeyDates.length}
-            mode={mode}
-            onApply={() => void (mode !== "existing" ? applyToNew() : applyToSelected())}
-            onModeChange={changeMode}
-            pending={pending}
-            remainingCount={remainingPlans.length}
-            retrying={selectedPlans.some((candidate) => results[candidate.variantId]?.status)}
-            selectedCount={selectedPlans.length}
-          />
-        </DialogContent>
+          </DialogContent>
+        ) : null}
       </Dialog>
     </>
   );
