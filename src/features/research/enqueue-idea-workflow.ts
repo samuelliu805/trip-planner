@@ -118,7 +118,7 @@ export function enqueueIdeaInNewPlan(
     { dayId: workspace.days[0]?.id ?? "", beforeItemId: "", anchorDayNumber: anchor },
     choice,
     [operationId],
-    blank ? "" : sourceSnapshot(workspace),
+    sourceSnapshot(workspace),
   );
   return { operationId: applicationId, variantId: operationId };
 }

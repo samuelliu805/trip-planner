@@ -9,8 +9,12 @@ export async function waitForTripOutbox(browser, tripId, { evaluate, waitFor, do
       if (scope[2] !== ${JSON.stringify(tripId)} ||
         !${JSON.stringify(domains)}.includes(scope[3])) continue;
       const op = JSON.parse(localStorage.getItem(key));
+      const input = (op.wire || op.intent)?.input || {};
       operations.push({ domain: scope[3], status: op.status, attempts: op.attempts,
         hasAck: op.ack !== undefined, dependencies: op.dependsOn.length,
+        counters: Object.fromEntries(['expectedVersion', 'expectedVariantVersion',
+          'expectedContentVersion', 'expectedDaysVersion', 'expectedItemsVersion']
+          .filter((name) => typeof input[name] === 'number').map((name) => [name, input[name]])),
         error: typeof op.error === 'string' ? op.error.slice(0, 240) : undefined });
     }
     return { operations, failed: operations.some((op) => ['failed', 'conflict'].includes(op.status)) };

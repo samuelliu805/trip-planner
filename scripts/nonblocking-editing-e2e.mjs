@@ -567,7 +567,7 @@ const server = createServer(async (request, response) => {
         color: input.color,
         is_primary: false,
         version: 1,
-        content_version: 1,
+        content_version: duplicate ? 1 : 1 + source.days.length,
         days_version: 1,
         items_version: 1,
       };
@@ -578,6 +578,7 @@ const server = createServer(async (request, response) => {
           ...day,
           id: input.dayIds[day.id],
           variant_id: key,
+          date: duplicate ? day.date : null,
           title: duplicate ? day.title : null,
           notes: duplicate ? day.notes : null,
           version: 1,
@@ -2135,16 +2136,51 @@ try {
     await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
     await page.waitForFunction(() => window.__workflows?.queue.operations.length > 0);
     const child = await page.evaluate(() => window.__workflows.queue.operations[0]);
+    assert.ok(child.intent.before, "the accepted blank Plan retains its exact content baseline");
     assert.equal(calls.filter((row) => row.kind === "idea-apply").length, 0);
     await page.waitForFunction(() => window.__workflows?.queue.operations.length === 0, {
       timeout: 20000,
     });
     const target = planWorkspaces.get(child.intent.input.variantId);
     assert.equal(
+      calls.find((row) => row.kind === "idea-apply").input.expectedContentVersion,
+      1 + workspace.days.length,
+      "first application uses the confirmed creation counter",
+    );
+    assert.equal(
       target.days.flatMap((day) => day.items).filter((row) => row.title === "Idea 71").length,
       1,
     );
     assert.equal(planWorkspaces.size, 2);
+  });
+  await scenario("new Plan child rejects unrelated changes before its first send", async (page) => {
+    await page.route("**/mock", async (route) => {
+      const input = route.request().postDataJSON();
+      if (input.kind === "load" && input.input.variantId !== workspace.variant.id) {
+        const target = planWorkspaces.get(input.input.variantId);
+        if (target) {
+          target.days[0].title = "External day edit";
+          target.variant.content_version++;
+        }
+      }
+      return route.continue();
+    });
+    await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+    await page
+      .locator("[data-workflow-probe]")
+      .getByRole("button", { name: "Add to Plan", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("button", { name: "Create empty Plan + idea", exact: true }).click();
+    await dialog.getByRole("button", { name: "Create Plan", exact: true }).click();
+    await dialog.waitFor({ state: "hidden", timeout: 750 });
+    await page.locator('[data-sync-status="Conflict"]').waitFor({ timeout: 15000 });
+    const child = await page.evaluate(() => window.__workflows.queue.operations[0]);
+    assert.equal(child.attempts, 0);
+    assert.ok(child.intent.before);
+    assert.match(child.error, /target Plan changed/);
+    assert.equal(calls.filter((row) => row.kind === "idea-apply").length, 0);
+    assert.equal(calls.filter((row) => row.kind === "create-plan").length, 1);
   });
   await scenario(
     "Idea then booking continues through its predecessor receipt without a false conflict",

@@ -7,6 +7,7 @@ DECLARE trip uuid; target public.route_variants%ROWTYPE; day uuid; a uuid:=gen_r
  comparison_op uuid:=gen_random_uuid(); apply_op uuid:=gen_random_uuid(); comparison jsonb; applied jsonb;
  sources jsonb; before_count integer; booking uuid:=gen_random_uuid(); booking_op uuid:=gen_random_uuid(); conflict_message text; conflict_detail text;
  undo_op uuid:=gen_random_uuid(); choice_op uuid:=gen_random_uuid(); choice_id uuid; application_id uuid; reverted jsonb; booking_version bigint;
+ blank_op uuid:=gen_random_uuid(); blank_apply uuid:=gen_random_uuid(); blank public.route_variants%ROWTYPE; day_map jsonb; blank_day uuid;
 BEGIN
  trip:=public.create_trip_v3('Workflow fixture','UTC','USD','en',2,'2026-10-10','2026-10-11',gen_random_uuid());
  SELECT * INTO target FROM public.route_variants WHERE trip_id=trip AND is_primary;
@@ -76,6 +77,26 @@ BEGIN
  applied:=public.apply_idea_request_v2(trip,target.id,NULL,(comparison->>'id')::uuid,choice_id,day,NULL,NULL,sources,target.version,target.content_version,target.days_version,target.items_version,choice_op);
  IF public.apply_idea_request_v2(trip,target.id,NULL,(comparison->>'id')::uuid,choice_id,day,NULL,NULL,sources,target.version,target.content_version,target.days_version,target.items_version,choice_op)<>applied
   OR (SELECT count(*) FROM public.itinerary_items WHERE variant_id=target.id)<>before_count+1 THEN RAISE EXCEPTION 'choice adoption replay duplicated item'; END IF;
+ -- Creating the blank Plan inserts real days and advances its content counter.
+ -- A first child must use the confirmed creation baseline rather than four assumed ones.
+ SELECT * INTO target FROM public.route_variants WHERE id=target.id;
+ SELECT jsonb_object_agg(id::text,gen_random_uuid()::text) INTO day_map FROM public.trip_days WHERE variant_id=target.id;
+ PERFORM public.create_route_variant_v4(trip,target.id,'Blank first application','#d97706',blank_op,false,
+   target.version,target.days_version,target.items_version,target.content_version,day_map,'{}');
+ SELECT * INTO blank FROM public.route_variants WHERE id=blank_op;
+ SELECT id INTO blank_day FROM public.trip_days WHERE variant_id=blank_op AND day_number=1;
+ IF blank.content_version<=1 THEN RAISE EXCEPTION 'blank creation counter fixture did not advance'; END IF;
+ sources:=jsonb_build_object(a::text,(SELECT version FROM public.research_items WHERE id=a));
+ BEGIN
+  PERFORM public.apply_idea_request_v2(trip,blank_op,a,NULL,NULL,blank_day,NULL,NULL,sources,1,1,1,1,gen_random_uuid());
+  RAISE EXCEPTION 'assumed blank creation counters accepted';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ applied:=public.apply_idea_request_v2(trip,blank_op,a,NULL,NULL,blank_day,NULL,NULL,sources,
+   blank.version,blank.content_version,blank.days_version,blank.items_version,blank_apply);
+ IF applied->>'status'<>'applied' OR public.apply_idea_request_v2(trip,blank_op,a,NULL,NULL,blank_day,NULL,NULL,sources,
+   blank.version,blank.content_version,blank.days_version,blank.items_version,blank_apply)<>applied
+   OR (SELECT count(*) FROM public.itinerary_items WHERE variant_id=blank_op)<>1 THEN
+  RAISE EXCEPTION 'confirmed blank child/replay failed'; END IF;
 END $test$;
 RESET ROLE;
 DO $test$ BEGIN

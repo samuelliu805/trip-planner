@@ -996,6 +996,12 @@ async function verifyTripSectionNavigation(browser, tripId) {
     "closed",
     `Dated Google flight was not added to Plan: ${datedApplyResult.text ?? "unknown error"}`,
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: ["idea-workflows"],
+    label: "CN flight application confirmed before cold navigation",
+  });
   await navigate(browser, `/trips/${tripId}`);
   await waitFor(
     browser,
