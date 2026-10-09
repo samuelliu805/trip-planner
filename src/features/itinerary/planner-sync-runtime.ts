@@ -5,6 +5,7 @@ import { type QueryClient } from "@tanstack/react-query";
 import { DurableOutbox, type OutboxOperation } from "../editing/outbox";
 import { loadPlannerWorkspace } from "./actions";
 import { prepareSyncIntent } from "./prepare-sync-intent";
+import { prepareCopySourceParents } from "./prepare-copy-source-parents";
 import { sendSyncIntent } from "./send-sync-intent";
 import { plannerQueryKey } from "./planner-query";
 import { projectSyncIntent, type PlannerSyncIntent } from "./sync-operation";
@@ -249,11 +250,15 @@ export class PlannerSyncRuntime {
     this.client.setQueryData(plannerQueryKey(this.tripId, this.variantId), this.project());
   }
 
-  private prepare(operation: OutboxOperation) {
+  private async prepare(operation: OutboxOperation) {
     this.reloadCheckpoint();
     return json(
       prepareSyncIntent(
-        resolveApplicationParents(operation, this.scope, this.storage),
+        await prepareCopySourceParents(
+          resolveApplicationParents(operation, this.scope, this.storage),
+          this.scope,
+          this.storage,
+        ),
         this.confirmed,
       ),
     );

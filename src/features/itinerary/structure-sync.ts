@@ -26,6 +26,7 @@ export type StructureSyncIntent =
       sources: ItineraryItem[];
       replacements: ItineraryItem[];
       copiedItems: ItineraryItem[];
+      sourceParents?: Record<string, string[]>;
     };
 
 export const isStructureIntent = (intent: { kind: string }): intent is StructureSyncIntent =>

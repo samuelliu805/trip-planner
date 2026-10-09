@@ -90,8 +90,18 @@ export function acceptPlannerIntent(context: AcceptedPlannerContext, intent: Pla
         intentItemIds(op.intent as unknown as PlannerSyncIntent).some((id) =>
           intent.input.sourceItemIds.includes(id),
         )
-      )
+      ) {
         dependencies.push(op.id);
+        if (intent.kind === "copy") {
+          const ids = intentItemIds(op.intent as unknown as PlannerSyncIntent);
+          for (const source of intent.sources.filter(
+            (source) => source.variant_id === entry.scope[3] && ids.includes(source.id),
+          )) {
+            intent.sourceParents ??= {};
+            (intent.sourceParents[source.id] ??= []).push(op.id);
+          }
+        }
+      }
       const action = op.intent as {
         kind: string;
         input: { variantId?: string };

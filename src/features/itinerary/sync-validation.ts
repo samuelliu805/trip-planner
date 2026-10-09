@@ -59,6 +59,7 @@ const intent = z.discriminatedUnion("kind", [
     sources: z.array(item),
     replacements: z.array(item),
     copiedItems: z.array(item),
+    sourceParents: z.record(z.string(), z.array(z.string())).optional(),
     ...metadata,
   }),
 ]);
