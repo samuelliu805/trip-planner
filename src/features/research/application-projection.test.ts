@@ -5,12 +5,16 @@ import { resolveApplicationSnapshotParents } from "./application-snapshot-receip
 import test from "node:test";
 import { randomUUID } from "node:crypto";
 import { captureApplicationProjection, projectApplication } from "./application-projection.ts";
-import { saveApplicationReceipt, resolveApplicationParents } from "./application-receipt.ts";
+import {
+  saveApplicationReceipt,
+  resolveApplicationParents,
+  reboundApplicationProjection,
+} from "./application-receipt.ts";
 import { optimisticSavedItem } from "../itinerary/sync-operation.ts";
 import { itemEditableSnapshot } from "../itinerary/item-editable-snapshot.ts";
 import { prepareSyncIntent } from "../itinerary/prepare-sync-intent.ts";
 import type { ResearchItem } from "./types";
-import type { PlannerWorkspace } from "../itinerary/types";
+import type { ItineraryItem, PlannerWorkspace } from "../itinerary/types";
 import type { OutboxOperation } from "../editing/outbox";
 
 function fixture() {
@@ -97,6 +101,114 @@ test("pending application is idempotent and preserves unrelated editing", () => 
     twice.days[0].items.map((item) => item.title),
     ["Unrelated B", "Idea"],
   );
+});
+
+test("an atomic application projection retains loaded place and independent attachment data", () => {
+  const { workspace, source, scope } = fixture();
+  const projection = captureApplicationProjection(workspace, [source], {});
+  const placeId = randomUUID();
+  const current = {
+    ...projection.items[0],
+    version: 2,
+    place_id: placeId,
+    place: {
+      id: placeId,
+      provider: "google",
+      providerPlaceId: "loaded-place",
+      displayName: "Loaded place",
+      formattedAddress: "Address",
+      latitude: 1,
+      longitude: 2,
+      coordinateSystem: "wgs84",
+    },
+    attachments_version: 2,
+    attachments: [{ id: randomUUID(), fileName: "confirmed.pdf", kind: "pdf", status: "ready" }],
+  } as ItineraryItem;
+  workspace.days[0].items = [current];
+  const atomic = { ...current, title: "Confirmed application", attachments_version: 1 };
+  delete atomic.place;
+  delete atomic.attachments;
+  const rows = [{ ...workspace.days[0], items_version: 2, items: [atomic] }];
+  const storage = memory(),
+    parent = randomUUID();
+  saveApplicationReceipt(storage, scope, parent, projection, rows);
+  const rebound = reboundApplicationProjection(storage, scope, parent, projection);
+  const projected = projectApplication(workspace, rebound).days[0].items[0];
+  assert.equal(projected.title, "Confirmed application");
+  assert.deepEqual(projected.place, current.place);
+  assert.deepEqual(projected.attachments, current.attachments);
+  assert.equal(projected.attachments_version, 2);
+  assert.equal(atomic.place, undefined);
+  assert.equal(atomic.attachments, undefined);
+  assert.equal(
+    projectApplication(workspace, { ...rebound, items: [{ ...atomic, place_id: randomUUID() }] })
+      .days[0].items[0].place,
+    null,
+  );
+});
+
+test("a retained application ACK cannot replace a newer confirmed item", () => {
+  const { workspace, source, scope } = fixture();
+  const projection = captureApplicationProjection(workspace, [source], {});
+  const atomic = { ...projection.items[0], version: 2 };
+  const storage = memory(),
+    parent = randomUUID();
+  saveApplicationReceipt(storage, scope, parent, projection, [
+    { ...workspace.days[0], items_version: 2, items: [atomic] },
+  ]);
+  const current = { ...atomic, version: 3, title: "Later confirmed B", notes: "B notes" };
+  workspace.days[0].items = [current];
+  const rebound = reboundApplicationProjection(storage, scope, parent, projection);
+  assert.deepEqual(projectApplication(workspace, rebound).days[0].items, [current]);
+  assert.equal(
+    projectApplication(workspace, projection).days[0].items[0].title,
+    source.title,
+    "unacknowledged intent remains visible",
+  );
+});
+
+test("retained application receipts cannot resurrect confirmed day or item deletions", () => {
+  const { workspace, source, scope } = fixture();
+  const projection = captureApplicationProjection(workspace, [source], {});
+  const created = {
+    ...workspace.days[0],
+    id: randomUUID(),
+    day_number: 2,
+    date: "2026-10-10",
+    items: [],
+  };
+  projection.days.push(created);
+  const atomic = { ...projection.items[0], version: 2 };
+  const rows = [
+    { ...workspace.days[0], items_version: 2, items: [atomic] },
+    { ...created, id: randomUUID() },
+  ];
+  const storage = memory(),
+    parent = randomUUID();
+  saveApplicationReceipt(storage, scope, parent, projection, rows);
+  const rebound = reboundApplicationProjection(storage, scope, parent, projection);
+  assert.equal(
+    projectApplication(workspace, rebound).days.length,
+    2,
+    "the operation's newly created day is visible before refresh",
+  );
+  workspace.variant.days_version++;
+  workspace.days[0] = {
+    ...workspace.days[0],
+    version: 2,
+    items_version: 3,
+    date: "2026-11-01",
+    items: [],
+  };
+  const foreign = { ...created, id: randomUUID(), date: "2026-11-02" };
+  workspace.days.push(foreign);
+  const projected = projectApplication(workspace, rebound);
+  assert.deepEqual(
+    projected.days.map((day) => day.id),
+    workspace.days.map((day) => day.id),
+  );
+  assert.equal(projected.days[0].date, "2026-11-01");
+  assert.deepEqual(projected.days[0].items, []);
 });
 
 test("atomic receipt binds a pending edit and rejects a subsequent foreign edit", () => {

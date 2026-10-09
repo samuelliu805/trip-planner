@@ -5,8 +5,12 @@ import { ideaJourneyPreview } from "./idea-journey-preview.ts";
 import { addIsoDateDays } from "./date-range.ts";
 import { applicationCalendar } from "./application-calendar.ts";
 import { sourceSnapshot } from "../variants/source-snapshot.ts";
+import { projectApplication } from "./project-application.ts";
+export { projectApplication } from "./project-application.ts";
 
 export type ApplicationProjection = {
+  confirmed?: true;
+  baseDaysVersion?: number;
   days: PlannerDay[];
   items: ItineraryItem[];
   removedIds: string[];
@@ -35,7 +39,13 @@ export function captureApplicationProjection(
   },
 ): ApplicationProjection {
   const days = workspace.days.map((day) => ({ ...day, items: [...day.items] }));
-  const projected: ApplicationProjection = { days: [], items: [], removedIds: [], bindings: [] };
+  const projected: ApplicationProjection = {
+    days: [],
+    items: [],
+    removedIds: [],
+    bindings: [],
+    baseDaysVersion: workspace.variant.days_version,
+  };
   const ensureDay = (date: string | null, fallback?: string | null) => {
     let day = fallback
       ? days.find((day) => day.id === fallback)
@@ -239,29 +249,4 @@ export function captureApplicationProjection(
   projected.days = days.map((day) => ({ ...day, items: [] }));
   projected.previewSnapshot = sourceSnapshot(projectApplication(workspace, projected));
   return projected;
-}
-
-export function projectApplication(
-  workspace: PlannerWorkspace,
-  projection: ApplicationProjection,
-): PlannerWorkspace {
-  const items = new Set(projection.items.map((item) => item.id));
-  const removed = new Set(projection.removedIds);
-  return {
-    ...workspace,
-    days: [
-      ...workspace.days,
-      ...projection.days.filter((day) => !workspace.days.some((old) => old.id === day.id)),
-    ]
-      .filter((day) => !projection.removedDayIds?.includes(day.id))
-      .map((day) => ({
-        ...day,
-        day_number: projection.days.find((row) => row.id === day.id)?.day_number ?? day.day_number,
-        date: projection.days.find((row) => row.id === day.id)?.date ?? day.date,
-        items: [
-          ...day.items.filter((item) => !items.has(item.id) && !removed.has(item.id)),
-          ...projection.items.filter((item) => item.day_id === day.id),
-        ],
-      })),
-  };
 }

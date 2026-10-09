@@ -140,6 +140,7 @@ export function reboundApplicationProjection(
   const receipt = JSON.parse(bytes) as Receipt;
   return {
     ...projection,
+    confirmed: true,
     days: receipt.rows.map((day) => ({ ...day, items: [] })),
     items: receipt.pairs.map((pair) => pair.confirmed),
   };
