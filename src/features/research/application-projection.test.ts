@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createLocalCopies, dayEditSnapshot, dayIds } from "../itinerary/structure-sync.ts";
-import { sourceSnapshot } from "../variants/source-snapshot.ts";
+import { sourceSnapshot, sourceSnapshotDifferences } from "../variants/source-snapshot.ts";
 import { bindApplicationProjectionParents } from "./application-projection-parents.ts";
 import { resolveApplicationSnapshotParents } from "./application-snapshot-receipt.ts";
 import test from "node:test";
@@ -714,4 +714,28 @@ test("copy, clear and day removal bind pending application baselines without hid
   );
   workspace.days[0].items[0] = { ...canonical, title: "Foreign C", version: 4 };
   assert.throws(() => prepareSyncIntent(resolved, workspace), /changed elsewhere/);
+});
+
+test("source conflict diagnostics identify only fixed field names without private values", () => {
+  const { workspace, source } = fixture();
+  const before = projectApplication(
+    workspace,
+    captureApplicationProjection(workspace, [source], {}),
+  );
+  const after = structuredClone(before);
+  after.days[0].items[0].title = "private-title";
+  after.days[0].items[0].details = { mode: "subway", "private-key": "private-value" };
+  after.days[0].items[0].sort_order++;
+  after.days[0].title = "private-day";
+  const labels = sourceSnapshotDifferences(before, after);
+  assert.deepEqual(labels, ["day.title", "item.sort_order", "item.title", "item.details.mode"]);
+  assert.doesNotMatch(JSON.stringify(labels), /private/);
+  assert.notEqual(sourceSnapshot(before), sourceSnapshot(after));
+  after.days[0].items[0].details = { "private-key": "private-value" };
+  assert.ok(sourceSnapshotDifferences(before, after).includes("item.details.other"));
+  const versionOnly = structuredClone(before);
+  versionOnly.variant.content_version++;
+  versionOnly.days[0].items[0].version++;
+  assert.equal(sourceSnapshot(before), sourceSnapshot(versionOnly));
+  assert.deepEqual(sourceSnapshotDifferences(before, versionOnly), []);
 });

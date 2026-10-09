@@ -8,6 +8,7 @@ import { registerSyncQueue, subscribeSync, tripSyncQueues } from "../editing/syn
 import { loadPlannerWorkspace } from "../itinerary/actions";
 import { findPlannerRuntime, ownedPlannerRuntime } from "../itinerary/planner-runtime-owner";
 import { plannerQueryKey } from "../itinerary/planner-query";
+import { sourceSnapshotDifferences } from "./source-snapshot";
 import type { PlannerVariant, PlannerWorkspace } from "../itinerary/types";
 import {
   createRouteVariant,
@@ -196,7 +197,10 @@ export class VariantSyncRuntime {
       const loaded = await loadPlannerWorkspace(this.scope[2], intent.input.sourceVariantId);
       if (!loaded.data || sourceSnapshot(loaded.data) !== sourceSnapshot(intent.source))
         throw new SyncFailure(
-          "The source Plan changed. Your copy request is kept for review.",
+          "The source Plan changed. Your copy request is kept for review. " +
+            (loaded.data
+              ? sourceSnapshotDifferences(intent.source, loaded.data).join(", ").slice(0, 160)
+              : "Source unavailable."),
           "conflict",
         );
       const source = loaded.data.variant;

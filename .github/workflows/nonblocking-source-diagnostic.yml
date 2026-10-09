@@ -1,0 +1,147 @@
+name: Temporary CN source diagnostic
+on:
+  push:
+    branches: [diagnostics/nonblocking-source-71646]
+permissions:
+  contents: read
+concurrency:
+  group: phase-6-dual-environment
+  cancel-in-progress: false
+jobs:
+  cn-live:
+    if: github.repository == 'samuelliu805/trip-planner' && github.actor == github.repository_owner
+    environment: cloudbase-pg-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      AMAP_JS_SECURITY_CODE: ${{ secrets.AMAP_JS_SECURITY_CODE }}
+      AMAP_WEB_SERVICE_KEY: ${{ secrets.AMAP_WEB_SERVICE_KEY }}
+      APP_REGION: cn
+      AUTH_PROVIDER: cloudbase
+      CLOUDBASE_API_KEY: ${{ secrets.CLOUDBASE_API_KEY }}
+      CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
+      CLOUDBASE_PG_INSTANCE_ID: pgdb-l4lhtrv7
+      CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
+      CLOUDBASE_REGION: ap-shanghai
+      CN_PUBLIC_PHONE_AUTH_ENABLED: "true"
+      CLOUDBASE_TEST_USER_A_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_A_PASSWORD }}
+      CLOUDBASE_TEST_USER_B_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_B_PASSWORD }}
+      DATA_PROVIDER: cloudbase
+      NEXT_PUBLIC_AMAP_JS_API_KEY: ${{ secrets.NEXT_PUBLIC_AMAP_JS_API_KEY }}
+      NEXT_PUBLIC_APP_REGION: cn
+      NEXT_PUBLIC_CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
+      NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CLOUDBASE_REGION: ap-shanghai
+      NEXT_PUBLIC_MAPS_PROVIDER: amap
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3100
+      NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
+      NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: development
+      PHASE3_APP_BASE_URL: http://127.0.0.1:3100
+      PHASE3_START_APP: "1"
+      PHASE5_AMAP_ALLOWED_HOSTNAME: trip-planner-cn-306129-11-1253819205.sh.run.tcloudbase.com
+      PHASE5_REQUIRE_AMAP_SMOKE: "1"
+      STORAGE_PROVIDER: cloudbase
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          cache: npm
+          node-version: 24
+      - name: Verify exact workflow head
+        env:
+          PHASE5_CANDIDATE_SHA: ${{ github.sha }}
+          PHASE5_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$PHASE5_CANDIDATE_SHA"
+          test "$PHASE5_CANDIDATE_SHA" = "$PHASE5_SOURCE_SHA"
+      - run: npm ci
+      - name: Validate the approved CloudBase dev target and required secrets
+        run: |
+          npm run check:phase-5-environment -- cn --live
+          npm run check:cloudbase-pg-target -- \
+            --env-id trip-planner-cn-dev-d3bz94038b26 \
+            --region ap-shanghai \
+            --instance-id pgdb-l4lhtrv7
+      - name: Authenticate the CloudBase database audit CLI
+        if: ${{ always() }}
+        run: |
+          if ! timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb login \
+            --cloudbase-api-key "$CLOUDBASE_API_KEY" \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --json > /dev/null 2>&1; then
+            echo "CloudBase database audit CLI authentication failed."
+            exit 1
+          fi
+      - name: Require AMap server variables in the CloudBase Run runtime
+        run: |
+          detail_output="$(mktemp)"
+          trap 'rm -f "$detail_output"' EXIT
+          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun detail \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --service-name trip-planner-cn \
+            --json > "$detail_output"
+          node scripts/verify-cloudbase-run-detail.mjs \
+            "$detail_output" trip-planner-cn \
+            --require-runtime-env NEXT_PUBLIC_AMAP_JS_API_KEY \
+            --require-runtime-env AMAP_JS_SECURITY_CODE \
+            --require-runtime-env AMAP_WEB_SERVICE_KEY
+      - name: Apply only the reviewed sharing migrations to the approved dev target
+        run: |
+          migration_list="$(mktemp)"
+          migration_plan="$(mktemp)"
+          trap 'rm -f "$migration_list" "$migration_plan"' EXIT
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration list \
+            --env-id "$CLOUDBASE_ENV_ID" --json > "$migration_list"
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
+            --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
+          node scripts/verify-cloudbase-migration-plan.mjs \
+            "$migration_list" "$migration_plan" --deployment 20260930104055 20261001171904 20261002015227 20261002022422 20261002024231 20261002152148 20261008023811 20261008030300 20261009010000 20261009020000 20261009030000 20261009040000 20261009050000 20261009060000 20261009070000 20261009080000 20261009090000
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
+            --env-id "$CLOUDBASE_ENV_ID" --json
+      - name: Verify migration list and dry run without applying changes
+        run: |
+          migration_list="$(mktemp)"
+          migration_plan="$(mktemp)"
+          trap 'rm -f "$migration_list" "$migration_plan"' EXIT
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration list \
+            --env-id "$CLOUDBASE_ENV_ID" --json > "$migration_list"
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
+            --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
+          node scripts/verify-cloudbase-migration-plan.mjs \
+            "$migration_list" "$migration_plan" \
+            20260902075444 20260903180000 20260903193000 20260905010000 20260905020000 20260905030000 20260906020000 20260906030000 20260906040000 20260906050000 20260906060000 20260906070000 20260907080000 20260907081000 20260907082000 20260907083000 20260907084000 20260907085000 20260907086000 20260907087000 20260907088000 20260907089000 20260907090000 20260907091000 20260907092000 20260907093000 20260907094000 20260907095000 20260907096000 20260907097000 20260908100000 20260908101000 20260908102000 20260908103000 20260909011000 20260909034815 20260918010000 20260922160000 20260922163000 20260928022701 20260928024437 20260928060000 20260928061000 20260930104055 20261001171904 20261002015227 20261002022422 20261002024231 20261002152148 20261008023811 20261008030300 20261009010000 20261009020000 20261009030000 20261009040000 20261009050000 20261009060000 20261009070000 20261009080000 20261009090000
+      - name: Build the exact CN selector and scan secrets
+        run: |
+          npm run build
+          npm run check:build-secret-boundary
+          npm run check:build-provider-isolation
+      - name: Pin a reachable AMap edge for the CN runner
+        run: |
+          restapi_address="$(node scripts/select-amap-ci-edge.mjs restapi.amap.com)"
+          webapi_address="$(node scripts/select-amap-ci-edge.mjs webapi.amap.com)"
+          test -n "$restapi_address"
+          test -n "$webapi_address"
+          printf '%s restapi.amap.com\n%s webapi.amap.com\n' \
+            "$restapi_address" "$webapi_address" | \
+            sudo --non-interactive tee -a /etc/hosts > /dev/null
+      - name: Run real AMap route and place Web Service smoke
+        run: npm run test:amap-phase-5-live
+      - name: Run CN Auth, CRUD, RPC, RLS, share, cookie, header, and browser suite
+        run: npm run test:cloudbase-phase-3-live
+      - name: Run private Storage, signed URL, and zero-residue suite
+        if: ${{ always() }}
+        run: npm run test:cloudbase-phase-4-storage
+      - name: Invoke the deployed cleanup function
+        if: ${{ always() }}
+        run: node scripts/invoke-cloudbase-cleanup-http.mjs
+      - name: Independently execute cleanup and residue audit
+        if: ${{ always() }}
+        run: npm run test:cloudbase-phase-4-cleanup
+      - name: Record CN evidence identity
+        if: ${{ always() }}
+        run: |
+          printf '## Phase 6 CN live evidence\n\n- SHA: `%s`\n- Target: approved CloudBase dev\n- Run: `%s`\n' \
+            "${{ github.sha }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            >> "$GITHUB_STEP_SUMMARY"
