@@ -144,6 +144,20 @@ export class GuestDraftStorage {
     }
   }
 
+  clearConfirmedImport() {
+    const marker = this.readImportMarker();
+    if (!marker || marker.revision === undefined) return false;
+    const draft = this.load();
+    if (draft && (draft.draftId !== marker.draftId || draft.revision !== marker.revision))
+      return false;
+    if (this.clear(marker.draftId, marker.revision) !== true) return false;
+    const currentMarker = this.readImportMarker();
+    if (currentMarker?.draftId !== marker.draftId || currentMarker.revision !== marker.revision)
+      return false;
+    this.storage.removeItem(guestImportMarkerStorageKey(this.region));
+    return true;
+  }
+
   readIntent(): GuestIntent | null {
     try {
       const raw = this.storage.getItem(guestIntentStorageKey(this.region));

@@ -207,6 +207,57 @@ test("guest intent cleanup and imported markers preserve a recoverable continuat
   assert.equal(memory.getItem(guestImportMarkerStorageKey("global")), null);
 });
 
+test("authenticated cleanup removes only the confirmed Guest revision and its continuation", () => {
+  for (const region of ["global", "cn"] as const) {
+    const memory = new MemoryStorage();
+    const storage = new GuestDraftStorage(region, memory as Storage);
+    const value = { ...draft(region), revision: 3 };
+    storage.save(value, null);
+    storage.writeIntent({ action: "save", createdAt: value.createdAt, draftId: value.draftId });
+    const bytes = memory.getItem(guestDraftStorageKey(region));
+    const marker = {
+      draftId: value.draftId,
+      importedAt: value.updatedAt,
+      tripId: ids(1000)(),
+    };
+    assert.equal(
+      storage.clearConfirmedImport(),
+      false,
+      "login alone cannot discard the Guest copy",
+    );
+    storage.writeImportMarker(marker);
+    assert.equal(storage.clearConfirmedImport(), false, "legacy marker has no confirmed cutoff");
+    storage.writeImportMarker({ ...marker, revision: 2 });
+    assert.equal(storage.clearConfirmedImport(), false, "newer input survives an older import");
+    assert.equal(memory.getItem(guestDraftStorageKey(region)), bytes);
+    assert.notEqual(memory.getItem(guestIntentStorageKey(region)), null);
+    storage.writeImportMarker({ ...marker, draftId: ids(2000)(), revision: 3 });
+    assert.equal(
+      storage.clearConfirmedImport(),
+      false,
+      "another draft's receipt cannot clear this draft",
+    );
+    storage.writeImportMarker({ ...marker, revision: 3 });
+    memory.setItem(guestDraftStorageKey(region), "{corrupt-recoverable");
+    assert.throws(() => storage.clearConfirmedImport(), GuestStorageError);
+    assert.equal(memory.getItem(guestDraftStorageKey(region)), "{corrupt-recoverable");
+    memory.setItem(guestDraftStorageKey(region), bytes!);
+    assert.equal(storage.clearConfirmedImport(), true);
+    for (const key of [
+      guestDraftStorageKey(region),
+      guestIntentStorageKey(region),
+      guestImportMarkerStorageKey(region),
+    ])
+      assert.equal(memory.getItem(key), null);
+    // Claim itself clears the active draft while retaining its marker for post-login actions.
+    storage.save(value, null);
+    storage.writeImportMarker({ ...marker, revision: 3 });
+    storage.clear(value.draftId, value.revision);
+    assert.equal(storage.clearConfirmedImport(), true);
+    assert.equal(storage.readImportMarker(), null);
+  }
+});
+
 test("guest item and day mutations stay local and preserve importable identifiers", async () => {
   let current = draft();
   const commit = (update: (value: typeof current) => typeof current) => {

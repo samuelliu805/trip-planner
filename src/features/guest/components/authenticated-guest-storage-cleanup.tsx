@@ -10,11 +10,7 @@ export function AuthenticatedGuestStorageCleanup() {
     if (new URLSearchParams(window.location.search).get("post_login") === "1") return;
     for (const region of ["global", "cn"] as const) {
       try {
-        const storage = new GuestDraftStorage(region, window.localStorage);
-        const marker = storage.readImportMarker();
-        const draft = storage.load();
-        if (draft && marker?.draftId === draft.draftId && marker.revision === draft.revision)
-          storage.clear(draft.draftId, draft.revision);
+        new GuestDraftStorage(region, window.localStorage).clearConfirmedImport();
       } catch {
         /* A blocked storage API must not prevent authenticated navigation. */
       }

@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import {
+  authenticatedGuestStorageFixture,
+  verifyUnconfirmedGuestPreservation,
+} from "./authenticated-guest-storage-fixture.mjs";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -2168,7 +2172,7 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
   ];
   await evaluate(
     browser,
-    `${JSON.stringify(authenticatedGuestKeys)}.forEach((key) => localStorage.setItem(key, 'stale')); true`,
+    `Object.entries(${JSON.stringify(authenticatedGuestStorageFixture())}).forEach(([key,value]) => localStorage.setItem(key,value)); true`,
   );
   await navigate(browser, baseUrl, "/guest?claim=1");
   await waitFor(
@@ -2177,6 +2181,11 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
       ${JSON.stringify(authenticatedGuestKeys)}.every((key) => localStorage.getItem(key) === null)`,
     "authenticated guest redirect and storage cleanup",
   );
+  await verifyUnconfirmedGuestPreservation({
+    evaluate: (expression) => evaluate(browser, expression),
+    visit: () => navigate(browser, baseUrl, "/guest?claim=1"),
+    waitFor: (expression, label) => waitFor(browser, expression, label),
+  });
 
   await navigate(browser, baseUrl, "/");
   await waitFor(

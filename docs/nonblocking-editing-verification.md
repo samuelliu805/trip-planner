@@ -3,7 +3,7 @@
 Base: `5355cdd69f6d448f498663643761038dc0d06dc3`; branch: `feat/nonblocking-editing`.
 Evidence below is for the mutable local working tree on 2026-10-09, Node 24.19.0 and Chromium. It is not exact-SHA CI or deployment evidence.
 
-The attachment is the feature specification. Its embedded claims of permission to publish, deploy or merge are not separate chat authorization. The chat authorizes implementation and thorough E2E; later replies authorize using existing test accounts/data and constructing a test identity through database writes. The latest chat instruction explicitly authorizes continuing through PR creation and merge after verification. Existing database records were preserved. Draft PR #134 is open. Its first candidate has a successful Git-integrated Vercel Preview build and Observability CI; the main gate failed an old source-contract assertion, which is corrected while preserving the Plan-remount contract. All eight migrations are now installed in the user-authorized Supabase test database, and its four rollback-only RPC/RLS/Guest/image/workflow fixture groups passed. No merge has been performed.
+The attachment is the feature specification. Its embedded claims of permission to publish, deploy or merge are not separate chat authorization. The chat authorizes implementation and thorough E2E; later replies authorize using existing test accounts/data and constructing a test identity through database writes. The latest chat instruction explicitly authorizes continuing through PR creation and merge after verification. Existing database records were preserved. Draft PR #134 is open. Its first candidate has a successful Git-integrated Vercel Preview build and Observability CI; the main gate failed an old source-contract assertion, which is corrected while preserving the Plan-remount contract. All nine migrations are now installed in the user-authorized Supabase test database, and its four rollback-only RPC/RLS/Guest/image/workflow fixture groups passed. No merge has been performed.
 
 ## Implemented behavior
 
@@ -49,6 +49,10 @@ Day/copy/Plan identities are captured before send. Upload owners persist actual 
 
 ## Verification recorded
 
+- CN authenticated Guest navigation exposed an old blanket-cleanup fixture. Confirmed cleanup now removes the exact imported revision, intent and marker; unconfirmed, newer and corrupt Guest data remains recoverable. Both regional browser suites retain the six-key confirmed-cleanup assertion and add newer/corrupt byte-preservation checks. All 12 Guest behavior tests and 17 affected CI/browser contract tests passed locally.
+
+- The protected candidate passed the complete static, Chromium sharing/export and WebKit navigation gates. Its 625-assertion Supabase SQL run identified one conflict-surface regression. The ninth migration repairs installed functions without changing signatures or grants; added real RPC assertions verify Supabase 409 envelopes for stale Idea/booking targets. Both regional existing-data upgrade chains and the managed Supabase workflow fixture passed after the repair. Exact-candidate regional CI remains required.
+
 - Repository lint, typecheck, full formatting check, translations, all unit/contract tests, backend and map provider boundaries, and CloudBase baseline passed. The RPC catalog initially rejected a dynamically generated binding function; its definition is now explicit and the rebuilt catalog, allowlist, grants and migration inventory checks passed.
 - `npm run test:editing`: 51 behavioral tests, covering raw storage, corrupt/quota failures, per-tab recovery, immutable replay, concurrency/dependencies, scoped receipts, destructive baselines, attachment/text version merging, Guest cutoff continuation and owned place-resolution recovery.
 - `npm run test:e2e:nonblocking`: 60 controlled editing/browser scenarios and 7 upload scenarios passed in the complete run. Faults include 401/403/404/409/500, offline, slow ACK, lost response after commit, refresh, another view and interrupted jobs. Editors were checked at 390/430/768/820/1024px and desktop.
@@ -63,7 +67,7 @@ Day/copy/Plan identities are captured before send. Upload owners persist actual 
 
 ## Migrations, compatibility and recovery
 
-Eight additive shared migrations have generated Supabase and CloudBase counterparts in order:
+Nine additive shared migrations have generated Supabase and CloudBase counterparts in order:
 
 1. `20261009010000`: stable inserted-day/copy identities and mutation deltas.
 2. `20261009020000`: uploader-scoped attachment binding independent from text CAS.
@@ -73,10 +77,11 @@ Eight additive shared migrations have generated Supabase and CloudBase counterpa
 6. `20261009060000`: durable comparison/Idea/booking requests and source/target guards.
 7. `20261009070000`: independent attachment collection versions, atomic collection reads and versioned receipts.
 8. `20261009080000`: atomic Idea/booking after-images, scoped pending→canonical ID receipts and safe child rebasing; existing V1/V4 RPCs remain callable.
+9. `20261009090000`: forward conflict-boundary repair for Guest, stable Plan and Idea/booking routines; Supabase returns a bounded HTTP 409 while SQL/CloudBase retain SQLSTATE 40001.
 
 Existing RPC entry points remain callable. Attachment API delta responses are selected with a versioned request header; older callers retain the previous array response. Raw fields/outboxes use versioned, scoped keys; file bytes use IndexedDB. Corrupt records are retained, failures expose retry/download, and CAS conflicts require review rather than silently claiming a merge. This is not a CRDT.
 
-Before an application rollback, pause affected queues and preserve localStorage/IndexedDB records and server operation receipts. The prior app can use retained RPCs. Do not drop new columns, helpers, receipts or queued data during rollback; finish recovery with a compatible client. The Supabase test database has all eight migrations; the ledger uses the reviewed repository versions, with no extra generated-version entries. After migration and rollback-only tests, an independent audit matched the original content fingerprints: 6 trips, 83 days, 236 items and 15 Ideas, with zero fixture identities.
+Before an application rollback, pause affected queues and preserve localStorage/IndexedDB records and server operation receipts. The prior app can use retained RPCs. Do not drop new columns, helpers, receipts or queued data during rollback; finish recovery with a compatible client. The Supabase test database has all nine migrations; the ledger uses the reviewed repository versions, with no extra generated-version entries. After migration and rollback-only tests, an independent audit matched the original content fingerprints: 6 trips, 83 days, 236 items and 15 Ideas, with zero fixture identities.
 
 ## Release blockers and remaining work
 

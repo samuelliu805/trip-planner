@@ -5,7 +5,7 @@ SET LOCAL ROLE authenticated;
 DO $test$
 DECLARE trip uuid; target public.route_variants%ROWTYPE; day uuid; a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid();
  comparison_op uuid:=gen_random_uuid(); apply_op uuid:=gen_random_uuid(); comparison jsonb; applied jsonb;
- sources jsonb; before_count integer; booking uuid:=gen_random_uuid(); booking_op uuid:=gen_random_uuid();
+ sources jsonb; before_count integer; booking uuid:=gen_random_uuid(); booking_op uuid:=gen_random_uuid(); conflict_message text; conflict_detail text;
  undo_op uuid:=gen_random_uuid(); choice_op uuid:=gen_random_uuid(); choice_id uuid; application_id uuid; reverted jsonb; booking_version bigint;
 BEGIN
  trip:=public.create_trip_v3('Workflow fixture','UTC','USD','en',2,'2026-10-10','2026-10-11',gen_random_uuid());
@@ -23,6 +23,24 @@ BEGIN
   PERFORM public.apply_idea_request_v2(trip,target.id,a,NULL,NULL,day,NULL,NULL,jsonb_build_object(a::text,999),target.version,target.content_version,target.days_version,target.items_version,gen_random_uuid());
   RAISE EXCEPTION 'stale Idea accepted';
  EXCEPTION WHEN serialization_failure THEN NULL; END;
+ PERFORM set_config('request.headers','{"x-client-info":"supabase-js/2"}',true);
+ BEGIN
+  PERFORM public.apply_idea_request_v2(trip,target.id,a,NULL,NULL,day,NULL,NULL,sources,target.version,target.content_version+1,target.days_version,target.items_version,gen_random_uuid());
+  RAISE EXCEPTION 'Supabase stale target accepted';
+ EXCEPTION WHEN SQLSTATE 'PGRST' THEN
+  GET STACKED DIAGNOSTICS conflict_message=MESSAGE_TEXT,conflict_detail=PG_EXCEPTION_DETAIL;
+  IF conflict_message::jsonb->>'code'<>'40001' OR conflict_message::jsonb->>'message'<>'APP_CONFLICT'
+   OR conflict_detail::jsonb->>'status'<>'409' THEN RAISE EXCEPTION 'Supabase Idea conflict envelope changed'; END IF;
+ END;
+ BEGIN
+  PERFORM public.apply_research_item_to_variant_v5(trip,target.id,a,1,NULL,'automatic',target.version,target.content_version+1,target.days_version,target.items_version,gen_random_uuid());
+  RAISE EXCEPTION 'Supabase stale booking target accepted';
+ EXCEPTION WHEN SQLSTATE 'PGRST' THEN
+  GET STACKED DIAGNOSTICS conflict_message=MESSAGE_TEXT,conflict_detail=PG_EXCEPTION_DETAIL;
+  IF conflict_message::jsonb->>'code'<>'40001' OR conflict_detail::jsonb->>'status'<>'409' THEN
+   RAISE EXCEPTION 'Supabase booking conflict envelope changed'; END IF;
+ END;
+ PERFORM set_config('request.headers','{}',true);
  BEGIN
   PERFORM public.apply_idea_request_v2(trip,target.id,a,NULL,NULL,day,NULL,NULL,sources,target.version,target.content_version+1,target.days_version,target.items_version,gen_random_uuid());
   RAISE EXCEPTION 'changed target accepted';
