@@ -135,7 +135,7 @@ const bundle = await build({
               : args.path === "use-variant-sync"
                 ? "export function useVariantSync(){return {project:()=>window.fixtureVariants,queue:{operations:[]},accept(intent){window.cloneInput=intent.input;return {variantId:intent.input.operationId}}}}"
                 : args.path === "use-research-sync"
-                  ? "export function useResearchSync(){return undefined}"
+                  ? "export function useResearchSync(){return undefined};export function ownedResearchRuntime(){return {queue:{operations:[]},project:()=>[]}}"
                   : args.path === "planner-runtime-owner"
                     ? "export function findPlannerRuntime(){};export function ownedPlannerRuntime(){}"
                     : args.path === "draft-scope"
