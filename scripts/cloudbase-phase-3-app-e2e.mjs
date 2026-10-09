@@ -3235,7 +3235,7 @@ async function verifyMatrixContextMenus(browser) {
   );
 }
 
-async function verifyRapidPasteThenEdit(browser, tripId) {
+async function verifyRapidPasteThenEdit(browser, tripId, variantId) {
   await evaluate(
     browser,
     `(() => {
@@ -3420,6 +3420,12 @@ async function verifyRapidPasteThenEdit(browser, tripId) {
         .some((item) => item.textContent.includes(${JSON.stringify(editedTitle)}))`,
     "new day and pasted activity removed",
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: [variantId],
+    label: "rapid copied activity edit and day deletion confirmed",
+  });
 }
 
 async function pressElement(browser, elementExpression, label) {
@@ -5786,7 +5792,7 @@ async function run() {
       60_000,
     );
     await verifyMatrixContextMenus(browser);
-    await verifyRapidPasteThenEdit(browser, tripId);
+    await verifyRapidPasteThenEdit(browser, tripId, createdVariant.priorVariantId);
     await uploadAttachmentThroughUi(browser);
     await verifyMobileMapBackNavigation(browser);
     await clickElement(
