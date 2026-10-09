@@ -23,6 +23,7 @@ import { isAccountActive, registerAccountQueue } from "./account-runtime";
 import { registerSyncQueue, subscribeSync } from "./sync-registry";
 import { publicItineraryLinkSchema } from "../sharing/schema";
 import { prepareBackgroundAction } from "./prepare-background-action";
+import { resolveOwnedSourceReceipts } from "../research/resolve-owned-source-receipts";
 
 const completedSchema = z.object({
   id: z.string(),
@@ -185,7 +186,11 @@ export class BackgroundActionOwner {
   private async prepare(op: OutboxOperation) {
     this.reloadCompleted();
     return prepareBackgroundAction(
-      resolveApplicationSnapshotParents(op, this.scope, this.storage),
+      resolveOwnedSourceReceipts(
+        resolveApplicationSnapshotParents(op, this.scope, this.storage),
+        this.scope,
+        this.storage,
+      ),
       this.completed,
     );
   }

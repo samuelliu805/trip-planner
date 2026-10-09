@@ -3,24 +3,19 @@
 import { Localized, T } from "@/features/i18n/i18n-provider";
 import { Check, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { ResearchApplicationDialog, ResearchApplyReviewDialog } from "./research-apply-dialogs";
-
 import { useBackgroundActions } from "@/features/editing/use-background-actions";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDraftScope } from "@/features/editing/draft-scope";
 import { editingStorageKey } from "@/features/editing/draft-storage";
 import { useDurableFields } from "@/features/editing/use-durable-fields";
-import { plannerQueryKey } from "@/features/itinerary/planner-query";
-import type { PlannerWorkspace } from "@/features/itinerary/types";
-import { sourceSnapshot } from "@/features/variants/sync-intent";
 import { archiveSyncBranch } from "@/features/editing/archive-sync-branch";
 import { tripSyncQueues } from "@/features/editing/sync-registry";
 import { deriveOptionImpact } from "../option-impact";
-import { captureApplicationProjection } from "../application-projection";
+import { enqueueBookingApplication } from "../enqueue-booking-workflow";
 import type {
   ResearchItem,
   ResearchPlanApplication,
@@ -29,7 +24,6 @@ import type {
   RevertRpcResult,
   VariantResearchSelection,
 } from "../types";
-
 function planItemMode(details: ResearchPlanItem["details"]) {
   return details && typeof details === "object" && !Array.isArray(details) && "mode" in details
     ? details.mode
@@ -153,49 +147,20 @@ export function ResearchPlanActions({
     try {
       if (!owner || fields.getError())
         throw new Error("Local storage is unavailable. Your choices are kept.");
-      const workspace = client.getQueryData<PlannerWorkspace>(
-        plannerQueryKey(item.trip_id, plan.variantId),
-      );
-      const baseline = workspace?.variant ?? plan.variant;
-      if (!baseline) throw new Error("Reload the target Plan before applying this booking.");
-      if (reviewed && failure?.status === "conflict") {
-        const entries = tripSyncQueues(owner.scope),
-          entry = entries.find((entry) => entry.queue === owner.queue);
-        if (entry) archiveSyncBranch(entries, entry, failure.id);
-      }
-      owner.accept({
-        kind: "booking.apply",
-        projection: workspace
-          ? captureApplicationProjection(workspace, [item], {
-              booking: true,
-              targetId: resolvedTargetId,
-              keepExtraDays:
-                impact.planAction === "remove_days_first" &&
-                plan.days
-                  .slice(Math.max(1, plan.days.length + impact.dayDelta))
-                  .some((day) => day.items.length > 0),
-            })
-          : undefined,
-        before: workspace ? sourceSnapshot(workspace) : "",
-        input: {
-          category: item.category as "flight" | "rental" | "stay" | "train",
-          expectedVersion: item.version,
-          expectedVariantVersion: baseline.version,
-          expectedContentVersion: baseline.content_version,
-          expectedDaysVersion: baseline.days_version,
-          expectedItemsVersion: baseline.items_version,
-          operationId,
-          researchItemId: item.id,
-          scheduleChoice:
-            impact.planAction === "remove_days_first" &&
-            plan.days
-              .slice(Math.max(1, plan.days.length + impact.dayDelta))
-              .some((day) => day.items.length)
-              ? "keep_extra_days"
-              : "automatic",
-          targetItemId: resolvedTargetId,
-          tripId: item.trip_id,
-          variantId: plan.variantId,
+      enqueueBookingApplication(owner, client, item, plan, {
+        operationId,
+        targetItemId: resolvedTargetId,
+        keepExtraDays:
+          impact.planAction === "remove_days_first" &&
+          plan.days
+            .slice(Math.max(1, plan.days.length + impact.dayDelta))
+            .some((day) => day.items.length > 0),
+        beforeAccept: () => {
+          if (reviewed && failure?.status === "conflict") {
+            const entries = tripSyncQueues(owner.scope),
+              entry = entries.find((entry) => entry.queue === owner.queue);
+            if (entry) archiveSyncBranch(entries, entry, failure.id);
+          }
         },
       });
       setError(undefined);

@@ -93,3 +93,29 @@ test("a stuck prerequisite remains a test failure with a bounded pending-queue d
     /fixture timed out; outbox:.*sending.*dependencies.:1/,
   );
 });
+
+test("confirmation exposes a failed source predecessor and ignores unrelated source failures", async () => {
+  const driver = fixture({
+    [key("fixture-trip", "target-plan")]: row("queued", { dependsOn: ["source-edit"] }),
+    [key("fixture-trip", "source-plan", "source-edit")]: row("conflict", {
+      error: "source changed",
+      wire: { input: { sourceVersions: [3] } },
+    }),
+    [key("fixture-trip", "unrelated-plan")]: row("failed", { error: "must-not-appear" }),
+  });
+  await assert.rejects(
+    () =>
+      waitForTripOutbox(null, "fixture-trip", {
+        domains: ["target-plan"],
+        label: "copy confirmation",
+        evaluate: driver.evaluate,
+        waitFor: driver.evaluate,
+      }),
+    (error) => {
+      assert.match(error.message, /source changed/);
+      assert.match(error.message, /sourceVersions.:\[3\]/);
+      assert.doesNotMatch(error.message, /must-not-appear|source-edit/);
+      return true;
+    },
+  );
+});

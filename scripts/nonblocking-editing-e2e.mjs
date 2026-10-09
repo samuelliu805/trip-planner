@@ -191,7 +191,9 @@ let workspace = fixture(),
   fault = null,
   delay = 0,
   operations = new Map(),
-  ideaDelay = 0;
+  ideaDelay = 0,
+  sourceVersionIncrement = 1,
+  sourceReplyTitle;
 const tripFixture = () => ({
   id: workspace.variant.trip_id,
   title: "Initial trip",
@@ -209,6 +211,7 @@ const tripFixture = () => ({
 let tripSettings = tripFixture();
 let workflowIdea = null;
 let planWorkspaces = new Map([[workspace.variant.id, workspace]]);
+let researchSources = new Map();
 let planHold;
 let members = [],
   shareLinks = [],
@@ -278,6 +281,9 @@ const server = createServer(async (request, response) => {
   const heldPlan = planHold;
   const requestPlans = planWorkspaces,
     requestOperations = operations;
+  const requestSources = researchSources,
+    sourceIncrement = sourceVersionIncrement,
+    returnedSourceTitle = sourceReplyTitle;
   const currentWorkspace = requestPlans.get(input.variantId) ?? workspace;
   calls.push({ kind, input });
   if (["comparison-load", "idea-plans", "trip-snapshot"].includes(kind)) {
@@ -378,6 +384,18 @@ const server = createServer(async (request, response) => {
     comparisons = comparisons.filter((row) => row.id !== input.comparisonId);
     result = { data: { id: input.comparisonId } };
   } else if (kind === "idea-apply" || kind === "booking-apply") {
+    const source = requestSources.get(input.researchItemId);
+    if (
+      source &&
+      source.version !==
+        (kind === "idea-apply"
+          ? input.expectedResearchVersions[input.researchItemId]
+          : input.expectedVersion)
+    ) {
+      response.statusCode = 409;
+      response.end("Captured source changed");
+      return;
+    }
     if (
       !["version", "content_version", "days_version", "items_version"].every(
         (column, index) =>
@@ -403,7 +421,7 @@ const server = createServer(async (request, response) => {
       id: key,
       day_id: target.id,
       variant_id: currentWorkspace.variant.id,
-      title: kind === "idea-apply" ? "Idea 71" : "Booked flight",
+      title: source?.title ?? (kind === "idea-apply" ? "Idea 71" : "Booked flight"),
       version: 1,
       details:
         kind === "idea-apply"
@@ -737,7 +755,51 @@ const server = createServer(async (request, response) => {
       content_version: tripSettings.content_version + 1,
     };
     result = { data: tripSettings };
-  } else if (kind === "idea" || kind === "merge")
+  } else if (kind === "idea") {
+    const place = (snapshot) =>
+      snapshot
+        ? {
+            provider_place_id: snapshot.providerPlaceId,
+            latitude: snapshot.latitude,
+            longitude: snapshot.longitude,
+            display_name: snapshot.displayName,
+          }
+        : null;
+    const source = {
+      ...input,
+      id: input.id ?? key,
+      trip_id: input.tripId,
+      title: returnedSourceTitle ?? input.title ?? "Idea",
+      version: (input.expectedVersion ?? 0) + sourceIncrement,
+      note: input.note ?? null,
+      source_url: input.sourceUrl ?? null,
+      total_price_amount: input.totalPriceAmount ?? null,
+      currency: input.currency ?? null,
+      origin_text: input.originText ?? null,
+      destination_text: input.destinationText ?? null,
+      location_text: input.locationText ?? null,
+      start_date: input.startDate ?? null,
+      end_date: input.endDate ?? null,
+      start_time: input.startTime ?? null,
+      end_time: input.endTime ?? null,
+      journey_type: input.journeyType ?? null,
+      segments: input.segments ?? [],
+      links: input.links ?? [],
+      adult_count: input.adultCount ?? null,
+      child_count: input.childCount ?? null,
+      room_count: input.roomCount ?? null,
+      day_id: input.dayId ?? null,
+      itinerary_item_id: input.itemId ?? null,
+      origin_place: place(input.originPlaceSnapshot),
+      destination_place: place(input.destinationPlaceSnapshot),
+      location_place: place(input.locationPlaceSnapshot),
+      origin_place_id: input.originPlaceId ?? null,
+      destination_place_id: input.destinationPlaceId ?? null,
+      location_place_id: input.locationPlaceId ?? null,
+    };
+    requestSources.set(source.id, source);
+    result = { data: source };
+  } else if (kind === "merge")
     result = {
       data: {
         ...input,
@@ -885,6 +947,7 @@ async function scenario(name, run, setup) {
   if (process.env.NONBLOCKING_CASE && !new RegExp(process.env.NONBLOCKING_CASE).test(name)) return;
   workspace = fixture();
   planWorkspaces = new Map([[workspace.variant.id, workspace]]);
+  researchSources = new Map();
   planHold = undefined;
   members = [];
   shareLinks = [];
@@ -895,6 +958,8 @@ async function scenario(name, run, setup) {
   fault = null;
   delay = 0;
   ideaDelay = 0;
+  sourceVersionIncrement = 1;
+  sourceReplyTitle = undefined;
   operations = new Map();
   tripSettings = tripFixture();
   workflowIdea = null;
@@ -2125,75 +2190,150 @@ try {
       workflowIdea = { category: "flight", start_date: workspace.days[0].date };
     },
   );
-  await scenario(
-    "Idea application waits for its pending source update",
-    async (page) => {
-      ideaDelay = 4000;
-      await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
-      await page.waitForFunction(
-        () => window.__workflows && window.__ideas && window.__workflowItems,
-      );
-      const parent = await page.evaluate(() => {
-        const source = { ...window.__workflowItems[0], version: 1, title: "Original source Idea" };
-        const operationId = crypto.randomUUID();
-        window.__ideas.accept(
-          {
-            kind: "update",
-            input: {
-              tripId: source.trip_id,
-              operationId,
-              id: source.id,
-              expectedVersion: 1,
-              category: "activity",
-              title: window.__workflowItems[0].title,
-              currency: "USD",
-              segments: [],
-              links: [],
-            },
-          },
-          source,
+  for (const sourceCase of [
+    { name: "Idea application waits for its pending source update", increment: 1 },
+    {
+      name: "Idea application freezes the confirmed source version after its owned ACK",
+      increment: 2,
+    },
+    {
+      name: "Idea application refuses changed source fields after its owned ACK",
+      increment: 2,
+      changed: true,
+    },
+    {
+      name: "booking application binds its pending source edit to the confirmed ACK",
+      increment: 2,
+      booking: true,
+    },
+  ]) {
+    await scenario(
+      sourceCase.name,
+      async (page) => {
+        ideaDelay = 4000;
+        await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+        await page.waitForFunction(
+          () => window.__workflows && window.__ideas && window.__workflowItems,
         );
-        return operationId;
-      });
-      await page
-        .locator("[data-workflow-probe]")
-        .getByRole("button", { name: "Add to Plan", exact: true })
-        .click();
-      const dialog = page.getByRole("dialog");
-      await dialog.getByRole("combobox", { name: "Plan day", exact: true }).click();
-      await page.getByRole("option").first().click();
-      await dialog.getByRole("button", { name: "Add to Plan", exact: true }).click();
-      await dialog.waitFor({ state: "hidden", timeout: 750 });
-      const child = await page.evaluate(() => window.__workflows.queue.operations[0]);
-      assert.ok(
-        child.dependsOn.includes(parent),
-        "the pending source update is a required predecessor",
-      );
-      assert.equal(calls.filter((call) => call.kind === "idea-apply").length, 0);
-      await page.waitForFunction(
-        () =>
-          window.__ideas.queue.operations.length === 0 &&
-          window.__workflows.queue.operations.length === 0,
-        null,
-        { timeout: 15000 },
-      );
-      assert.equal(calls.filter((call) => call.kind === "idea-apply").length, 1);
-      assert.equal(await page.evaluate(() => window.__ideas.project()[0].version), 2);
-      assert.equal(
-        await page.evaluate(() => window.__ideas.project()[0].title),
-        "Edited source Idea",
-      );
-      assert.equal(
-        Object.values(
-          calls.find((call) => call.kind === "idea-apply").input.expectedResearchVersions,
-        )[0],
-        2,
-      );
-    },
-    () => {
-      workflowIdea = { version: 2, title: "Edited source Idea" };
-    },
-  );
+        const parent = await page.evaluate((booking) => {
+          const source = booking
+            ? {
+                ...window.__workflowItems[1],
+                category: "flight",
+                origin_text: "A",
+                destination_text: "B",
+                start_date: window.__workspace.days[0].date,
+                end_date: window.__workspace.days[0].date,
+              }
+            : { ...window.__workflowItems[0], version: 1, title: "Original source Idea" };
+          const operationId = crypto.randomUUID();
+          window.__ideas.accept(
+            {
+              kind: "update",
+              input: {
+                tripId: source.trip_id,
+                operationId,
+                id: source.id,
+                expectedVersion: 1,
+                category: source.category,
+                title: "Edited source Idea",
+                currency: "USD",
+                segments: [],
+                links: [],
+                originText: source.origin_text || undefined,
+                destinationText: source.destination_text || undefined,
+                startDate: source.start_date || undefined,
+                endDate: source.end_date || undefined,
+              },
+            },
+            source,
+          );
+          return operationId;
+        }, Boolean(sourceCase.booking));
+        if (sourceCase.booking) {
+          await page
+            .locator("[data-workflow-probe]")
+            .getByRole("button", { name: "Apply to Plan", exact: true })
+            .click();
+        } else {
+          await page
+            .locator("[data-workflow-probe]")
+            .getByRole("button", { name: "Add to Plan", exact: true })
+            .click();
+          const dialog = page.getByRole("dialog");
+          await dialog.getByRole("combobox", { name: "Plan day", exact: true }).click();
+          await page.getByRole("option").first().click();
+          await dialog.getByRole("button", { name: "Add to Plan", exact: true }).click();
+          await dialog.waitFor({ state: "hidden", timeout: 750 });
+        }
+        const child = await page.evaluate(() => window.__workflows.queue.operations[0]);
+        assert.ok(
+          child.dependsOn.includes(parent),
+          "the pending source update is a required predecessor",
+        );
+        assert.equal(
+          sourceCase.booking
+            ? child.intent.input.expectedVersion
+            : Object.values(child.intent.input.expectedResearchVersions)[0],
+          2,
+        );
+        assert.equal(child.intent.projection.items[0].title, "Edited source Idea");
+        const applicationKind = sourceCase.booking ? "booking-apply" : "idea-apply";
+        assert.equal(calls.filter((call) => call.kind === applicationKind).length, 0);
+        if (sourceCase.changed) {
+          await page.waitForFunction(
+            () =>
+              window.__ideas.queue.operations.length === 0 &&
+              window.__workflows.queue.operations[0]?.status === "conflict",
+            null,
+            { timeout: 15000 },
+          );
+          assert.equal(calls.filter((call) => call.kind === applicationKind).length, 0);
+          const retained = await page.evaluate(() => window.__workflows.queue.operations[0]);
+          assert.equal(retained.wire, undefined);
+          assert.equal(retained.intent.projection.items[0].title, "Edited source Idea");
+          assert.match(retained.error, /source Idea changed/);
+          assert.equal(
+            await page.evaluate(() => window.__ideas.project()[0].title),
+            "External source edit",
+          );
+          return;
+        }
+        await page.waitForFunction(
+          () =>
+            window.__ideas.queue.operations.length === 0 &&
+            window.__workflows.queue.operations.length === 0,
+          null,
+          { timeout: 15000 },
+        );
+        assert.equal(calls.filter((call) => call.kind === applicationKind).length, 1);
+        assert.equal(
+          await page.evaluate(() => window.__ideas.project()[0].version),
+          1 + sourceCase.increment,
+        );
+        assert.equal(
+          await page.evaluate(() => window.__ideas.project()[0].title),
+          "Edited source Idea",
+        );
+        const request = calls.find((call) => call.kind === applicationKind);
+        assert.equal(
+          sourceCase.booking
+            ? request.input.expectedVersion
+            : Object.values(request.input.expectedResearchVersions)[0],
+          1 + sourceCase.increment,
+        );
+        assert.equal(
+          workspace.days[0].items.filter((item) => item.title === "Edited source Idea").length,
+          1,
+        );
+      },
+      () => {
+        workflowIdea = { version: 1, title: "Original source Idea" };
+        sourceVersionIncrement = sourceCase.increment;
+        sourceReplyTitle = sourceCase.changed ? "External source edit" : undefined;
+      },
+    );
+  }
   await scenario("new Plan then Idea waits for durable parent receipt", async (page) => {
     await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
     await page

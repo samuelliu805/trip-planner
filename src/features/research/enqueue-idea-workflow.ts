@@ -12,6 +12,7 @@ import type { ResearchItem, ResearchPlanSnapshot } from "./types";
 import type { IdeaVariantPlacement } from "./idea-variant-placement";
 import { ideaJourneyDates } from "./idea-plan-dates";
 import { captureApplicationProjection } from "./application-projection";
+import { captureOwnedSources } from "./capture-owned-sources";
 
 export function enqueueIdeaApplication(
   owner: BackgroundActionOwner,
@@ -28,9 +29,12 @@ export function enqueueIdeaApplication(
   );
   const variant = workspace?.variant ?? plan.variant;
   if (!variant) throw new Error("Reload this Plan before applying an Idea. Your choices are kept.");
+  const accepted = captureOwnedSources(owner.scope, client, items);
+  items = accepted.items;
   return owner.accept(
     {
       kind: "idea.apply",
+      sourceBefore: accepted.sourceBefore,
       projection: workspace
         ? captureApplicationProjection(workspace, items, {
             dayId: placement.dayId,

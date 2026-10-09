@@ -1708,9 +1708,11 @@ test("selection, Apply, and Revert use owner-authorized RPC boundaries with dura
   ).join("\n");
   const planActions = (
     await Promise.all(
-      ["./components/research-plan-actions.tsx", "./components/research-apply-dialogs.tsx"].map(
-        (path) => readFile(new URL(path, import.meta.url), "utf8"),
-      ),
+      [
+        "./components/research-plan-actions.tsx",
+        "./components/research-apply-dialogs.tsx",
+        "./enqueue-booking-workflow.ts",
+      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     )
   ).join("\n");
   const foundationMigration = await readFile(
@@ -1742,6 +1744,7 @@ test("selection, Apply, and Revert use owner-authorized RPC boundaries with dura
   assert.match(planActions, /Apply to Plan/);
   assert.match(planActions, /We’ll update the Plan for you/);
   assert.match(planActions, /keep_extra_days/);
+  assert.match(planActions, /enqueueBookingApplication\(owner, client, item, plan/);
   assert.match(planActions, /Revert/);
   assert.match(migration, /create table public\.variant_research_selections/);
   assert.match(migration, /create table public\.research_plan_applications/);

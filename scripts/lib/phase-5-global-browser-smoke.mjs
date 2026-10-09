@@ -15,7 +15,7 @@ import { stopChild } from "./child-process.mjs";
 import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
 import { startLoopbackTlsProxy } from "./loopback-tls-proxy.mjs";
 import { resolveGlobalBrowserOrigin } from "./phase-5-global-browser-origin.mjs";
-import { waitForTripOutbox } from "./browser-outbox-confirmation.mjs";
+import { readTripOutbox, waitForTripOutbox } from "./browser-outbox-confirmation.mjs";
 
 function chromeExecutable() {
   const candidates = [
@@ -1380,22 +1380,43 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     `document.querySelector('[role="dialog"]')?.innerText.includes('Day 1: 2026-11-${anchorDayNumber === 2 ? "19" : "20"}')`,
     "new Plan date preview follows selected Day",
   );
-  await clickElement(
+  await clickElementUntil(
     browser,
     `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
       button.textContent.includes('Create Plan') && !button.disabled)`,
+    `!document.querySelector('[role="dialog"][data-state="open"]') ||
+      [...document.querySelectorAll('[role="dialog"] [role="alert"]')]
+        .some((node) => node.getClientRects().length && node.textContent.trim())`,
     "create rebased flight Plan",
   );
-  const rebasedVariantId = await waitFor(
-    browser,
-    `(() => {
+  let rebasedVariantId;
+  try {
+    rebasedVariantId = await waitFor(
+      browser,
+      `(() => {
       const id = new URLSearchParams(location.search).get('variant');
       return location.pathname === '/trips/${tripId}' && id &&
         id !== ${JSON.stringify(originalVariantId)} ? id : null;
     })()`,
-    "rebased flight Plan navigation",
-    60_000,
-  );
+      "rebased flight Plan navigation",
+      60_000,
+    );
+  } catch (error) {
+    const page = await boundedPageDiagnostic(browser);
+    const outbox = await readTripOutbox(browser, tripId, {
+      evaluate,
+      domains: ["variants", "idea-workflows", "ideas"],
+    }).catch(() => ({ unavailable: true }));
+    const alerts = await evaluate(
+      browser,
+      `[...document.querySelectorAll('[role="alert"]')]
+      .filter((node) => node.getClientRects().length).map((node) => node.textContent.trim().slice(0, 240))`,
+    ).catch(() => []);
+    throw new Error(
+      `${error.message}; creation diagnostic: ${JSON.stringify({ page, outbox, alerts })}`,
+      { cause: error },
+    );
+  }
   await waitForTripOutbox(browser, tripId, {
     evaluate,
     waitFor,
