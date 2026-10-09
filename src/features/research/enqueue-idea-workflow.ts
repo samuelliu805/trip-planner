@@ -13,6 +13,7 @@ import type { IdeaVariantPlacement } from "./idea-variant-placement";
 import { ideaJourneyDates } from "./idea-plan-dates";
 import { captureApplicationProjection } from "./application-projection";
 import { captureOwnedSources } from "./capture-owned-sources";
+import { captureOwnedVariantSource } from "../variants/enqueue-variant-creation";
 
 export function enqueueIdeaApplication(
   owner: BackgroundActionOwner,
@@ -78,10 +79,17 @@ export function enqueueIdeaInNewPlan(
   locale: "en" | "zh-CN",
   choice?: { comparisonId: string; choiceId: string },
 ) {
-  const source = client.getQueryData<PlannerWorkspace>(
+  const loadedSource = client.getQueryData<PlannerWorkspace>(
     plannerQueryKey(owner.scope[2], sourcePlan.variantId),
   );
-  if (!source) throw new Error("Load the source Plan before copying it. Your choices are kept.");
+  if (!loadedSource)
+    throw new Error("Load the source Plan before copying it. Your choices are kept.");
+  const source = captureOwnedVariantSource(
+    variants.scope,
+    client,
+    loadedSource,
+    sourcePlan.variantId,
+  );
   const rows = variants.project(),
     color = variantColorPalette.find(
       (candidate) => !rows.some((row) => row.color.toLowerCase() === candidate.value),

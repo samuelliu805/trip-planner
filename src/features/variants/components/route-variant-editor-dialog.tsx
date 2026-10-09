@@ -23,6 +23,7 @@ import { variantListQueryKey } from "../variant-list-reload";
 import { loadRouteVariants } from "../actions";
 import { clonedVariantName, nextVariantName } from "../default-name";
 import { variantColorPalette } from "../schema";
+import { enqueueVariantCreation } from "../enqueue-variant-creation";
 import { VariantEditorFields } from "./variant-editor-fields";
 
 export type VariantEditorMode = "blank" | "duplicate" | "metadata";
@@ -119,12 +120,6 @@ export function RouteVariantEditorDialog({
         setError("This Plan changed while you were editing it. Review the latest values.");
         return;
       }
-      const sourceVersions = {
-        expectedSourceContentVersion: source.content_version,
-        expectedSourceDaysVersion: source.days_version,
-        expectedSourceItemsVersion: source.items_version,
-        expectedSourceVersion: source.version,
-      };
       const snapshot = sourceQuery.data;
       if (mode !== "metadata" && !snapshot)
         throw new Error(
@@ -143,29 +138,12 @@ export function RouteVariantEditorDialog({
                 operationId,
               },
             })
-          : runtime.accept({
-              kind: "create",
+          : enqueueVariantCreation(runtime, queryClient, snapshot!, {
               duplicate: mode === "duplicate",
-              source: snapshot!,
-              input: {
-                color,
-                ...sourceVersions,
-                name,
-                operationId,
-                sourceVariantId: source.id,
-                tripId,
-                dayIds: Object.fromEntries(
-                  snapshot!.days.map((day) => [day.id, crypto.randomUUID()]),
-                ),
-                itemIds:
-                  mode === "duplicate"
-                    ? Object.fromEntries(
-                        snapshot!.days
-                          .flatMap((day) => day.items)
-                          .map((item) => [item.id, crypto.randomUUID()]),
-                      )
-                    : {},
-              },
+              color,
+              name,
+              operationId,
+              sourceVariantId: source.id,
             });
       local.discard();
       if (mode === "metadata")

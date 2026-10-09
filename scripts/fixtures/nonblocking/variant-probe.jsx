@@ -23,7 +23,8 @@ export function VariantProbe({ workspace }) {
   const newest = variants.at(-1);
   React.useEffect(() => {
     window.__variants = runtime;
-  }, [runtime]);
+    window.__variantClient = client;
+  }, [runtime, client]);
   const accept = (kind, input) => {
     try {
       runtime.accept({ kind, input });

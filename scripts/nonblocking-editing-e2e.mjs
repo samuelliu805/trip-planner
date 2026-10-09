@@ -190,6 +190,7 @@ let workspace = fixture(),
   calls = [],
   fault = null,
   delay = 0,
+  sourceReadDelay = 0,
   operations = new Map(),
   ideaDelay = 0,
   sourceVersionIncrement = 1,
@@ -318,8 +319,10 @@ const server = createServer(async (request, response) => {
     return;
   }
   if (kind === "load") {
+    const snapshot = structuredClone(requestPlans.get(input.variantId) ?? workspace);
+    if (sourceReadDelay) await new Promise((resolve) => setTimeout(resolve, sourceReadDelay));
     response.setHeader("Content-Type", "application/json");
-    response.end(JSON.stringify({ data: requestPlans.get(input.variantId) ?? workspace }));
+    response.end(JSON.stringify({ data: snapshot }));
     return;
   }
   if (kind === "load-plans") {
@@ -957,6 +960,7 @@ async function scenario(name, run, setup) {
   calls = [];
   fault = null;
   delay = 0;
+  sourceReadDelay = 0;
   ideaDelay = 0;
   sourceVersionIncrement = 1;
   sourceReplyTitle = undefined;
@@ -1125,6 +1129,155 @@ try {
       assert.equal(calls.filter((call) => call.kind === "create-plan").length, 1);
     },
   );
+  for (const sourceCase of [
+    { duplicate: false },
+    { duplicate: true },
+    { duplicate: true, changed: true },
+  ]) {
+    const { duplicate } = sourceCase;
+    await scenario(
+      sourceCase.changed
+        ? "duplicate Plan rejects unrelated source changes after acceptance"
+        : `${duplicate ? "duplicate" : "blank"} Plan captures owned source edits across an older read`,
+      async (page) => {
+        delay = 3000;
+        sourceReadDelay = 750;
+        await plansReady(page);
+        await page.evaluate(() => {
+          const source = window.__runtime.project();
+          window.__variantClient.setQueryData(
+            ["planner", source.variant.trip_id, source.variant.id],
+            source,
+            { updatedAt: 0 },
+          );
+        });
+        await page
+          .getByRole("button", {
+            name: duplicate ? "Copy Plan fixture" : "New Plan fixture",
+            exact: true,
+          })
+          .click();
+        await page.waitForFunction(
+          () =>
+            window.__variantClient.isFetching({
+              queryKey: ["planner", window.__runtime.scope[2], window.__runtime.scope[3]],
+            }) > 0,
+        );
+        const parents = await page.evaluate(() => {
+          const source = window.__runtime.project(),
+            day = source.days[0],
+            item = day.items[0];
+          const metadata = crypto.randomUUID(),
+            edit = crypto.randomUUID();
+          window.__variants.accept({
+            kind: "update",
+            input: {
+              tripId: source.variant.trip_id,
+              variantId: source.variant.id,
+              expectedVersion: source.variant.version,
+              operationId: metadata,
+              name: "Owned source name",
+              color: source.variant.color,
+            },
+          });
+          window.__runtime.accept({
+            kind: "update",
+            input: {
+              tripId: source.variant.trip_id,
+              variantId: source.variant.id,
+              dayId: day.id,
+              id: item.id,
+              type: item.type,
+              title: "Owned source item",
+              details: {},
+              expectedItemsVersion: day.items_version,
+              expectedVersion: item.version,
+              operationId: edit,
+            },
+          });
+          return [metadata, edit];
+        });
+        await page.waitForFunction(
+          () =>
+            window.__variantClient.isFetching({
+              queryKey: ["planner", window.__runtime.scope[2], window.__runtime.scope[3]],
+            }) === 0,
+        );
+        await page
+          .getByRole("textbox", { name: "Plan name", exact: true })
+          .fill("Owned source target");
+        await page
+          .getByRole("button", { name: duplicate ? "Duplicate Plan" : "Create Plan", exact: true })
+          .click();
+        const child = await page.evaluate(() =>
+          window.__variants.queue.operations.find((op) => op.intent.kind === "create"),
+        );
+        assert.equal(child.intent.source.variant.name, "Owned source name");
+        assert.equal(child.intent.source.days[0].items[0].title, "Owned source item");
+        parents.forEach((id) => assert.ok(child.dependsOn.includes(id)));
+        assert.equal(
+          calls.filter((call) => ["create-plan", "duplicate-plan"].includes(call.kind)).length,
+          0,
+        );
+        if (sourceCase.changed) {
+          const stops = workspace.days[0].items.map((item, index) => ({
+            id: randomUUID(),
+            item_id: item.id,
+            position: index + 1,
+          }));
+          workspace.routePlans = [
+            {
+              id: randomUUID(),
+              trip_id: workspace.variant.trip_id,
+              variant_id: workspace.variant.id,
+              day_id: workspace.days[0].id,
+              version: 1,
+              stops,
+              legs: [
+                { position: 1, mode: "walk", from_stop_id: stops[0].id, to_stop_id: stops[1].id },
+              ],
+              calculation: null,
+              updated_at: new Date().toISOString(),
+            },
+          ];
+          workspace.variant.content_version++;
+          await page.waitForFunction(
+            () =>
+              window.__variants.queue.operations.some(
+                (op) => op.intent.kind === "create" && op.status === "conflict",
+              ),
+            null,
+            { timeout: 16000 },
+          );
+          const kept = await page.evaluate(() =>
+            window.__variants.queue.operations.find((op) => op.intent.kind === "create"),
+          );
+          assert.equal(kept.wire, undefined);
+          assert.equal(kept.intent.source.routePlans.length, 0);
+          assert.equal(kept.intent.source.days[0].items[0].title, "Owned source item");
+          assert.match(kept.error, /source Plan changed/);
+          assert.equal(
+            calls.filter((call) => ["create-plan", "duplicate-plan"].includes(call.kind)).length,
+            0,
+          );
+          return;
+        }
+        await plansSynced(page);
+        await synced(page);
+        const requests = calls.filter((call) =>
+          ["create-plan", "duplicate-plan"].includes(call.kind),
+        );
+        assert.equal(requests.length, 1);
+        const target = planWorkspaces.get(requests[0].input.operationId);
+        assert.equal(target.days.length, workspace.days.length);
+        assert.equal(target.days[0].items.length, duplicate ? workspace.days[0].items.length : 0);
+        if (duplicate) {
+          assert.equal(target.days[0].items[0].title, "Owned source item");
+          assert.notEqual(target.days[0].items[0].id, workspace.days[0].items[0].id);
+        }
+      },
+    );
+  }
   await scenario(
     "copied Plan metadata A and B stay editable while the parent is pending",
     async (page) => {
