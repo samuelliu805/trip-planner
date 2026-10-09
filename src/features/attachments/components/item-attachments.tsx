@@ -6,9 +6,10 @@ import { T } from "@/features/i18n/i18n-provider";
 import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 
 import { SavedItemAttachmentsSection } from "./item-attachments-section";
-import { UnsavedAttachmentsSection } from "./unsaved-attachments-section";
+import { PersistentUploadControls } from "./persistent-upload-controls";
 
 export function ItemAttachmentsSection({
+  creationId,
   item,
   onDraftCountChange,
   onOpenShareSettings,
@@ -18,6 +19,7 @@ export function ItemAttachmentsSection({
   uploadSessionSignal,
   tripId,
 }: {
+  creationId?: string;
   item?: ItineraryItem;
   onDraftCountChange?: (count: number) => void;
   onOpenShareSettings: () => void;
@@ -28,7 +30,6 @@ export function ItemAttachmentsSection({
   uploadSessionSignal: AbortSignal;
 }) {
   const persistence = usePlannerPersistence();
-  if (!item) return <UnsavedAttachmentsSection />;
   if (persistence)
     return (
       <section className="min-w-0 space-y-3 border-t pt-4" data-guest-attachment-gate="">
@@ -41,7 +42,7 @@ export function ItemAttachmentsSection({
           </p>
           <Button
             className="mt-3 min-h-11"
-            onClick={() => persistence.requestAccountFeature("attachment", item.id)}
+            onClick={() => persistence.requestAccountFeature("attachment", item?.id)}
             type="button"
           >
             <T message={"Save to account"} />
@@ -49,6 +50,19 @@ export function ItemAttachmentsSection({
         </div>
       </section>
     );
+  if (!item)
+    return creationId ? (
+      <section className="border-t pt-4">
+        <PersistentUploadControls
+          entityId={creationId}
+          parentOperationId={creationId}
+          tripId={tripId}
+          sessionId={uploadSessionId}
+          target="itinerary"
+          onPendingChange={onPendingChange}
+        />
+      </section>
+    ) : null;
   const attachmentVersion = (item.attachments ?? [])
     .map(({ includeInShare, publicRef, status }) => `${publicRef}:${status}:${includeInShare}`)
     .join(",");

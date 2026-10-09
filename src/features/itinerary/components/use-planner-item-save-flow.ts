@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import type { PlannerEditorSaveIntent } from "@/features/itinerary/components/planner-editor-form";
@@ -25,6 +26,7 @@ export function usePlannerItemSaveFlow({
   dayId,
   item,
   expectedVersion,
+  creationId,
   onCancel,
   onCreateAnother,
   onError,
@@ -45,23 +47,32 @@ export function usePlannerItemSaveFlow({
   | "tripId"
   | "type"
   | "variantId"
-> & { expectedVersion?: number }) {
+> & { expectedVersion?: number; creationId?: string }) {
   const client = useQueryClient();
   const createMutation = useCreateItineraryItem(tripId, variantId);
   const updateMutation = useUpdateItineraryItem(tripId, variantId);
   const itemMutationPending = createMutation.isPending || updateMutation.isPending;
   const attachmentSession = useAttachmentEditSession({
+    draftId: creationId,
     item,
     itemMutationPending,
     onCancel,
     tripId,
   });
-  const pending = itemMutationPending || attachmentSession.attachmentPending;
+  const pending = itemMutationPending;
+  const accepting = useRef(false);
+  const latestVersion = useRef(expectedVersion ?? item?.version);
   const canCreateAnother = !item && ["activity", "meal"].includes(type);
   const reportsCreationFeedback = !item && plannerItemCreationReportsFeedback(type);
 
-  async function persistSave(intent: PlannerEditorSaveIntent, values: ItemSaveValues) {
-    if (pending) return;
+  async function persistSave(
+    intent: PlannerEditorSaveIntent,
+    values: ItemSaveValues,
+    background = false,
+    onAccepted?: () => void,
+  ) {
+    if (accepting.current) return;
+    accepting.current = true;
     try {
       const workspace = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const targetDayId = item?.day_id ?? dayId;
@@ -70,13 +81,15 @@ export function usePlannerItemSaveFlow({
       )?.items_version;
       if (!expectedItemsVersion)
         throw new Error("Reload this day before saving; its collaboration version is unavailable.");
-      const operationId = newTelemetryOperationId();
+      const operationId = item
+        ? newTelemetryOperationId()
+        : (creationId ?? newTelemetryOperationId());
       const savedItem = item
         ? await updateMutation.mutateAsync({
             ...values,
             dayId: targetDayId,
             expectedItemsVersion,
-            expectedVersion: expectedVersion ?? item.version,
+            expectedVersion: latestVersion.current ?? item.version,
             id: item.id,
             operationId,
             surface: "item_editor",
@@ -90,6 +103,9 @@ export function usePlannerItemSaveFlow({
             surface: "item_editor",
             uploadSessionId: attachmentSession.uploadSessionId,
           });
+      latestVersion.current = savedItem.version;
+      if (background) return savedItem;
+      onAccepted?.();
       attachmentSession.markHandled();
       const committedItem = savedItem;
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
@@ -118,13 +134,19 @@ export function usePlannerItemSaveFlow({
           status: "error",
         });
       onError(message);
+    } finally {
+      accepting.current = false;
     }
   }
 
-  async function requestSave(intent: PlannerEditorSaveIntent, values: ItemSaveValues) {
+  async function requestSave(
+    intent: PlannerEditorSaveIntent,
+    values: ItemSaveValues,
+    onAccepted?: () => void,
+  ) {
     if (pending) return;
     if (reportsCreationFeedback) onSaveFeedback(undefined);
-    await persistSave(intent, values);
+    await persistSave(intent, values, false, onAccepted);
   }
 
   return {
@@ -135,6 +157,7 @@ export function usePlannerItemSaveFlow({
     pending,
     pendingLabel: attachmentSession.attachmentPending ? "Updating attachments…" : "Saving…",
     requestSave,
+    saveInBackground: (values: ItemSaveValues) => persistSave("save", values, true),
     resetMutationErrors() {
       createMutation.reset();
       updateMutation.reset();

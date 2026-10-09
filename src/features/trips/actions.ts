@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 
 import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
@@ -282,6 +283,6 @@ export async function deleteTrip(
     { operation_id: operationId, surface },
     { actorType: "authenticated", route: "/trips/[tripId]", appUserId: user.id },
   );
-  if (getBackendCapabilities().signedUrls) await drainAssetDeletionQueue(100);
+  if (getBackendCapabilities().signedUrls) after(() => drainAssetDeletionQueue(100));
   redirect("/trips");
 }

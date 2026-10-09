@@ -7,7 +7,7 @@ import type { ResearchItem, ResearchPlanSnapshot } from "../types";
 import { IdeaJourneyPreviewList } from "./idea-journey-preview-list";
 import { IdeaVariantTarget } from "./idea-variant-target";
 
-export type IdeaApplyResult = { error?: string; status?: "applied" | "already_applied" };
+export type IdeaApplyResult = { error?: string; status?: "applied" | "already_applied" | "queued" };
 
 export function IdeaVariantTargetList({
   item,

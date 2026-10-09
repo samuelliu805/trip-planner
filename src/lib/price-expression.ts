@@ -2,7 +2,12 @@ const maximumPrice = 9_999_999_999.99;
 
 /** Parses only arithmetic; owner input is never executed as JavaScript. */
 export function priceFromExpression(input: string): number {
-  if (input.length > 512) return 0;
+  return parsedPriceExpression(input) ?? 0;
+}
+
+/** Undefined distinguishes an unfinished draft from the valid price zero. */
+export function parsedPriceExpression(input: string): number | undefined {
+  if (input.length > 512) return undefined;
   const source = input
     .normalize("NFKC")
     .replaceAll("×", "*")
@@ -63,9 +68,9 @@ export function priceFromExpression(input: string): number {
     const value = sum();
     whitespace();
     if (position !== source.length || !Number.isFinite(value) || value < 0 || value > maximumPrice)
-      return 0;
+      return undefined;
     return Math.round((value + Number.EPSILON * Math.abs(value)) * 100) / 100;
   } catch {
-    return 0;
+    return undefined;
   }
 }

@@ -19,6 +19,11 @@ export async function retryPlannerMutation<TInput, TResult>(
     const result = await loadPlannerWorkspace(tripId, variantId);
     const rebased = result.data && (await rebase(input, result.data));
     if (!rebased) throw error;
-    return send(rebased);
+    // Rebasing changes the fingerprint; only an identical transport replay may reuse its ID.
+    return send(
+      rebased && typeof rebased === "object" && "operationId" in rebased
+        ? { ...rebased, operationId: crypto.randomUUID() }
+        : rebased,
+    );
   }
 }

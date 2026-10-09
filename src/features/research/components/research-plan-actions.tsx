@@ -2,15 +2,23 @@
 
 import { Localized, T } from "@/features/i18n/i18n-provider";
 import { Check, LoaderCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { ResearchApplicationDialog, ResearchApplyReviewDialog } from "./research-apply-dialogs";
 
-import { applyResearchItem, revertResearchApplication } from "../plan-actions";
+import { useBackgroundActions } from "@/features/editing/use-background-actions";
+import { useQueryClient } from "@tanstack/react-query";
+import { useDraftScope } from "@/features/editing/draft-scope";
+import { editingStorageKey } from "@/features/editing/draft-storage";
+import { useDurableFields } from "@/features/editing/use-durable-fields";
+import { plannerQueryKey } from "@/features/itinerary/planner-query";
+import type { PlannerWorkspace } from "@/features/itinerary/types";
+import { sourceSnapshot } from "@/features/variants/sync-intent";
+import { archiveSyncBranch } from "@/features/editing/archive-sync-branch";
+import { tripSyncQueues } from "@/features/editing/sync-registry";
 import { deriveOptionImpact } from "../option-impact";
 import type {
   ResearchItem,
@@ -30,10 +38,7 @@ function planItemMode(details: ResearchPlanItem["details"]) {
 export function ResearchPlanActions({
   application,
   item,
-  onApplied,
-  onReverted,
   onReloadLatest,
-  onSelected,
   plan,
   variantName,
 }: {
@@ -46,10 +51,31 @@ export function ResearchPlanActions({
   plan: ResearchPlanSnapshot;
   variantName: string;
 }) {
-  const router = useRouter();
+  const owner = useBackgroundActions(item.trip_id, "idea-workflows"),
+    client = useQueryClient();
+  const fields = useDurableFields(
+    editingStorageKey(useDraftScope(item.trip_id, plan.variantId), `booking-target:${item.id}`),
+    { targetItemId: "" },
+  );
+  const handled = useRef(new Set<string>());
   const [reviewOpen, setReviewOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
-  const [pending, setPending] = useState(false);
+  const operations =
+    owner?.queue.operations.filter((op) => {
+      const intent = op.intent as {
+        kind: string;
+        input: { researchItemId?: string; applicationId?: string };
+      };
+      return (
+        intent.input.researchItemId === item.id ||
+        Boolean(application && intent.input.applicationId === application.id)
+      );
+    }) ?? [];
+  const pending = operations.some((op) =>
+    ["queued", "sending", "acknowledged"].includes(op.status),
+  );
+  const failure = operations.find((op) => op.status === "failed" || op.status === "conflict");
+  const [reviewed, setReviewed] = useState(false);
   const [error, setError] = useState<string>();
   const [conflict, setConflict] = useState(false);
   const [reloadPending, setReloadPending] = useState(false);
@@ -75,7 +101,30 @@ export function ResearchPlanActions({
             })),
         )
       : [];
-  const [targetItemId, setTargetItemId] = useState<string>();
+  const targetItemId = fields.values.targetItemId || undefined;
+  const setTargetItemId = (value: string | undefined) => fields.set("targetItemId", value ?? "");
+  const completed = owner?.completed ?? [];
+  useEffect(() => {
+    for (const row of completed) {
+      if (handled.current.has(row.id)) continue;
+      handled.current.add(row.id);
+      if (row.intent.kind === "booking.apply" && row.intent.input.researchItemId === item.id) {
+        void onReloadLatest().catch((error) => setError(String(error)));
+      } else if (
+        row.intent.kind === "booking.revert" &&
+        row.intent.input.applicationId === application?.id
+      ) {
+        const result = (row.result as unknown as { data: RevertRpcResult }).data;
+        queueMicrotask(() => {
+          setRevertResult(result);
+          setConflict(result.status === "conflict");
+          void onReloadLatest().catch((error) => setError(String(error)));
+        });
+      }
+    }
+    // Results belong to the captured booking/application, even after its review closes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completed.length, item.id, application?.id]);
 
   function review() {
     setError(undefined);
@@ -100,69 +149,68 @@ export function ResearchPlanActions({
       },
       { actorType: "authenticated" },
     );
-    setPending(true);
-    setError(undefined);
-    setConflict(false);
-    const result = await applyResearchItem({
-      category: item.category as "flight" | "rental" | "stay" | "train",
-      expectedVersion: item.version,
-      operationId,
-      researchItemId: item.id,
-      scheduleChoice:
-        impact.planAction === "remove_days_first" &&
-        plan.days
-          .slice(Math.max(1, plan.days.length + impact.dayDelta))
-          .some((day) => day.items.length)
-          ? "keep_extra_days"
-          : "automatic",
-      targetItemId: resolvedTargetId,
-      tripId: item.trip_id,
-      variantId: plan.variantId,
-    });
-    setPending(false);
-    if (result.error || !result.data) {
-      setConflict(result.code === "conflict");
-      return setError(result.error ?? "The option was not applied.");
+    try {
+      if (!owner || fields.getError())
+        throw new Error("Local storage is unavailable. Your choices are kept.");
+      const workspace = client.getQueryData<PlannerWorkspace>(
+        plannerQueryKey(item.trip_id, plan.variantId),
+      );
+      const baseline = workspace?.variant ?? plan.variant;
+      if (!baseline) throw new Error("Reload the target Plan before applying this booking.");
+      if (reviewed && failure?.status === "conflict") {
+        const entries = tripSyncQueues(owner.scope),
+          entry = entries.find((entry) => entry.queue === owner.queue);
+        if (entry) archiveSyncBranch(entries, entry, failure.id);
+      }
+      owner.accept({
+        kind: "booking.apply",
+        before: workspace ? sourceSnapshot(workspace) : "",
+        input: {
+          category: item.category as "flight" | "rental" | "stay" | "train",
+          expectedVersion: item.version,
+          expectedVariantVersion: baseline.version,
+          expectedContentVersion: baseline.content_version,
+          expectedDaysVersion: baseline.days_version,
+          expectedItemsVersion: baseline.items_version,
+          operationId,
+          researchItemId: item.id,
+          scheduleChoice:
+            impact.planAction === "remove_days_first" &&
+            plan.days
+              .slice(Math.max(1, plan.days.length + impact.dayDelta))
+              .some((day) => day.items.length)
+              ? "keep_extra_days"
+              : "automatic",
+          targetItemId: resolvedTargetId,
+          tripId: item.trip_id,
+          variantId: plan.variantId,
+        },
+      });
+      setError(undefined);
+      setReviewOpen(false);
+      setReviewed(false);
+    } catch (error) {
+      setError(String(error));
     }
-    onSelected(result.data.selection);
-    onApplied(result.data.application);
-    setReviewOpen(false);
-    router.refresh();
   }
-
-  async function revert() {
-    if (!application) return;
-    const operationId = newTelemetryOperationId();
-    captureBrowserProductEvent(
-      "research_revert_started",
-      {
-        ideas_category: item.category as "flight" | "rental" | "stay" | "train",
-        operation_id: operationId,
-        surface: "research_editor",
-      },
-      { actorType: "authenticated" },
-    );
-    setPending(true);
-    setError(undefined);
-    setConflict(false);
-    const result = await revertResearchApplication({
-      applicationId: application.id,
-      category: item.category as "flight" | "rental" | "stay" | "train",
-      expectedVersion: application.version,
-      operationId,
-      tripId: item.trip_id,
-    });
-    setPending(false);
-    if (result.error || !result.data) {
-      setConflict(result.code === "conflict");
-      return setError(result.error ?? "The change was not reverted.");
-    }
-    setRevertResult(result.data);
-    setConflict(result.data.status === "conflict");
-    onReverted(application.id, result.data);
-    if (result.data.status === "reverted") {
+  function revert() {
+    if (!application || !owner) return;
+    try {
+      owner.accept({
+        kind: "booking.revert",
+        variantId: plan.variantId,
+        input: {
+          applicationId: application.id,
+          category: item.category as "flight" | "rental" | "stay" | "train",
+          expectedVersion: application.version,
+          operationId: newTelemetryOperationId(),
+          tripId: item.trip_id,
+        },
+      });
+      setError(undefined);
       setChangesOpen(false);
-      router.refresh();
+    } catch (error) {
+      setError(String(error));
     }
   }
 
@@ -170,6 +218,7 @@ export function ResearchPlanActions({
     setReloadPending(true);
     try {
       await onReloadLatest();
+      setReviewed(true);
       setConflict(false);
       setError(undefined);
       setRevertResult(undefined);
@@ -200,7 +249,7 @@ export function ResearchPlanActions({
           <>
             <Button
               className="min-h-11 flex-1 px-4 text-sm sm:flex-none"
-              disabled={pending}
+              disabled={pending || Boolean(failure && !reviewed)}
               onClick={review}
               size="sm"
               variant="default"
@@ -211,12 +260,20 @@ export function ResearchPlanActions({
           </>
         )}
       </div>
+      {pending ? (
+        <p role="status">
+          <T message="Pending sync" />
+        </p>
+      ) : null}
+      {owner?.queue.operations.find((op) => op.error)?.error ? (
+        <p role="alert">{owner.queue.operations.find((op) => op.error)!.error}</p>
+      ) : null}
       {error ? (
         <p className="mt-1 text-right text-xs text-destructive" role="alert">
           <Localized value={error} />
         </p>
       ) : null}
-      {conflict ? (
+      {conflict || failure?.status === "conflict" ? (
         <Button
           className="mt-2 min-h-11 w-full sm:w-auto"
           disabled={reloadPending}
@@ -230,7 +287,7 @@ export function ResearchPlanActions({
 
       <ResearchApplyReviewDialog
         error={error}
-        conflict={conflict}
+        conflict={conflict || failure?.status === "conflict"}
         impact={impact}
         item={item}
         onApply={() => void apply()}
@@ -238,7 +295,7 @@ export function ResearchPlanActions({
         onReloadLatest={reloadLatest}
         onTargetChange={setTargetItemId}
         open={reviewOpen}
-        pending={pending}
+        pending={false}
         reloadPending={reloadPending}
         targetChoices={targetChoices}
         targetItemId={targetItemId}
@@ -248,13 +305,13 @@ export function ResearchPlanActions({
         <ResearchApplicationDialog
           application={application}
           error={error}
-          conflict={conflict}
+          conflict={conflict || failure?.status === "conflict"}
           item={item}
           onOpenChange={setChangesOpen}
           onReloadLatest={reloadLatest}
           onRevert={() => void revert()}
           open={changesOpen}
-          pending={pending}
+          pending={false}
           reloadPending={reloadPending}
           result={revertResult}
           variantName={variantName}

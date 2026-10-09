@@ -103,6 +103,9 @@ export function ItemPlaceField({
   creating,
   pending,
   place,
+  placeQuery,
+  resolutionKey,
+  setPlaceQuery,
   placeLabel,
   setPlace,
   setTitle,
@@ -114,6 +117,9 @@ export function ItemPlaceField({
   creating: boolean;
   pending: boolean;
   place: PlaceSnapshot | null;
+  placeQuery: string;
+  resolutionKey: string;
+  setPlaceQuery: (query: string) => void;
   placeLabel: string;
   setPlace: Dispatch<SetStateAction<PlaceSnapshot | null>>;
   setTitle: (title: string) => void;
@@ -169,6 +175,10 @@ export function ItemPlaceField({
         )}
       </Label>
       <PlaceAutocomplete
+        resolutionKey={resolutionKey}
+        initialQuery={placeQuery}
+        initialOptionsDismissed={Boolean(placeQuery)}
+        onQueryChange={setPlaceQuery}
         ariaLabel={t(creatingActivity ? "Place or activity name" : placeLabel)}
         customValueLabel={creatingActivity ? t("activity name") : undefined}
         disabled={pending}

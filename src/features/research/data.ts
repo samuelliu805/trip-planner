@@ -60,7 +60,7 @@ export async function getResearchPlanSnapshot(tripId: string, variantId: string)
     () =>
       database
         .from("route_variants")
-        .select("name")
+        .select("*")
         .eq("trip_id", tripId)
         .eq("id", variantId)
         .maybeSingle(),
@@ -98,6 +98,7 @@ export async function getResearchPlanSnapshot(tripId: string, variantId: string)
       })),
       variantId,
       variantName: variantResult.data.name,
+      variant: variantResult.data,
     } satisfies ResearchPlanSnapshot,
     error: null,
   };
@@ -106,7 +107,7 @@ export async function getResearchPlanSnapshot(tripId: string, variantId: string)
 /** Read every Plan for the Apply dialog in one consistent, bounded set of requests. */
 export async function getResearchPlanSnapshots(
   tripId: string,
-  variants: Array<{ id: string; name: string }>,
+  variants: import("../itinerary/types").PlannerVariant[],
 ) {
   if (!variants.length) return { data: [] as ResearchPlanSnapshot[], error: null };
   const database = await getRelationalDatabase();
@@ -146,6 +147,7 @@ export async function getResearchPlanSnapshots(
   const data: ResearchPlanSnapshot[] = variants.map((variant) => ({
     variantId: variant.id,
     variantName: variant.name,
+    variant,
     days: (daysResult.data ?? [])
       .filter((day) => day.variant_id === variant.id)
       .map((day) => ({

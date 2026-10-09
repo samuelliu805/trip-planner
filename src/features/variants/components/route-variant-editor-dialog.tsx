@@ -1,37 +1,29 @@
 "use client";
 
 import { Localized, useI18n } from "@/features/i18n/i18n-provider";
-import { useQueryClient } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useId, useState, useEffect } from "react";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  PlannerEditorField,
-  PlannerEditorTextField,
-} from "@/features/itinerary/components/planner-editor-fields";
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
 import { PlannerEditorHeader } from "@/features/itinerary/components/planner-editor-header";
 import { PlannerEditorScreen } from "@/features/itinerary/components/planner-editor-screen";
 import { ItineraryMutationError } from "@/features/itinerary/query-cache";
 import type { PlannerVariant } from "@/features/itinerary/types";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { useVariantSync } from "../use-variant-sync";
+import { useDurableFields } from "@/features/editing/use-durable-fields";
+import { useDraftScope } from "@/features/editing/draft-scope";
+import { editingStorageKey } from "@/features/editing/draft-storage";
+import { LocalDraftStatus } from "@/features/editing/local-draft-status";
+import { loadPlannerWorkspace } from "@/features/itinerary/actions";
+import { plannerQueryKey } from "@/features/itinerary/planner-query";
+import { requireData } from "@/features/itinerary/query-cache";
 
-import {
-  useCreateRouteVariant,
-  useDuplicateRouteVariant,
-  useUpdateRouteVariant,
-  variantListQueryKey,
-} from "../queries";
+import { variantListQueryKey } from "../variant-list-reload";
 import { loadRouteVariants } from "../actions";
 import { clonedVariantName, nextVariantName } from "../default-name";
 import { variantColorPalette } from "../schema";
-import { VariantColorPalette } from "./variant-color-palette";
+import { VariantEditorFields } from "./variant-editor-fields";
 
 export type VariantEditorMode = "blank" | "duplicate" | "metadata";
 
@@ -60,7 +52,7 @@ export function RouteVariantEditorDialog({
   tripId: string;
   variants: PlannerVariant[];
 }) {
-  const { locale, t } = useI18n();
+  const { locale } = useI18n();
   const [initialValues] = useState(() =>
     mode === "metadata"
       ? { color: activeVariant.color.toLowerCase(), name: activeVariant.name }
@@ -72,9 +64,14 @@ export function RouteVariantEditorDialog({
               : nextVariantName(variants, locale),
         },
   );
-  const [name, setName] = useState(initialValues.name);
-  const [color, setColor] = useState(initialValues.color);
-  const [sourceVariantId, setSourceVariantId] = useState(activeVariant.id);
+  const local = useDurableFields(
+    editingStorageKey(useDraftScope(tripId, "variants"), `${mode}:${activeVariant.id}`),
+    { ...initialValues, sourceVariantId: activeVariant.id },
+  );
+  const { name, color, sourceVariantId } = local.values;
+  const setName = (value: string) => local.set("name", value);
+  const setColor = (value: string) => local.set("color", value);
+  const setSourceVariantId = (value: string) => local.set("sourceVariantId", value);
   const [error, setError] = useState<string>();
   const [conflict, setConflict] = useState(false);
   const [baseVersion, setBaseVersion] = useState(activeVariant.version);
@@ -82,23 +79,35 @@ export function RouteVariantEditorDialog({
   const [latestVariants, setLatestVariants] = useState<PlannerVariant[]>();
   const [entityUnavailable, setEntityUnavailable] = useState(false);
   const queryClient = useQueryClient();
-  const createMutation = useCreateRouteVariant(tripId);
-  const duplicateMutation = useDuplicateRouteVariant(tripId);
-  const updateMutation = useUpdateRouteVariant(tripId);
-  const pending =
-    createMutation.isPending || duplicateMutation.isPending || updateMutation.isPending;
+  const runtime = useVariantSync(tripId, variants);
+  const sourceQuery = useQuery({
+    queryKey: plannerQueryKey(tripId, sourceVariantId),
+    enabled:
+      open &&
+      mode !== "metadata" &&
+      !runtime?.queue.operations.some((op) => op.id === sourceVariantId),
+    queryFn: async () => requireData(await loadPlannerWorkspace(tripId, sourceVariantId)),
+    staleTime: 30000,
+    retry: false,
+  });
+  const pending = false;
+  const [composing, setComposing] = useState(false);
   const nameId = useId();
 
-  async function submit() {
+  function submit(closeAfter = true) {
     setError(undefined);
     const operationId = newTelemetryOperationId();
     try {
-      const loaded = await loadRouteVariants(tripId);
-      if (!loaded.data) throw new Error(loaded.error ?? "The latest Plans could not be loaded.");
-      const source = loaded.data.find(
-        ({ id }) =>
-          id === (mode === "blank" || mode === "metadata" ? activeVariant.id : sourceVariantId),
-      );
+      if (!runtime || local.getError())
+        throw new Error(
+          local.getError() ?? "This Plan could not be stored locally. Your draft is kept.",
+        );
+      const source = runtime
+        .project()
+        .find(
+          ({ id }) =>
+            id === (mode === "blank" || mode === "metadata" ? activeVariant.id : sourceVariantId),
+        );
       if (!source) {
         setEntityUnavailable(true);
         setError("The source Plan is no longer available. Reload the latest Plans.");
@@ -116,39 +125,82 @@ export function RouteVariantEditorDialog({
         expectedSourceItemsVersion: source.items_version,
         expectedSourceVersion: source.version,
       };
+      const snapshot = sourceQuery.data;
+      if (mode !== "metadata" && !snapshot)
+        throw new Error(
+          sourceQuery.error?.message ?? "The source Plan is still loading. Your draft is kept.",
+        );
       const result =
-        mode === "blank"
-          ? await createMutation.mutateAsync({
-              color,
-              ...sourceVersions,
-              name,
-              sourceVariantId: activeVariant.id,
-              tripId,
-              operationId,
-            })
-          : mode === "duplicate"
-            ? await duplicateMutation.mutateAsync({
-                color,
-                ...sourceVersions,
-                name,
-                operationId,
-                sourceVariantId,
-                tripId,
-              })
-            : await updateMutation.mutateAsync({
+        mode === "metadata"
+          ? runtime.accept({
+              kind: "update",
+              input: {
                 color,
                 expectedVersion: baseVersion,
                 name,
                 tripId,
                 variantId: activeVariant.id,
                 operationId,
-              });
-      onOpenChange(false);
-      onSaved?.(result.variantId);
+              },
+            })
+          : runtime.accept({
+              kind: "create",
+              duplicate: mode === "duplicate",
+              source: snapshot!,
+              input: {
+                color,
+                ...sourceVersions,
+                name,
+                operationId,
+                sourceVariantId: source.id,
+                tripId,
+                dayIds: Object.fromEntries(
+                  snapshot!.days.map((day) => [day.id, crypto.randomUUID()]),
+                ),
+                itemIds:
+                  mode === "duplicate"
+                    ? Object.fromEntries(
+                        snapshot!.days
+                          .flatMap((day) => day.items)
+                          .map((item) => [item.id, crypto.randomUUID()]),
+                      )
+                    : {},
+              },
+            });
+      local.discard();
+      if (mode === "metadata")
+        setBaseVersion(
+          result.variants.find((row) => row.id === activeVariant.id)?.version ?? baseVersion,
+        );
+      if (closeAfter) {
+        onOpenChange(false);
+        onSaved?.(result.variantId);
+      }
     } catch (caught) {
       setConflict(caught instanceof ItineraryMutationError && caught.code === "conflict");
       setError(caught instanceof Error ? caught.message : "The Plan could not be saved.");
     }
+  }
+
+  const canAutosave =
+    mode === "metadata" &&
+    open &&
+    runtime &&
+    !composing &&
+    !local.error &&
+    name.trim().length > 0 &&
+    name.trim().length <= 80;
+  useEffect(() => {
+    if (!canAutosave || !local.hasChanges()) return;
+    const timer = window.setTimeout(() => submit(false), 500);
+    return () => window.clearTimeout(timer);
+    // Changes are keyed to raw fields; a successful durable acceptance advances their baseline.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canAutosave, name, color]);
+  function closeEditor() {
+    if (mode === "metadata" && runtime && !local.getError() && local.hasChanges() && name.trim())
+      submit(false);
+    onOpenChange(false);
   }
 
   async function reloadLatest() {
@@ -185,7 +237,12 @@ export function RouteVariantEditorDialog({
         : "Edit Plan";
 
   return (
-    <PlannerEditorScreen editorKind="variant" onOpenChange={onOpenChange} open={open}>
+    <PlannerEditorScreen
+      nonBlocking
+      editorKind="variant"
+      onOpenChange={(value) => (value ? onOpenChange(true) : closeEditor())}
+      open={open}
+    >
       <PlannerEditorForm
         compactActions
         header={
@@ -198,17 +255,22 @@ export function RouteVariantEditorDialog({
                   ? "Copies days, items, links, saved stops, and leg modes. Route calculations are not copied."
                   : "The Plan name and color identify this version throughout the planner."
             }
-            error={error}
-            onClose={() => onOpenChange(false)}
+            error={error ?? local.error ?? sourceQuery.error?.message}
+            onClose={closeEditor}
             title={title}
           />
         }
-        onCancel={() => onOpenChange(false)}
-        onClose={() => onOpenChange(false)}
+        onCancel={closeEditor}
+        onClose={closeEditor}
         onSave={() => submit()}
         pending={pending}
         pendingLabel="Saving…"
-        saveDisabled={entityUnavailable || !name.trim()}
+        saveDisabled={
+          entityUnavailable ||
+          !name.trim() ||
+          !runtime ||
+          (mode !== "metadata" && !sourceQuery.data)
+        }
         saveLabel={
           mode === "blank"
             ? "Create Plan"
@@ -217,6 +279,12 @@ export function RouteVariantEditorDialog({
               : "Save changes"
         }
       >
+        <LocalDraftStatus
+          draft={local}
+          onDiscard={() => {
+            if (local.discard()) onOpenChange(false);
+          }}
+        />
         {conflict ? (
           <button
             className="min-h-11 rounded-md border border-destructive px-4 text-sm font-medium text-destructive"
@@ -226,67 +294,20 @@ export function RouteVariantEditorDialog({
             <Localized value="Reload latest" />
           </button>
         ) : null}
-        {latestVariant ? (
-          <div className="rounded-md border border-border bg-muted/40 p-3 text-sm" role="status">
-            <p>
-              <Localized value="Latest loaded. Your draft is still here and can be saved again." />
-            </p>
-            <button
-              className="mt-2 min-h-11 rounded-md border px-3 font-medium"
-              onClick={() => {
-                setName(latestVariant.name);
-                setColor(latestVariant.color.toLowerCase());
-                setLatestVariant(undefined);
-              }}
-              type="button"
-            >
-              <Localized value="Use latest values" />
-            </button>
-          </div>
-        ) : null}
-        {mode === "duplicate" ? (
-          <PlannerEditorField id={`${nameId}-source`} label="Copy from">
-            <Select
-              onValueChange={(id) => {
-                const available = latestVariants ?? variants;
-                const previous = available.find((variant) => variant.id === sourceVariantId);
-                const source = available.find((variant) => variant.id === id);
-                if (source && previous && name === clonedVariantName(previous.name, available))
-                  setName(clonedVariantName(source.name, available));
-                setSourceVariantId(id);
-              }}
-              value={sourceVariantId}
-            >
-              <SelectTrigger id={`${nameId}-source`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(latestVariants ?? variants).map((variant) => (
-                  <SelectItem key={variant.id} value={variant.id}>
-                    {variant.name}
-                    {variant.is_primary ? ` · ${t("Primary")}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </PlannerEditorField>
-        ) : null}
-        <PlannerEditorTextField
-          autoComplete="off"
-          id={nameId}
-          label="Plan name"
-          maxLength={80}
-          onChange={(event) => setName(event.target.value)}
-          required
-          value={name}
+        <VariantEditorFields
+          latestVariant={latestVariant}
+          mode={mode}
+          nameId={nameId}
+          sourceVariantId={sourceVariantId}
+          variants={latestVariants ?? variants}
+          name={name}
+          color={color}
+          onNameChange={setName}
+          onColorChange={setColor}
+          onSourceChange={setSourceVariantId}
+          onCompositionChange={setComposing}
+          onUseLatest={() => setLatestVariant(undefined)}
         />
-        <PlannerEditorField
-          description="Color is paired with the Plan name and never used alone."
-          id={`${nameId}-color`}
-          label="Plan color"
-        >
-          <VariantColorPalette color={color} onChange={setColor} />
-        </PlannerEditorField>
       </PlannerEditorForm>
     </PlannerEditorScreen>
   );

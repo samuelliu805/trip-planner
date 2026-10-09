@@ -1,5 +1,6 @@
 "use client";
 
+import { useBackgroundActions } from "@/features/editing/use-background-actions";
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { format, parseISO } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -18,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { TripCardArt } from "./trip-card-art";
 import { TripCoverPhoto } from "./trip-cover-photo";
@@ -33,11 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  countActiveSharePages,
-  loadTripStatusSnapshot,
-  setTripStatus,
-} from "@/features/trips/actions";
+import { countActiveSharePages, loadTripStatusSnapshot } from "@/features/trips/actions";
 import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { TripForm } from "@/features/trips/components/trip-form";
 import { TripPeopleEditor } from "@/features/trips/components/trip-people-editor";
@@ -100,16 +97,32 @@ export function TripCard({
     version: number;
   }>();
   const [unavailable, setUnavailable] = useState(false);
-  const [statusPending, startStatusChange] = useTransition();
-  const setTripListLoading = useTripListLoading();
-  const status = tripStatusOf({ ...trip, status: statusSnapshot?.status ?? trip.status });
+  const owner = useBackgroundActions(trip.id, "trip-card");
+  const statusPending = false;
+  const handled = useRef(new Set<string>());
+  const completed = owner?.completed ?? [];
+  useEffect(() => {
+    const fresh = completed.filter((row) => !handled.current.has(row.id));
+    fresh.forEach((row) => handled.current.add(row.id));
+    for (const row of fresh) {
+      if (row.intent.kind === "trip.status")
+        setStatusSnapshot((row.result as { data: { status: string; version: number } }).data);
+      if (row.intent.kind === "trip.delete") setUnavailable(true);
+    }
+    if (fresh.length) router.refresh();
+  }, [completed.length, router]);
+  const pendingStatus = owner?.queue.operations
+    .filter((op) => (op.intent as { kind: string }).kind === "trip.status")
+    .at(-1);
+  const projectedStatus = (pendingStatus?.intent as { input: { status: string } } | undefined)
+    ?.input.status;
+  const status = tripStatusOf({
+    ...trip,
+    status: projectedStatus ?? statusSnapshot?.status ?? trip.status,
+  });
   const statusVersion = statusSnapshot?.version ?? trip.version;
   const toggle = tripStatusToggle(status);
-  const onDeletePendingChange = useCallback(
-    (pending: boolean) =>
-      setTripListLoading(pending ? t("Deleting “{title}”…", { title: trip.title }) : undefined),
-    [setTripListLoading, t, trip.title],
-  );
+  const onDeletePendingChange = () => {};
 
   function afterMenu(open: () => void) {
     window.setTimeout(open, 0);
@@ -122,24 +135,23 @@ export function TripCard({
   }
 
   function changeStatus() {
-    startStatusChange(async () => {
+    try {
+      if (!owner) throw new Error("Local storage is unavailable.");
+      owner.accept({
+        kind: "trip.status",
+        before: status,
+        input: {
+          tripId: trip.id,
+          status: toggle.next,
+          expectedVersion: statusVersion,
+          operationId: newTelemetryOperationId(),
+        },
+      });
       setStatusError(null);
       setStatusConflict(false);
-      const result = await setTripStatus({
-        expectedVersion: statusVersion,
-        operationId: newTelemetryOperationId(),
-        status: toggle.next,
-        surface: "trip_list",
-        tripId: trip.id,
-      });
-      if (result.error) {
-        setStatusError(result.error);
-        setStatusConflict(Boolean(result.conflict));
-        return;
-      }
-      setStatusSnapshot({ status: toggle.next, version: statusVersion + 1 });
-      router.refresh();
-    });
+    } catch (error) {
+      setStatusError(String(error));
+    }
   }
 
   async function reloadLatestStatus() {

@@ -8,6 +8,10 @@ import { T } from "@/features/i18n/i18n-provider";
 import { claimGuestTrip } from "@/features/guest/actions";
 import { GuestDraftStorage } from "@/features/guest/storage";
 import type { GuestRegion } from "@/features/guest/schema";
+import {
+  claimCurrentGuestDraft,
+  transferGuestEditorDrafts,
+} from "@/features/guest/claim-continuation";
 
 /** Converts an App Router action redirect into one clean document navigation after sign-in. */
 export function PostLoginRefresh({ region }: { region: GuestRegion }) {
@@ -23,24 +27,36 @@ export function PostLoginRefresh({ region }: { region: GuestRegion }) {
         const draft = storage.load();
         const intent = storage.readIntent();
         if (draft) {
-          const result = await claimGuestTrip(draft);
-          if (!result.data) {
-            setError(result.error ?? "The local trip could not be imported.");
-            return;
-          }
-          for (const targetRegion of ["global", "cn"] as const)
-            new GuestDraftStorage(targetRegion, window.localStorage).clearAll();
+          const result = await claimCurrentGuestDraft({
+            getCurrent: () => storage.load() ?? undefined,
+            flush: () => true,
+            send: (cutoff) => claimGuestTrip(cutoff),
+            complete: (cutoff, saved) => {
+              transferGuestEditorDrafts(
+                window.localStorage,
+                cutoff.draftId,
+                saved.tripId,
+                saved.actorId,
+              );
+              storage.writeImportMarker({
+                draftId: cutoff.draftId,
+                revision: cutoff.revision,
+                importedAt: new Date().toISOString(),
+                intent,
+                tripId: saved.tripId,
+              });
+              return storage.clear(cutoff.draftId, cutoff.revision) === true;
+            },
+          });
           const destination =
             intent?.draftId === draft.draftId && intent.action === "share"
-              ? `/trips/${result.data.tripId}?share=1`
+              ? `/trips/${result.tripId}?share=1`
               : intent?.draftId === draft.draftId && intent.action === "attachment" && intent.itemId
-                ? `/trips/${result.data.tripId}?item=${intent.itemId}`
-                : `/trips/${result.data.tripId}`;
+                ? `/trips/${result.tripId}?item=${intent.itemId}`
+                : `/trips/${result.tripId}`;
           window.location.replace(destination);
           return;
         }
-        for (const targetRegion of ["global", "cn"] as const)
-          new GuestDraftStorage(targetRegion, window.localStorage).clearAll();
       } catch {
         setError("The local trip could not be imported. Your browser copy is still available.");
         return;

@@ -11,7 +11,8 @@ import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import type { FixedDayRouteDraft } from "./day-route-order";
-import { useCalculateDayRoute, useClearDayRoutePlan, useSaveDayRoutePlan } from "./queries";
+import { useRouteTasks } from "./use-route-tasks";
+import { dayRouteInputSnapshot } from "./input-snapshot";
 import { validateDayRouteDraft } from "./route-config";
 import {
   canonicalRouteLegMode,
@@ -31,7 +32,7 @@ export function useDayRouteActions({
   plan,
   previousDay,
   setConflictDayId,
-  setDraft,
+  discardDraftIfMatches,
   setError,
   stopItems,
   tripId,
@@ -42,17 +43,18 @@ export function useDayRouteActions({
   plan?: DayRoutePlan;
   previousDay?: PlannerDay;
   setConflictDayId: (dayId?: string) => void;
-  setDraft: (value: FixedDayRouteDraft | null) => void;
+  discardDraftIfMatches: (value: FixedDayRouteDraft | null) => void;
   setError: (value?: string) => void;
   stopItems: ItineraryItem[];
   tripId: string;
   variantId: string;
 }) {
   const queryClient = useQueryClient();
-  const saveMutation = useSaveDayRoutePlan(tripId, variantId);
-  const calculateMutation = useCalculateDayRoute(tripId, variantId);
-  const clearMutation = useClearDayRoutePlan(tripId, variantId);
-  const pending = saveMutation.isPending || calculateMutation.isPending || clearMutation.isPending;
+  const runtime = useRouteTasks(tripId, variantId);
+  const operations =
+    runtime?.queue.operations.filter((op) => op.resources.includes(activeDay?.id ?? "")) ?? [];
+  const pending = operations.some((op) => op.status === "queued" || op.status === "sending");
+  const failure = operations.find((op) => op.status === "failed" || op.status === "conflict");
 
   async function reloadLatest() {
     if (!activeDay) return;
@@ -106,26 +108,33 @@ export function useDayRouteActions({
       { actorType },
     );
     try {
-      const saved = await saveMutation.mutateAsync({
-        dayId: activeDay.id,
-        expectedVersion: plan?.version ?? 0,
-        itemIds: value.itemIds,
-        legModes: value.legModes,
-        tripId,
-        variantId,
-        operationId,
-        telemetryRouteMode: routeMode,
+      if (!runtime)
+        throw new Error("Route configuration could not be stored locally. Your draft is kept.");
+      runtime.accept({
+        kind: "day",
+        input: {
+          dayId: activeDay.id,
+          expectedVersion: plan?.version ?? 0,
+          itemIds: value.itemIds,
+          legModes: value.legModes,
+          tripId,
+          variantId,
+          operationId,
+          telemetryRouteMode: routeMode,
+        },
+        calculateOperationId: newTelemetryOperationId(),
+        expectedInputSnapshot: dayRouteInputSnapshot({
+          tripId,
+          variantId,
+          dayId: activeDay.id,
+          legModes: value.legModes,
+          stops: routeDraft.stops.map((stop) => ({
+            itemId: stop.itemId,
+            coordinates: stop.coordinates!,
+          })),
+        }),
       });
-      await calculateMutation.mutateAsync({
-        expectedPlanVersion: saved.version,
-        expectedVersion: saved.calculation?.version ?? 0,
-        operationId: newTelemetryOperationId(),
-        planId: saved.id,
-        telemetryRouteMode: routeMode,
-        tripId,
-        variantId,
-      });
-      setDraft(null);
+      discardDraftIfMatches(value);
     } catch (caught) {
       setConflictDayId(isItineraryConflict(caught) ? activeDay.id : undefined);
       setError(caught instanceof Error ? caught.message : "The day route could not be calculated.");
@@ -136,19 +145,23 @@ export function useDayRouteActions({
     if (!activeDay || !plan) return;
     setError(undefined);
     try {
-      await clearMutation.mutateAsync({
-        dayId: activeDay.id,
-        expectedVersion: plan.version,
-        operationId: newTelemetryOperationId(),
-        tripId,
-        variantId,
+      if (!runtime) throw new Error("The clear request could not be stored locally.");
+      runtime.accept({
+        kind: "clear",
+        input: {
+          dayId: activeDay.id,
+          expectedVersion: plan.version,
+          operationId: newTelemetryOperationId(),
+          tripId,
+          variantId,
+        },
       });
-      setDraft(null);
+      // Clearing a saved route does not discard a newer configuration draft.
     } catch (caught) {
       setConflictDayId(isItineraryConflict(caught) ? activeDay.id : undefined);
       setError(caught instanceof Error ? caught.message : "The day route could not be cleared.");
     }
   }
 
-  return { clearRoute, pending, persistAndCalculate, reloadLatest };
+  return { clearRoute, pending, failure, persistAndCalculate, reloadLatest };
 }

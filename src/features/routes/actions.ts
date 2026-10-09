@@ -21,6 +21,7 @@ import { neighboringCityError } from "./city-order";
 import { resolveRouteCalculationConfig } from "./plan-config";
 import { validateDayRouteDraft } from "./route-config";
 import { buildRouteLegSignature } from "./signatures";
+import { dayRouteInputSnapshot, overviewInputSnapshot } from "./input-snapshot";
 import { reportRouteCalculation, reportRouteCalculationFailure } from "./telemetry.server";
 import {
   calculateOverviewRouteSchema,
@@ -148,6 +149,11 @@ export async function calculateDayRoute(
       ({ id, trip_id }) => id === parsed.data.planId && trip_id === parsed.data.tripId,
     );
     if (!plan) throw new Error("The saved day route was not found.");
+    if (plan.version !== parsed.data.expectedPlanVersion)
+      return {
+        code: "conflict",
+        error: "This day route changed. Review the configuration before calculating.",
+      };
     const resolved = resolveRouteCalculationConfig(workspace, plan);
     if (!resolved.config)
       return reportRouteCalculation({
@@ -157,6 +163,14 @@ export async function calculateDayRoute(
         routeView: "day",
       });
 
+    if (
+      parsed.data.expectedInputSnapshot &&
+      dayRouteInputSnapshot(resolved.config) !== parsed.data.expectedInputSnapshot
+    )
+      return {
+        code: "conflict",
+        error: "A route stop changed. Your configuration is kept; review it before calculating.",
+      };
     const calculated = await calculateRouteConfiguration(
       resolved.config,
       plan.calculation,
@@ -241,6 +255,14 @@ export async function calculateOverviewRoute(
         routeView: "overview",
       });
 
+    if (
+      parsed.data.expectedInputSnapshot &&
+      overviewInputSnapshot(stages) !== parsed.data.expectedInputSnapshot
+    )
+      return {
+        code: "conflict",
+        error: "The Overview stages changed. Review them before calculating.",
+      };
     const routeProvider = resolveRouteProvider();
     const tasks = parsed.data.legs
       .slice()

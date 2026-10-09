@@ -30,7 +30,7 @@ export function IdeaVariantTarget({
   onSelectedChange: (selected: boolean) => void;
   placement: IdeaVariantPlacement;
   plan: ResearchPlanSnapshot;
-  result?: { error?: string; status?: "applied" | "already_applied" };
+  result?: { error?: string; status?: "applied" | "already_applied" | "queued" };
   selected: boolean;
 }) {
   const { t } = useI18n();
@@ -55,9 +55,15 @@ export function IdeaVariantTarget({
         <span className="min-w-0 flex-1 break-words font-semibold">{plan.variantName}</span>
         {result?.status ? (
           <span className="flex shrink-0 items-center gap-1 text-sm text-emerald-700">
-            <Check aria-hidden="true" className="size-4" />
+            {result.status !== "queued" ? <Check aria-hidden="true" className="size-4" /> : null}
             <T
-              message={result.status === "already_applied" ? "Already in Plan" : "Added to Plan"}
+              message={
+                result.status === "queued"
+                  ? "Pending sync"
+                  : result.status === "already_applied"
+                    ? "Already in Plan"
+                    : "Added to Plan"
+              }
             />
           </span>
         ) : null}

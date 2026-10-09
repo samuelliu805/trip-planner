@@ -467,6 +467,7 @@ export type Database = {
       };
       itinerary_items: {
         Row: {
+          attachments_version?: number;
           booking_url: string | null;
           created_at: string;
           day_id: string;
@@ -892,6 +893,7 @@ export type Database = {
       };
       research_items: {
         Row: {
+          attachments_version?: number;
           adult_count: number | null;
           category: string;
           child_count: number | null;
@@ -1905,6 +1907,12 @@ export type Database = {
         };
         Returns: Json;
       };
+      apply_idea_request_v1: {
+        Args: {target_trip_id: string;target_variant_id: string;target_research_item_id: string;target_comparison_id: string;target_choice_id: string;
+          requested_day_id: string;requested_before_item_id: string;requested_anchor_day_number: number;expected_research_versions: Json;
+          expected_variant_version: number;expected_content_version: number;expected_days_version: number;expected_items_version: number;target_operation_id: string};
+        Returns: Json;
+      };
       apply_single_idea_v1: {
         Args: {
           target_trip_id: string;
@@ -1954,6 +1962,12 @@ export type Database = {
       };
       create_idea_comparison_v2: {
         Args: { target_trip_id: string; requested_title: string; requested_choices: Json };
+        Returns: Json;
+      };
+      create_idea_comparison_v3: {
+        Args: {
+          target_operation_id: string;
+ target_trip_id: string; requested_title: string; requested_choices: Json };
         Returns: Json;
       };
       delete_idea_comparison_v1: {
@@ -2093,12 +2107,32 @@ export type Database = {
         };
         Returns: Json;
       };
+      apply_research_item_to_variant_v4: {
+        Args: {
+          expected_research_version: number;
+          schedule_choice: string;
+          target_item_id: string;
+          target_operation_id: string;
+          target_research_item_id: string;
+          target_trip_id: string;
+          target_variant_id: string;
+          expected_variant_version: number;
+          expected_content_version: number;
+          expected_days_version: number;
+          expected_items_version: number;
+        };
+        Returns: Json;
+      };
       apply_selected_research_item: {
         Args: {
           target_research_item_id: string;
           target_trip_id: string;
           target_variant_id: string;
         };
+        Returns: Json;
+      };
+      read_attachment_collection_v1: {
+        Args: { target_trip_id: string; target_entity_id: string; requested_target: string };
         Returns: Json;
       };
       asset_cleanup_batch_v1: {
@@ -2230,6 +2264,39 @@ export type Database = {
         };
         Returns: undefined;
       };
+      copy_itinerary_items_v4: {
+        Args: {
+          expected_items_version: number;
+          expected_replace_versions: number[];
+          expected_source_versions: number[];
+          preserve_place: boolean;
+          replace_target_item_ids: string[];
+          requested_copied_item_ids: string[];
+          source_item_ids: string[];
+          target_day_id: string;
+          target_operation_id: string;
+          target_trip_id: string;
+          target_variant_id: string;
+        };
+        Returns: Json;
+      };
+      mutate_attachment_collection_v1: {
+        Args: {target_trip_id:string;target_entity_id:string;requested_target:string;requested_action:string;requested_public_ref:string;
+          expected_link_version:number;expected_research_version:number;requested_include_in_share:boolean;target_operation_id:string};
+        Returns:Json;
+      };
+      commit_attachment_session_v3: {
+        Args: { target_trip_id: string; target_entity_id: string; requested_target: string; requested_draft_session_id: string; target_operation_id: string };
+        Returns: Json;
+      };
+      commit_attachment_session_v4: {
+        Args: { target_trip_id: string; target_entity_id: string; requested_target: string; requested_draft_session_id: string; target_operation_id: string };
+        Returns: Json;
+      };
+      continue_guest_import_v1: {
+        Args: { guest_draft_id: string; guest_payload: Json; guest_locale?: string };
+        Returns: string;
+      };
       create_public_itinerary_link: {
         Args: {
           requested_allow_route_explore?: boolean;
@@ -2358,6 +2425,23 @@ export type Database = {
           target_trip_id: string;
           variant_color: string;
           variant_name: string;
+        };
+        Returns: Json;
+      };
+      create_route_variant_v4: {
+        Args: {
+          duplicate_content: boolean;
+          expected_source_content_version: number;
+          expected_source_days_version: number;
+          expected_source_items_version: number;
+          expected_source_version: number;
+          source_variant_id: string;
+          target_operation_id: string;
+          target_trip_id: string;
+          variant_color: string;
+          variant_name: string;
+          requested_day_ids: Json;
+          requested_item_ids: Json;
         };
         Returns: Json;
       };
@@ -2738,6 +2822,11 @@ export type Database = {
         Args: { requested_parts: Json; target_version_id: string };
         Returns: Json;
       };
+      finalize_share_image_version_v2: {
+        Args: {
+          target_operation_id: string; requested_parts: Json; target_version_id: string };
+        Returns: Json;
+      };
       get_public_itinerary: { Args: { shared_token: string }; Returns: Json };
       get_public_itinerary_v2: {
         Args: { shared_token: string };
@@ -2808,6 +2897,16 @@ export type Database = {
           target_trip_id: string;
         };
         Returns: boolean;
+      };
+      insert_variant_day_v3: {
+        Args: {
+          before_day_number: number;
+          expected_days_version: number;
+          target_operation_id: string;
+          target_trip_id: string;
+          target_variant_id: string;
+        };
+        Returns: Json;
       };
       is_actual_trip_owner: {
         Args: { target_trip_id: string };
@@ -3034,6 +3133,18 @@ export type Database = {
       };
       prepare_share_image_version_v2: {
         Args: {
+          requested_mode: string;
+          requested_qr_destination_type: string;
+          requested_qr_destination_url: string;
+          requested_render_config: Json;
+          target_export_id: string;
+          target_share_page_id: string;
+        };
+        Returns: Json;
+      };
+      prepare_share_image_version_v3: {
+        Args: {
+          target_operation_id: string
           requested_mode: string;
           requested_qr_destination_type: string;
           requested_qr_destination_url: string;

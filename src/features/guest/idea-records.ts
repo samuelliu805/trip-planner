@@ -1,5 +1,5 @@
 import { createResearchItemSchema, type CreateResearchItemInput } from "../research/schema.ts";
-import type { ResearchItem } from "../research/types.ts";
+import type { ResearchItem, StoredResearchPlace } from "../research/types.ts";
 import type { GuestIdea, GuestTripDraft } from "./schema.ts";
 
 export function appliedGuestIdeaId(details: unknown): string | null {
@@ -10,6 +10,26 @@ export function appliedGuestIdeaId(details: unknown): string | null {
 
 export function researchItemFromGuestIdea(idea: GuestIdea): ResearchItem {
   const value = idea.values;
+  const place = (snapshot: typeof value.locationPlaceSnapshot): StoredResearchPlace | null =>
+    snapshot
+      ? ({
+          id: "",
+          display_name: snapshot.displayName,
+          formatted_address: snapshot.formattedAddress ?? null,
+          latitude: snapshot.latitude,
+          longitude: snapshot.longitude,
+          provider_place_id: snapshot.providerPlaceId ?? null,
+          google_place_id:
+            snapshot.provider === "google" ? (snapshot.providerPlaceId ?? null) : null,
+          source: snapshot.provider,
+          coordinate_system: snapshot.coordinateSystem,
+          administrative_area_name: snapshot.administrativeAreaName ?? null,
+          country_code: snapshot.countryCode ?? null,
+          locality_kind: snapshot.localityKind ?? null,
+          locality_name: snapshot.localityName ?? null,
+          locality_source: snapshot.localitySource ?? null,
+        } as StoredResearchPlace)
+      : null;
   return {
     id: idea.id,
     trip_id: value.tripId,
@@ -25,9 +45,9 @@ export function researchItemFromGuestIdea(idea: GuestIdea): ResearchItem {
     origin_place_id: value.originPlaceId ?? null,
     destination_place_id: value.destinationPlaceId ?? null,
     location_place_id: value.locationPlaceId ?? null,
-    origin_place: null,
-    destination_place: null,
-    location_place: null,
+    origin_place: place(value.originPlaceSnapshot),
+    destination_place: place(value.destinationPlaceSnapshot),
+    location_place: place(value.locationPlaceSnapshot),
     start_date: value.startDate ?? null,
     end_date: value.endDate ?? null,
     start_time: value.startTime ?? null,

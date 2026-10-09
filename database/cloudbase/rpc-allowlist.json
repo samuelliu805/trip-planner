@@ -1,12 +1,19 @@
 {
   "version": 1,
   "authenticated": [
+    ["read_attachment_collection_v1(uuid,uuid,text)", "member_guard"],
+    ["continue_guest_import_v1(uuid,jsonb,text)", "member_guard"],
+    ["commit_attachment_session_v3(uuid,uuid,text,uuid,uuid)", "member_guard"],
     ["apply_idea_choice_confirmed_v1(uuid,uuid,uuid,uuid,uuid,integer,uuid)", "member_guard"],
     ["apply_idea_choice_v1(uuid,uuid,uuid,uuid,uuid,uuid)", "member_guard"],
     ["apply_single_idea_confirmed_v1(uuid,uuid,uuid,integer,uuid)", "member_guard"],
     ["apply_single_idea_v1(uuid,uuid,uuid,uuid,uuid,uuid)", "member_guard"],
     ["rebase_idea_variant_days_v1(uuid,uuid,date,integer,uuid)", "member_guard"],
     ["apply_research_item_to_variant_v3(uuid,uuid,uuid,text,uuid,bigint,uuid)", "member_guard"],
+    [
+      "apply_research_item_to_variant_v4(uuid,uuid,uuid,bigint,uuid,text,bigint,bigint,bigint,bigint,uuid)",
+      "member_guard"
+    ],
     ["capture_idea_v1(uuid,uuid,text,text,text,text,jsonb)", "member_guard"],
     ["clear_day_route_plan_v2(uuid,uuid,uuid,bigint,uuid)", "member_guard"],
     ["clear_route_variant_items_v3(uuid,uuid,uuid[],bigint[],bigint,uuid)", "member_guard"],
@@ -16,6 +23,10 @@
     ],
     [
       "create_route_variant_v3(uuid,uuid,text,text,uuid,boolean,bigint,bigint,bigint,bigint)",
+      "member_guard"
+    ],
+    [
+      "create_route_variant_v4(uuid,uuid,text,text,uuid,boolean,bigint,bigint,bigint,bigint,jsonb,jsonb)",
       "member_guard"
     ],
     ["create_idea_comparison_v1(uuid,text,jsonb)", "member_guard"],
@@ -48,6 +59,11 @@
     ["finalize_share_image_version_v1(uuid,jsonb)", "member_guard"],
     ["import_guest_trip_v1(uuid,jsonb,text)", "claim_bound_create"],
     ["insert_variant_day_v2(uuid,uuid,integer,bigint,uuid)", "member_guard"],
+    ["insert_variant_day_v3(uuid,uuid,integer,bigint,uuid)", "member_guard"],
+    [
+      "copy_itinerary_items_v4(uuid,uuid,uuid[],bigint[],uuid[],bigint[],uuid,boolean,bigint,uuid,uuid[])",
+      "member_guard"
+    ],
     ["invite_trip_collaborator(uuid,text,uuid)", "member_guard"],
     ["is_actual_trip_owner(uuid)", "claim_bound_owner_check"],
     ["is_trip_owner(uuid)", "claim_bound_owner_check"],
@@ -104,7 +120,19 @@
       "update_share_page_v4(uuid,bigint,uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean)",
       "member_guard"
     ],
-    ["update_trip_status(uuid,text,bigint,uuid)", "member_guard"]
+    ["update_trip_status(uuid,text,bigint,uuid)", "member_guard"],
+    ["prepare_share_image_version_v3(uuid,text,uuid,text,text,jsonb,uuid)", "member_guard"],
+    ["finalize_share_image_version_v2(uuid,jsonb,uuid)", "member_guard"],
+    ["create_idea_comparison_v3(uuid,text,jsonb,uuid)", "member_guard"],
+    [
+      "apply_idea_request_v1(uuid,uuid,uuid,uuid,uuid,uuid,uuid,integer,jsonb,bigint,bigint,bigint,bigint,uuid)",
+      "member_guard"
+    ],
+    ["commit_attachment_session_v4(uuid,uuid,text,uuid,uuid)", "member_guard"],
+    [
+      "mutate_attachment_collection_v1(uuid,uuid,text,text,text,bigint,bigint,boolean,uuid)",
+      "member_guard"
+    ]
   ],
   "anonymous": [
     ["get_public_city_photo_sources_v1(uuid)", "public_token_snapshot"],

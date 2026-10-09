@@ -1,90 +1,89 @@
 "use client";
-
-import { Localized, T } from "@/features/i18n/i18n-provider";
-import { useQueryClient, type QueryKey } from "@tanstack/react-query";
-import { LoaderCircle, RotateCcw, Settings2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef, useState } from "react";
-
-import { Button } from "@/components/ui/button";
+import { useEffect, useRef, useState } from "react";
 import { SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
+import { useDraftScope } from "@/features/editing/draft-scope";
+import { editingStorageKey } from "@/features/editing/draft-storage";
+import { useDurableFields } from "@/features/editing/use-durable-fields";
+import { useDraftAutosave } from "@/features/editing/use-draft-autosave";
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
-import { updateTrip } from "@/features/trips/actions";
-import { TripFormFields } from "@/features/trips/components/trip-form-fields";
-import { useTripSettingsEditorContext } from "@/features/trips/components/trip-settings-editor";
-import { useI18n } from "@/features/i18n/i18n-provider";
-import type { PlannerWorkspace } from "@/features/itinerary/types";
-import {
-  optimisticTripDayDates,
-  settleTripDateFields,
-  type TripDateField,
-} from "@/features/trips/date-fields";
 import type { Trip } from "@/platform/contracts/trips";
-import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { TripFormFields } from "./trip-form-fields";
+import { useTripSettingsEditorContext } from "./trip-settings-editor";
+import { settleTripDateFields, type TripDateField } from "../date-fields";
+import { useSettingsSync } from "../settings-sync";
+import { updateTripSchema } from "../schema";
+import { useQuery } from "@tanstack/react-query";
+import { Settings2 } from "lucide-react";
 
-async function loadLatestTripSettings(tripId: string) {
+async function loadLatestTripSettings(tripId: string): Promise<Trip> {
   const response = await fetch(`/api/trips/${tripId}/settings`, { cache: "no-store" });
   if (!response.ok) throw new Error("Latest trip settings could not be loaded.");
   return ((await response.json()) as { trip: Trip }).trip;
 }
 
-/** Trip settings supply their fields and server action to the shared planner editor form. */
 export function TripForm({
   onSaved,
-  surface = "planner_app_bar",
   trip,
 }: {
   onSaved?: () => void;
   surface?: "planner_app_bar" | "trip_list";
   trip: Trip;
 }) {
-  const { locale } = useI18n();
-  const queryClient = useQueryClient();
-  const router = useRouter();
-  const [state, action, pending] = useActionState(updateTrip, {});
+  const { locale } = useI18n(),
+    editor = useTripSettingsEditorContext();
+  const sync = useSettingsSync(trip);
+  const { data: projectedTrip } = useQuery<Trip>({
+    queryKey: ["trip-settings", trip.id],
+    initialData: trip,
+    enabled: false,
+  });
+  const syncRef = useRef(sync);
+  useEffect(() => {
+    syncRef.current = sync;
+  }, [sync]);
   const [currentTrip, setCurrentTrip] = useState(trip);
-  const [title, setTitle] = useState(trip.title);
-  const [dayCount, setDayCount] = useState(String(trip.day_count));
-  const [startDate, setStartDate] = useState(trip.start_date ?? "");
-  const [endDate, setEndDate] = useState(trip.end_date ?? "");
-  const [currency, setCurrency] = useState(trip.currency);
-  const [refreshing, setRefreshing] = useState(true);
-  const [reloading, setReloading] = useState(false);
-  const [reloadError, setReloadError] = useState<string>();
-  const [conflictCleared, setConflictCleared] = useState(false);
   const [latestTrip, setLatestTrip] = useState<Trip>();
-  const savedRef = useRef(onSaved);
-  const operationRef = useRef<HTMLInputElement>(null);
-  const optimisticSnapshotsRef = useRef<Array<[QueryKey, PlannerWorkspace | undefined]>>([]);
-  const editor = useTripSettingsEditorContext();
+  const [error, setError] = useState<string>();
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(true);
+  const draft = useDurableFields(editingStorageKey(useDraftScope(trip.id, "settings"), "trip"), {
+    title: trip.title,
+    dayCount: String(trip.day_count),
+    startDate: trip.start_date ?? "",
+    endDate: trip.end_date ?? "",
+    currency: trip.currency,
+  });
+  const lastAccepted = useRef<string | undefined>(undefined);
   const currentContentVersion =
     trip.version === currentTrip.version
       ? Math.max(trip.content_version, currentTrip.content_version)
       : currentTrip.content_version;
-
-  useEffect(() => {
-    savedRef.current = onSaved;
-  }, [onSaved]);
-
   useEffect(() => {
     let current = true;
     void loadLatestTripSettings(trip.id)
       .then((latest) => {
         if (!current) return;
+        if (lastAccepted.current !== undefined) return;
+        if (draft.hasChanges()) {
+          if (latest.version !== trip.version) setLatestTrip(latest);
+          return;
+        }
+        if (syncRef.current?.queue.operations.length) return;
         setCurrentTrip(latest);
-        setTitle(latest.title);
-        setDayCount(String(latest.day_count));
-        setStartDate(latest.start_date ?? "");
-        setEndDate(latest.end_date ?? "");
-        setCurrency(latest.currency);
-        setLatestTrip(undefined);
-        setConflictCleared(true);
+        draft.set("title", latest.title);
+        draft.set("dayCount", String(latest.day_count));
+        draft.set("startDate", latest.start_date ?? "");
+        draft.set("endDate", latest.end_date ?? "");
+        draft.set("currency", latest.currency);
+        draft.discardIfMatches(JSON.stringify(draft.getValues()));
       })
-      .catch((error) => {
-        if (!current) return;
-        setReloadError(
-          error instanceof Error ? error.message : "Latest trip settings could not be loaded.",
-        );
+      .catch((caught) => {
+        if (current)
+          setError(
+            caught instanceof Error ? caught.message : "Latest trip settings could not be loaded.",
+          );
       })
       .finally(() => {
         if (current) setRefreshing(false);
@@ -92,204 +91,213 @@ export function TripForm({
     return () => {
       current = false;
     };
+    // The read is optional for editing and may only fill a pristine live draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trip.id]);
-
   useEffect(() => {
-    if (state.error) {
-      for (const [queryKey, workspace] of optimisticSnapshotsRef.current)
-        queryClient.setQueryData(queryKey, workspace);
-      optimisticSnapshotsRef.current = [];
+    let mounted = true;
+    queueMicrotask(() => {
+      if (!mounted || !projectedTrip || draft.hasChanges()) return;
+      setCurrentTrip(projectedTrip);
+      const next = {
+        title: projectedTrip.title,
+        dayCount: String(projectedTrip.day_count),
+        startDate: projectedTrip.start_date ?? "",
+        endDate: projectedTrip.end_date ?? "",
+        currency: projectedTrip.currency,
+      };
+      if (JSON.stringify(next) === JSON.stringify(draft.getValues())) return;
+      draft.set("title", next.title);
+      draft.set("dayCount", next.dayCount);
+      draft.set("startDate", next.startDate);
+      draft.set("endDate", next.endDate);
+      draft.set("currency", next.currency);
+      draft.discardIfMatches(JSON.stringify(draft.getValues()));
+    });
+    return () => {
+      mounted = false;
+    };
+    // Read the live draft at delivery; updates must never replace a newer field edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectedTrip]);
+  function save(background = false) {
+    if (!sync) {
+      setError("Trip settings are not ready to sync. Your local draft is kept.");
       return;
     }
-    if (!state.success) return;
-    optimisticSnapshotsRef.current = [];
-    void queryClient.invalidateQueries({ queryKey: ["planner", trip.id] });
-    if (savedRef.current) savedRef.current();
-    else editor.onClose();
-    window.setTimeout(() => router.refresh(), 0);
-  }, [editor, queryClient, router, state, trip.id]);
-
+    if (!draft.hasChanges()) {
+      if (!background) editor.onClose();
+      return;
+    }
+    const values = draft.getValues(),
+      signature = JSON.stringify(values);
+    if (signature === lastAccepted.current) return;
+    const parsed = updateTripSchema.safeParse({
+      ...values,
+      timezone: currentTrip.timezone,
+      tripId: trip.id,
+      expectedVersion: currentTrip.version,
+      expectedContentVersion: currentContentVersion,
+      operationId: crypto.randomUUID(),
+    });
+    if (!parsed.success) {
+      if (!background) setError(parsed.error.issues[0]?.message);
+      return;
+    }
+    if (!draft.persist()) return;
+    try {
+      const accepted = sync.accept(parsed.data);
+      lastAccepted.current = signature;
+      setCurrentTrip(accepted);
+      setError(undefined);
+      draft.discardIfMatches(signature);
+      if (!background) {
+        onSaved?.();
+        editor.onClose();
+      }
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Trip settings could not be saved locally.",
+      );
+    }
+  }
+  // Length changes can remove days: keep the existing explicit Save decision for these.
+  const autosave = useDraftAutosave(
+    Boolean(sync && draft.dirty && Number(draft.values.dayCount) === trip.day_count),
+    JSON.stringify(draft.values),
+    () => save(true),
+  );
+  const close = () => {
+    autosave.flush();
+    editor.onClose();
+  };
   async function reloadLatest() {
-    setReloading(true);
-    setReloadError(undefined);
+    setLoading(true);
     try {
       const latest = await loadLatestTripSettings(trip.id);
-      setCurrentTrip(latest);
       setLatestTrip(latest);
-      setConflictCleared(true);
-    } catch (error) {
-      setReloadError(
-        error instanceof Error ? error.message : "Latest trip settings could not be loaded.",
+      setError(undefined);
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Latest trip settings could not be loaded.",
       );
     } finally {
-      setReloading(false);
+      setLoading(false);
     }
   }
-
-  function replaceDraftWithLatest() {
-    if (!latestTrip) return;
-    if (!window.confirm("Replace your local trip-settings draft with the latest saved values?"))
-      return;
-    setTitle(latestTrip.title);
-    setDayCount(String(latestTrip.day_count));
-    setStartDate(latestTrip.start_date ?? "");
-    setEndDate(latestTrip.end_date ?? "");
-    setCurrency(latestTrip.currency);
-    setLatestTrip(undefined);
-    setReloadError(undefined);
+  function commitDate(field: TripDateField, value: string) {
+    const values = settleTripDateFields({ ...draft.getValues(), [field]: value }, field);
+    draft.set("dayCount", values.dayCount);
+    draft.set("startDate", values.startDate);
+    draft.set("endDate", values.endDate);
   }
-
-  function optimisticallyUpdateDates() {
-    const snapshots = queryClient.getQueriesData<PlannerWorkspace>({
-      queryKey: ["planner", trip.id],
-    });
-    optimisticSnapshotsRef.current = snapshots;
-    for (const [queryKey, workspace] of snapshots) {
-      if (!workspace) continue;
-      queryClient.setQueryData<PlannerWorkspace>(queryKey, {
-        ...workspace,
-        days: optimisticTripDayDates(workspace.days, startDate),
-      });
-    }
-  }
-
-  function commitDateField(committed: TripDateField, value: string) {
-    const settled = settleTripDateFields(
-      { dayCount, endDate, startDate, [committed]: value },
-      committed,
-    );
-    setDayCount(settled.dayCount);
-    setStartDate(settled.startDate);
-    setEndDate(settled.endDate);
-  }
-
   return (
     <PlannerEditorForm
       compactActions
-      formAction={action}
       header={null}
-      hiddenFields={
-        <>
-          <input name="trip_id" type="hidden" value={trip.id} />
-          <input name="surface" type="hidden" value={surface} />
-          <input name="operation_id" ref={operationRef} type="hidden" />
-          <input name="expected_version" type="hidden" value={currentTrip.version} />
-          <input name="expected_content_version" type="hidden" value={currentContentVersion} />
-          <input
-            defaultValue={currentTrip.timezone}
-            key={currentTrip.version}
-            name="timezone"
-            type="hidden"
-          />
-          <input name="start_date" type="hidden" value={startDate} />
-          <input name="end_date" type="hidden" value={endDate} />
-          <input name="currency" type="hidden" value={currency} />
-        </>
-      }
-      onCancel={editor.onClose}
-      onClose={editor.onClose}
-      onSubmitStart={() => {
-        setConflictCleared(false);
-        if (operationRef.current) operationRef.current.value = newTelemetryOperationId();
-        optimisticallyUpdateDates();
-      }}
-      pending={pending || refreshing}
-      pendingLabel={refreshing ? "Loading…" : "Saving…"}
-      saveDisabled={Boolean(reloadError)}
+      pending={false}
+      pendingLabel="Saving…"
+      saveDisabled={!sync}
+      onCancel={close}
+      onClose={close}
+      onSave={() => save()}
+      onCompositionChange={autosave.composition}
     >
       <div className="flex min-w-0 items-start gap-3 border-b pb-4 sm:gap-4 sm:pb-6">
-        <span
-          aria-hidden="true"
-          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-12 sm:rounded-2xl"
-        >
-          <Settings2 className="size-4 sm:size-5" />
-        </span>
-        <div className="min-w-0 pt-0.5">
-          <SheetTitle
-            className="text-lg font-extrabold tracking-tight outline-none sm:text-xl"
-            data-trip-settings-title=""
-            tabIndex={-1}
-          >
-            <Localized value={editor.title} />
-          </SheetTitle>
-          {state.error && !(state.conflict && conflictCleared) ? (
-            <p className="mt-2 text-sm font-medium text-destructive" role="alert">
-              <Localized value={state.error} />
-            </p>
-          ) : null}
-          {(state.conflict && !conflictCleared) || latestTrip ? (
-            <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-              <p className="text-sm text-muted-foreground">
-                <T
-                  message={
-                    latestTrip
-                      ? "Latest trip settings loaded. Your local draft is still here."
-                      : "Reload only these trip settings to compare them with your local draft."
-                  }
-                />
-              </p>
-              <div className="mt-2 flex min-w-0 flex-wrap gap-2">
-                {!latestTrip ? (
-                  <Button
-                    className="min-h-11"
-                    disabled={reloading}
-                    onClick={reloadLatest}
-                    type="button"
-                    variant="outline"
-                  >
-                    {reloading ? (
-                      <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-                    ) : (
-                      <RotateCcw aria-hidden="true" className="size-4" />
-                    )}
-                    <T message={"Reload latest"} />
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      className="min-h-11"
-                      onClick={() => setLatestTrip(undefined)}
-                      type="button"
-                      variant="outline"
-                    >
-                      <T message={"Reapply my draft"} />
-                    </Button>
-                    <Button className="min-h-11" onClick={replaceDraftWithLatest} type="button">
-                      <T message={"Replace draft"} />
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          ) : null}
-          {reloadError ? (
-            <p className="mt-2 text-sm font-medium text-destructive" role="alert">
-              {reloadError}
-            </p>
-          ) : null}
-        </div>
+        <Settings2 aria-hidden="true" className="size-5 shrink-0" />
+        <SheetTitle data-trip-settings-title tabIndex={-1} className="text-lg font-bold">
+          <Localized value={editor.title} />
+        </SheetTitle>
       </div>
-
-      <TripFormFields
-        currency={currency}
-        dayCount={dayCount}
-        endDate={endDate}
-        locale={locale}
-        onCurrencyChange={setCurrency}
-        onDateCommit={commitDateField}
-        onDayCountChange={setDayCount}
-        onEndDateChange={setEndDate}
-        onStartDateChange={setStartDate}
-        onTitleChange={setTitle}
-        startDate={startDate}
-        title={title}
-      />
-
-      {state.success ? (
-        <p className="text-sm font-medium text-primary" role="status">
-          <Localized value={state.success} />
-        </p>
+      <p role="status">
+        <T message={draft.error ? "Local save failed" : draft.saved ? "Saved locally" : "Draft"} />
+      </p>
+      {draft.error || error ? (
+        <div role="alert">
+          <p>{draft.error ?? error}</p>
+          <Button
+            type="button"
+            onClick={() => {
+              draft.retry();
+              save();
+            }}
+          >
+            <T message="Retry" />
+          </Button>
+          <Button type="button" variant="outline" onClick={draft.download}>
+            <T message="Download draft" />
+          </Button>
+        </div>
       ) : null}
+      <Button
+        type="button"
+        disabled={loading}
+        variant="outline"
+        onClick={() => void reloadLatest()}
+        aria-busy={refreshing}
+      >
+        <T message="Reload latest" />
+      </Button>
+      {latestTrip ? (
+        <div className="space-y-2 rounded-lg border p-3" role="status">
+          <p>
+            <T message="Latest trip settings loaded. Your local draft is still here." />
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setCurrentTrip(latestTrip);
+              sync?.reconcile(latestTrip);
+              setLatestTrip(undefined);
+            }}
+          >
+            <T message="Reapply my draft" />
+          </Button>
+          <Button
+            type="button"
+            onClick={() => {
+              if (
+                !window.confirm(
+                  "Replace your local trip-settings draft with the latest saved values?",
+                )
+              )
+                return;
+              setCurrentTrip(latestTrip);
+              draft.set("title", latestTrip.title);
+              draft.set("dayCount", String(latestTrip.day_count));
+              draft.set("startDate", latestTrip.start_date ?? "");
+              draft.set("endDate", latestTrip.end_date ?? "");
+              draft.set("currency", latestTrip.currency);
+              setLatestTrip(undefined);
+            }}
+          >
+            <T message="Replace draft" />
+          </Button>
+        </div>
+      ) : null}
+      <TripFormFields
+        {...draft.values}
+        locale={locale}
+        onTitleChange={(value) => draft.set("title", value)}
+        onCurrencyChange={(value) => draft.set("currency", value)}
+        onDayCountChange={(value) => draft.set("dayCount", value)}
+        onStartDateChange={(value) => draft.set("startDate", value)}
+        onEndDateChange={(value) => draft.set("endDate", value)}
+        onDateCommit={commitDate}
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() => {
+          if (window.confirm("Discard this local draft?")) {
+            draft.discard();
+            editor.onClose();
+          }
+        }}
+      >
+        <T message="Discard draft" />
+      </Button>
     </PlannerEditorForm>
   );
 }

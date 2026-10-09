@@ -370,8 +370,10 @@ test("landing and post-login flows route the browser-held draft without serializ
   assert.match(landingRoute, /getCurrentUser/);
   assert.match(landing, /accountLabel \? "\/trips" : "\/guest"/);
   assert.match(guestRoute, /if \(user\) redirect\("\/trips"\)/);
-  assert.match(refresh, /await claimGuestTrip\(draft\)/);
-  assert.match(refresh, /if \(!result\.data\)[\s\S]*clearAll\(\)/);
+  assert.match(refresh, /await claimCurrentGuestDraft\(/);
+  assert.match(refresh, /claimGuestTrip\(cutoff\)/);
+  assert.match(refresh, /storage\.clear\(cutoff\.draftId, cutoff\.revision\)/);
+  assert.doesNotMatch(refresh, /clearAll\(\)/);
   assert.doesNotMatch(refresh, /\/guest\?claim=/);
   assert.doesNotMatch(refresh, /JSON\.stringify/);
 });

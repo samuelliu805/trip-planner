@@ -5,21 +5,21 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import type { PlannerVariant } from "@/features/itinerary/types";
 import { requireData } from "@/features/itinerary/query-cache";
 
-import {
-  createRouteVariant,
-  deleteRouteVariant,
-  duplicateRouteVariant,
-  loadRouteVariants,
-  loadVariantDecisionSummary,
-  loadVariantComparison,
-  setPrimaryRouteVariant,
-  updateRouteVariant,
-} from "./actions";
+import { loadRouteVariants, loadVariantDecisionSummary, loadVariantComparison } from "./actions";
 import type { VariantComparisonProjection } from "./comparison-types";
 import type { VariantDecisionSummaryProjection } from "./decision-summary-types";
-import type { RouteVariantIdentityInput, UpdateRouteVariantInput } from "./schema";
+import type {
+  RouteVariantIdentityInput,
+  UpdateRouteVariantInput,
+  DeleteRouteVariantInput,
+  CreateRouteVariantInput,
+} from "./schema";
+import type { VariantSyncIntent } from "./sync-intent";
+import { plannerQueryKey } from "../itinerary/planner-query";
+import type { PlannerWorkspace } from "../itinerary/types";
 import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 import { variantListQueryKey } from "./variant-list-reload";
+import { useVariantSync } from "./use-variant-sync";
 
 export { refetchRouteVariantList, variantListQueryKey } from "./variant-list-reload";
 export const variantComparisonQueryKey = (tripId: string, dayNumber?: number) =>
@@ -37,10 +37,15 @@ export function invalidateVariantDecisionSummary(client: QueryClient, tripId: st
 
 export function useRouteVariants(tripId: string, initialData: PlannerVariant[]) {
   const persistence = usePlannerPersistence();
+  const runtime = useVariantSync(tripId, initialData);
   return useQuery({
     enabled: !persistence,
     initialData,
-    queryFn: async () => requireData(await loadRouteVariants(tripId)),
+    queryFn: async () => {
+      const generation = runtime?.beginRead();
+      const variants = requireData(await loadRouteVariants(tripId));
+      return runtime?.reconcile(variants, generation) ?? variants;
+    },
     queryKey: variantListQueryKey(tripId),
     staleTime: 30_000,
   });
@@ -70,88 +75,75 @@ export function useVariantDecisionSummaryProjection(tripId: string, enabled: boo
   });
 }
 
-function useVariantMutation<TInput>(
+function useDurableVariantMutation<TInput>(
   tripId: string,
-  mutationFn: (
-    input: TInput,
-  ) => Promise<
-    | { data: { variantId: string; variants: PlannerVariant[] }; error?: never }
-    | { data?: never; error: string; code?: "conflict" | "forbidden" | "unexpected" | "validation" }
-  >,
+  intent: (input: TInput) => VariantSyncIntent,
 ) {
   const client = useQueryClient();
+  const runtime = useVariantSync(
+    tripId,
+    client.getQueryData<PlannerVariant[]>(variantListQueryKey(tripId)) ?? [],
+  );
   return useMutation({
-    mutationFn: async (input: TInput) => requireData(await mutationFn(input)),
-    onSuccess: ({ variants }) => {
-      client.setQueryData(variantListQueryKey(tripId), variants);
-      void invalidateVariantComparison(client, tripId);
-      void invalidateVariantDecisionSummary(client, tripId);
+    networkMode: "always",
+    mutationFn: async (input: TInput) => {
+      if (!runtime)
+        throw new Error("This Plan change could not be stored locally. Your draft is kept.");
+      return runtime.accept(intent(input));
     },
+    retry: false,
   });
 }
-
+function useCreatePlanMutation(tripId: string, duplicate: boolean) {
+  const client = useQueryClient();
+  return useDurableVariantMutation(tripId, (input: CreateRouteVariantInput) => {
+    const source = client.getQueryData<PlannerWorkspace>(
+      plannerQueryKey(tripId, input.sourceVariantId),
+    );
+    if (!source) throw new Error("Load the source Plan before copying it. Your draft is kept.");
+    return {
+      kind: "create",
+      source,
+      duplicate,
+      input: {
+        ...input,
+        dayIds:
+          input.dayIds ??
+          Object.fromEntries(source.days.map((day) => [day.id, crypto.randomUUID()])),
+        itemIds:
+          input.itemIds ??
+          (duplicate
+            ? Object.fromEntries(
+                source.days
+                  .flatMap((day) => day.items)
+                  .map((item) => [item.id, crypto.randomUUID()]),
+              )
+            : {}),
+      },
+    };
+  });
+}
 export function useCreateRouteVariant(tripId: string) {
-  return useVariantMutation(tripId, createRouteVariant);
+  return useCreatePlanMutation(tripId, false);
 }
-
 export function useDuplicateRouteVariant(tripId: string) {
-  return useVariantMutation(tripId, duplicateRouteVariant);
+  return useCreatePlanMutation(tripId, true);
 }
-
 export function useSetPrimaryRouteVariant(tripId: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: RouteVariantIdentityInput) =>
-      requireData(await setPrimaryRouteVariant(input)),
-    onMutate: async (input) => {
-      await client.cancelQueries({ queryKey: variantListQueryKey(tripId) });
-      const previous = client.getQueryData<PlannerVariant[]>(variantListQueryKey(tripId));
-      client.setQueryData<PlannerVariant[]>(variantListQueryKey(tripId), (current) =>
-        current?.map((variant) => ({
-          ...variant,
-          is_primary: variant.id === input.variantId,
-        })),
-      );
-      return { previous };
-    },
-    onError: (_error, _input, context) =>
-      client.setQueryData(variantListQueryKey(tripId), context?.previous),
-    onSuccess: ({ variants }) => client.setQueryData(variantListQueryKey(tripId), variants),
-    onSettled: () => {
-      void client.invalidateQueries({ queryKey: variantListQueryKey(tripId) });
-      void invalidateVariantComparison(client, tripId);
-      void invalidateVariantDecisionSummary(client, tripId);
-    },
-  });
+  return useDurableVariantMutation(tripId, (input: RouteVariantIdentityInput) => ({
+    kind: "primary",
+    input,
+  }));
 }
-
 export function useDeleteRouteVariant(tripId: string) {
-  return useVariantMutation(tripId, deleteRouteVariant);
+  return useDurableVariantMutation(tripId, (input: DeleteRouteVariantInput) => ({
+    kind: "delete",
+    input,
+  }));
 }
-
 export function useUpdateRouteVariant(tripId: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: UpdateRouteVariantInput) =>
-      requireData(await updateRouteVariant(input)),
-    onMutate: async (input) => {
-      await client.cancelQueries({ queryKey: variantListQueryKey(tripId) });
-      const previous = client.getQueryData<PlannerVariant[]>(variantListQueryKey(tripId));
-      client.setQueryData<PlannerVariant[]>(variantListQueryKey(tripId), (current) =>
-        current?.map((variant) =>
-          variant.id === input.variantId
-            ? { ...variant, color: input.color.toLowerCase(), name: input.name.trim() }
-            : variant,
-        ),
-      );
-      return { previous };
-    },
-    onError: (_error, _input, context) =>
-      client.setQueryData(variantListQueryKey(tripId), context?.previous),
-    onSuccess: ({ variants }) => {
-      client.setQueryData(variantListQueryKey(tripId), variants);
-      void invalidateVariantComparison(client, tripId);
-      void invalidateVariantDecisionSummary(client, tripId);
-    },
-  });
+  return useDurableVariantMutation(tripId, (input: UpdateRouteVariantInput) => ({
+    kind: "update",
+    input,
+  }));
 }

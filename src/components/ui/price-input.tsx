@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import { priceFromExpression } from "@/lib/price-expression";
+import { parsedPriceExpression } from "@/lib/price-expression";
 import { Input } from "./input";
 
 export function PriceInput({
@@ -21,7 +21,8 @@ export function PriceInput({
       spellCheck={false}
       {...props}
       onBlur={(event) => {
-        if (value.trim()) onValueChange(String(priceFromExpression(value)));
+        const parsed = parsedPriceExpression(value);
+        if (parsed !== undefined) onValueChange(String(parsed));
         onBlur?.(event);
       }}
       onChange={(event) => onValueChange(event.target.value)}

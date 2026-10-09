@@ -136,5 +136,7 @@ export function normalizeTransportMode(value?: string): TransportMode {
 }
 
 export type MutationResult<T = ItineraryItem> =
-  | { data: T; error?: never; code?: never }
+  | { data: T; sync?: PlannerSyncDelta; error?: never; code?: never }
   | { data?: never; error: string; code?: "conflict" | "forbidden" | "unexpected" | "validation" };
+
+export type PlannerSyncDelta = { operationId: string; full: boolean; workspace: PlannerWorkspace };

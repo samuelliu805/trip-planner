@@ -68,11 +68,7 @@ export function DayRouteEditor({
             ) : null}
           </p>
           <div className="flex items-center gap-2">
-            <RouteIconButton
-              label="Discard changes and collapse route editor"
-              onClick={onBack}
-              title="Discard changes and return to route summary"
-            >
+            <RouteIconButton label="Close route editor" onClick={onBack} title="Close route editor">
               <ChevronDown className="size-4" />
             </RouteIconButton>
           </div>
@@ -111,7 +107,6 @@ export function DayRouteEditor({
                       </span>
                     </span>
                     <RouteIconButton
-                      disabled={route.pending}
                       label={t("Remove stop {number}", { number: index + 1 })}
                       onClick={() => route.removeStop(index)}
                       title="Remove stop"
@@ -124,7 +119,6 @@ export function DayRouteEditor({
                     <div className="ml-4 flex min-h-12 items-center gap-2 border-l-2 border-dashed border-primary/30 pl-4">
                       <Footprints className="size-4 shrink-0 text-primary" />
                       <Select
-                        disabled={route.pending}
                         onValueChange={(value) => route.setLegMode(index, value as RouteLegMode)}
                         value={draft.legModes[index]}
                       >
@@ -181,7 +175,6 @@ export function DayRouteEditor({
                       </span>
                       <span className="min-w-0 flex-1 truncate text-xs">{item.title}</span>
                       <RouteIconButton
-                        disabled={route.pending}
                         label={t("Add {item} to route", { item: item.title })}
                         onClick={() => route.addStop(item.id)}
                         title="Add to route"

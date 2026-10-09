@@ -39,6 +39,7 @@ export function PlannerEditorForm({
   onCancel,
   onClose,
   onFormChange,
+  onCompositionChange,
   onNext,
   onSave,
   onScrollNode,
@@ -67,6 +68,7 @@ export function PlannerEditorForm({
   onBack?: () => void;
   onCancel?: () => void;
   onClose: () => void;
+  onCompositionChange?: (composing: boolean) => void;
   onFormChange?: FormEventHandler<HTMLFormElement>;
   onNext?: () => void;
   onSave?: (intent: PlannerEditorSaveIntent) => void | Promise<void>;
@@ -92,6 +94,8 @@ export function PlannerEditorForm({
       className="planner-item-form flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       data-compact-actions={compactActions ? "" : undefined}
       onChange={onFormChange}
+      onCompositionStart={() => onCompositionChange?.(true)}
+      onCompositionEnd={() => onCompositionChange?.(false)}
       onKeyDown={(event) => {
         if ((event.target as Element).closest("[data-attachment-overlay]")) return;
         if (event.defaultPrevented) return;
@@ -150,7 +154,7 @@ export function PlannerEditorForm({
             <fieldset
               aria-busy={pending || cancelPending}
               className="min-w-0 border-0 p-0 disabled:pointer-events-none"
-              disabled={pending || cancelPending}
+              disabled={cancelPending}
             >
               <div
                 className={`planner-item-form-fields planner-item-step-fields min-w-0 ${denseFields ? "space-y-5 sm:space-y-6" : compactActions ? "space-y-6 sm:space-y-10" : "space-y-10"}`}

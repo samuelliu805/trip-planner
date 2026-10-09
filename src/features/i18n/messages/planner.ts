@@ -1,4 +1,33 @@
 export const plannerZhCN: Record<string, string> = {
+  "The saved attachment response is invalid.": "已保存附件的返回数据无效。",
+  "Reload the target Plan before applying this booking.": "请先重新加载目标方案，再应用此预订。",
+  "This day route changed. Review the configuration before calculating.":
+    "当天路线已更改，请检查配置后再计算。",
+  "A route stop changed. Your configuration is kept; review it before calculating.":
+    "路线停靠点已更改。配置已保留，请检查后再计算。",
+  "The Overview stages changed. Review them before calculating.":
+    "总览路线阶段已更改，请检查后再计算。",
+  "Sign in to edit your trips.": "登录后可编辑行程。",
+  "Remove collaborator": "移除协作者",
+  "The saved settings could not be confirmed. Retry the same operation.":
+    "无法确认设置已保存，请重试同一操作。",
+  "Quick edit": "快速编辑",
+  "Discard this local change and its dependent changes? Server changes already committed will remain.":
+    "放弃这条本地修改及其后续依赖修改？服务器上已经提交的修改会保留。",
+  "Apply your local edit over the latest saved item?": "用本地修改覆盖该项目的最新已保存内容？",
+  "Download draft": "下载草稿",
+  "Close route editor": "关闭路线编辑器",
+  Reorder: "重新排列",
+  Draft: "草稿",
+  "Discard draft": "放弃草稿",
+  "Local save failed": "本地保存失败",
+  "Saved locally": "本地已保存",
+  "Pending sync": "等待同步",
+  Offline: "离线",
+  Syncing: "同步中",
+  Synced: "已同步",
+  "Sync failed": "同步失败",
+  Conflict: "存在冲突",
   Activities: "活动",
   Activity: "活动",
   "Activity name": "活动名称",

@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { getPlannerWorkspace } from "./data";
 
 import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
 import { firstIssue, mutationError } from "@/features/itinerary/action-helpers";
@@ -37,8 +39,14 @@ export async function deleteItineraryItem(
             : mutationError(deleted.error.message),
       };
     else {
-      result = { data: { id: parsed.data.id } };
-      await drainAssetDeletionQueue(10);
+      const workspace = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
+      result = workspace.data
+        ? {
+            data: { id: parsed.data.id },
+            sync: { operationId: input.operationId, full: true, workspace: workspace.data },
+          }
+        : { error: workspace.error ?? "The deleted item could not be confirmed." };
+      after(() => drainAssetDeletionQueue(10));
       revalidatePath(`/trips/${parsed.data.tripId}`);
     }
   }

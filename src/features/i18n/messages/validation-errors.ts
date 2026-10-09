@@ -1,4 +1,5 @@
 export const validationErrorsZhCN: Record<string, string> = {
+  "The price expression is incomplete.": "价格表达式尚未填写完整。",
   activity: "活动",
   "Add a link label.": "请填写链接名称。",
   "Add a name, link, or note.": "请填写名称、链接或备注。",

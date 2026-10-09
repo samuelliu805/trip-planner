@@ -198,6 +198,7 @@ export const guestIntentSchema = z.object({
 export type GuestIntent = z.infer<typeof guestIntentSchema>;
 
 export const guestImportMarkerSchema = z.object({
+  revision: z.number().int().nonnegative().optional(),
   draftId: z.uuid(),
   importedAt: z.iso.datetime(),
   intent: guestIntentSchema.nullable().optional(),

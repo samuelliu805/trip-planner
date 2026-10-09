@@ -1693,7 +1693,7 @@ test("Trip detail keeps Ideas capture inline and uses one mobile destination tab
   assert.match(appBarOverlays, /<DeleteTripDialog/);
   assert.match(appBar, /countActiveSharePages\(tripId\)/);
   assert.match(appBar, /OPEN_SHARE_SETTINGS_EVENT/);
-  assert.match(appBar, /Saving/);
+  assert.match(appBar, /PlannerSyncStatus/);
   assert.doesNotMatch(appBar, />Saved</);
   assert.doesNotMatch(appBar, /Open settings for/);
 });
@@ -1785,7 +1785,7 @@ test("research writes and contextual capture cannot mutate Plan or Routes", asyn
     new URL("./components/planner-research-actions.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(planner, /Saved · Plan unchanged/);
+  assert.match(planner, /runtime\.accept[\s\S]*Saved locally/);
   assert.doesNotMatch(
     `${actions}\n${planner}`,
     /router\.push|redirect\(|createItineraryItem|updateItineraryItem|saveDayRoute|GoogleRoutes/,
@@ -1972,7 +1972,7 @@ test("contextual Save captures canonical booking fields, places, prices, and eve
     ),
   ]);
   assert.match(actions, /capturePlanItemAsResearch/);
-  assert.match(actions, /Saved all Plan details/);
+  assert.match(actions, /runtime\.accept[\s\S]*capturePlanItemAsResearch[\s\S]*Saved locally/);
   assert.match(capture, /item\.links/);
   assert.match(capture, /locationPlaceId: item\.place_id/);
   assert.match(capture, /arrivalTime|serviceNumber|checkOutDate|rentalReturn/);
@@ -1999,7 +1999,7 @@ test("research attachments use draft sessions and transfer through Apply and Rev
   ]);
   assert.match(form, /useAttachmentEditSession/);
   assert.match(form, /targetKind: "research"/);
-  assert.match(attachments, /researchItemId: item\.id/);
+  assert.match(attachments, /entityId=\{item\.id\}[\s\S]*target="research"/);
   assert.match(uploadClient, /research\/\$\{researchItemId\}/);
   assert.match(
     migration,
@@ -2052,7 +2052,7 @@ test("Applied is a one-time Plan snapshot refreshed after canonical mutations", 
 test("Ideas evaluate a price expression during submission before blur", () => {
   for (const [expression, expected] of [
     ["(120 + 30) * 2", 300],
-    ["1 / 0", 0],
+    ["12 - 12", 0],
   ] as const) {
     const form = new FormData();
     form.set("totalPriceAmount", expression);
@@ -2070,4 +2070,13 @@ test("Ideas evaluate a price expression during submission before blur", () => {
       .totalPriceAmount,
     null,
   );
+  for (const expression of ["1 / 0", "12+"]) {
+    const form = new FormData();
+    form.set("totalPriceAmount", expression);
+    assert.throws(
+      () => researchItemInputFromForm({ category: "flight", form, tripId: ids.trip }),
+      /price expression is incomplete/,
+    );
+    assert.equal(form.get("totalPriceAmount"), expression);
+  }
 });

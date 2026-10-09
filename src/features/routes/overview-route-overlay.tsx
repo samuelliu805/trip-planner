@@ -162,7 +162,6 @@ export function OverviewRouteOverlay({
                       </p>
                     </div>
                     <Select
-                      disabled={route.pending}
                       onValueChange={(value) =>
                         route.setMode(
                           segment.position,
@@ -198,7 +197,6 @@ export function OverviewRouteOverlay({
             <div className="mt-3 flex shrink-0 flex-wrap justify-end gap-2">
               {hasConfiguration ? (
                 <RouteIconButton
-                  disabled={route.pending}
                   label="Reset Overview route"
                   onClick={route.reset}
                   title="Reset Overview route"

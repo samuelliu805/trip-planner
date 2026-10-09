@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { usePersistentEditorState } from "@/features/editing/persistent-editor-fields";
 import { initialResearchSegments } from "../journey";
 import { updateFlightSchedule } from "../flight-schedule-prefill";
 import type { ResearchItemFormStep } from "../research-item-form-steps";
@@ -18,14 +18,15 @@ export function JourneyFieldPages({
   item?: ResearchItem;
 }) {
   const parsedSegments = Array.isArray(item?.segments) ? (item.segments as ResearchSegment[]) : [];
-  const [journeyType, setJourneyType] = useState<ResearchJourneyType>(
+  const [journeyType, setJourneyType] = usePersistentEditorState<ResearchJourneyType>(
+    "journeyType",
     item?.journey_type === "round_trip" || item?.journey_type === "multi_city"
       ? item.journey_type
       : parsedSegments.length > 1 || (category === "flight" && Boolean(item?.end_date))
         ? "round_trip"
         : "one_way",
   );
-  const [schedule, setSchedule] = useState(() => ({
+  const [schedule, setSchedule] = usePersistentEditorState("schedule", () => ({
     defaultArrivalDates: [] as string[],
     segments: initialResearchSegments({
       category,

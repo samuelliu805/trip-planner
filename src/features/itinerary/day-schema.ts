@@ -26,6 +26,7 @@ export const clearItineraryItemsSchema = z
   );
 
 export const insertTripDaySchema = z.object({
+  stableIdentity: z.boolean().optional(),
   beforeDayNumber: z.number().int().min(1).max(366),
   expectedDaysVersion: z.number().int().positive(),
   operationId: z.uuid(),
@@ -80,6 +81,7 @@ export const copyItineraryItemsSchema = z
     sourceItemIds: z.array(z.uuid()).max(2000),
     sourceVariantId: z.uuid().optional(),
     sourceVersions: z.array(z.number().int().positive()).max(2000),
+    copiedItemIds: z.array(z.uuid()).max(2000).optional(),
     targetDayId: z.uuid(),
     tripId: z.uuid(),
     variantId: z.uuid(),
@@ -97,6 +99,13 @@ export const copyItineraryItemsSchema = z
       value.sourceItemIds.length === value.sourceVersions.length &&
       value.replaceTargetItemIds.length === value.replaceTargetVersions.length,
     "Every copied or replaced item must include its current version.",
+  )
+  .refine(
+    (value) =>
+      !value.copiedItemIds ||
+      (value.copiedItemIds.length === value.sourceItemIds.length &&
+        new Set(value.copiedItemIds).size === value.copiedItemIds.length),
+    "Every copied item must have a unique identity.",
   );
 
 export type ClearItineraryItemsInput = z.input<typeof clearItineraryItemsSchema>;

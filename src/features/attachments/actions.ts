@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { after } from "next/server";
 
 import { drainAssetDeletionQueue } from "./cleanup.server";
-import { ownerAttachmentsFromRows, type OwnerAttachmentRow } from "./owner-attachment-records";
 import { attachmentError, ownerAttachmentSchema } from "./schema";
 import { getRelationalDatabase } from "@/platform/composition/server";
 import { reportAttachmentMutation } from "./telemetry.server";
@@ -29,37 +29,26 @@ export async function loadLatestAttachments(input: {
     .safeParse(input);
   if (!parsed.success) return { error: "The attachment request is invalid." };
   const database = await getRelationalDatabase();
-  const entity =
-    parsed.data.target === "itinerary"
-      ? await database
-          .from("itinerary_items")
-          .select("version")
-          .eq("id", parsed.data.entityId)
-          .eq("trip_id", parsed.data.tripId)
-          .maybeSingle()
-      : await database
-          .from("research_items")
-          .select("version")
-          .eq("id", parsed.data.entityId)
-          .eq("trip_id", parsed.data.tripId)
-          .maybeSingle();
-  if (entity.error) return { error: attachmentError(entity.error.message) };
-  if (!entity.data)
+  const result = await database.rpc("read_attachment_collection_v1", {
+    target_trip_id: parsed.data.tripId,
+    target_entity_id: parsed.data.entityId,
+    requested_target: parsed.data.target,
+  });
+  if (result.error) return { error: attachmentError(result.error.message) };
+  if (!result.data)
     return { deleted: true as const, error: "This item was deleted or your access was revoked." };
-  const column = parsed.data.target === "itinerary" ? "itinerary_item_id" : "research_item_id";
-  const links = await database
-    .from("asset_links")
-    .select(
-      "id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, version, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds)",
-    )
-    .eq("trip_id", parsed.data.tripId)
-    .eq(column, parsed.data.entityId)
-    .is("draft_session_id", null)
-    .order("sort_order", { ascending: true });
-  if (links.error) return { error: attachmentError(links.error.message) };
+  const snapshot = z
+    .object({
+      attachments: z.array(ownerAttachmentSchema),
+      attachmentsVersion: z.number().int().positive(),
+      version: z.number().int().positive(),
+    })
+    .safeParse(result.data);
+  if (!snapshot.success) return { error: "The saved attachment response is invalid." };
   return {
-    data: ownerAttachmentsFromRows(links.data as unknown as OwnerAttachmentRow[]),
-    version: Number(entity.data.version),
+    data: snapshot.data.attachments,
+    version: snapshot.data.version,
+    attachmentsVersion: snapshot.data.attachmentsVersion,
   };
 }
 
@@ -103,7 +92,7 @@ export async function detachAttachment(rawInput: z.input<typeof attachmentMutati
       result: { error: attachmentError(result.error.message) },
       target: "itinerary",
     });
-  await drainAssetDeletionQueue(10);
+  after(() => drainAssetDeletionQueue(10));
   revalidatePath(`/trips/${input.data.tripId}`);
   return reportAttachmentMutation({
     mutation: "delete",
@@ -149,7 +138,7 @@ export async function detachResearchAttachment(rawInput: {
       },
       target: "research",
     });
-  await drainAssetDeletionQueue(10);
+  after(() => drainAssetDeletionQueue(10));
   revalidatePath(`/trips/${input.data.tripId}/compare`);
   return reportAttachmentMutation({
     mutation: "delete",

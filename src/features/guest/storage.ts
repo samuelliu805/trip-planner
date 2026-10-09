@@ -118,14 +118,17 @@ export class GuestDraftStorage {
     }
   }
 
-  clear(draftId?: string) {
+  clear(draftId?: string, expectedRevision?: number) {
     if (draftId) {
       const current = this.load();
       if (current && current.draftId !== draftId) return;
+      if (current && expectedRevision !== undefined && current.revision !== expectedRevision)
+        return false;
     }
     try {
       this.storage.removeItem(guestDraftStorageKey(this.region));
       this.storage.removeItem(guestIntentStorageKey(this.region));
+      return true;
     } catch (error) {
       throw mappedStorageError(error, "This browser could not clear the local draft.");
     }

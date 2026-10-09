@@ -19,13 +19,17 @@ export async function applyResearchItem(input: {
   researchItemId: string;
   scheduleChoice?: "automatic" | "keep_extra_days";
   targetItemId?: string | null;
+  expectedVariantVersion?: number;
+  expectedContentVersion?: number;
+  expectedDaysVersion?: number;
+  expectedItemsVersion?: number;
   tripId: string;
   variantId: string;
 }): Promise<ResearchMutationResult<AppliedResearchResult>> {
   const parsed = researchApplySchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("apply_research_item_to_variant_v3", {
+  const args = {
     expected_research_version: parsed.data.expectedVersion,
     schedule_choice: parsed.data.scheduleChoice ?? "automatic",
     target_item_id: parsed.data.targetItemId as string,
@@ -33,7 +37,26 @@ export async function applyResearchItem(input: {
     target_research_item_id: parsed.data.researchItemId,
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
-  });
+  };
+  const guarded = parsed.data.expectedVariantVersion !== undefined;
+  if (
+    guarded &&
+    [
+      parsed.data.expectedContentVersion,
+      parsed.data.expectedDaysVersion,
+      parsed.data.expectedItemsVersion,
+    ].some((version) => version === undefined)
+  )
+    return { error: "Reload the target Plan before applying this booking." };
+  const { data, error } = guarded
+    ? await database.rpc("apply_research_item_to_variant_v4", {
+        ...args,
+        expected_variant_version: parsed.data.expectedVariantVersion!,
+        expected_content_version: parsed.data.expectedContentVersion!,
+        expected_days_version: parsed.data.expectedDaysVersion!,
+        expected_items_version: parsed.data.expectedItemsVersion!,
+      })
+    : await database.rpc("apply_research_item_to_variant_v3", args);
   if (error || !data)
     return reportResearchMutation({
       category: parsed.data.category,

@@ -1,35 +1,28 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import { useI18n } from "@/features/i18n/i18n-provider";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
-import {
-  applyIdeaChoice,
-  applyIdeaChoiceWithConfirmedCalendar,
-  createIdeaComparison,
-  deleteIdeaComparison,
-  loadIdeaComparisons,
-  type IdeaComparison,
-} from "../idea-actions";
+import { loadIdeaComparisons, type IdeaComparison } from "../idea-actions";
+import { useBackgroundActions } from "@/features/editing/use-background-actions";
+import { useDraftScope } from "@/features/editing/draft-scope";
+import { editingStorageKey } from "@/features/editing/draft-storage";
+import { useDurableFields } from "@/features/editing/use-durable-fields";
+import { useVariantSync } from "@/features/variants/use-variant-sync";
+import { loadPlannerWorkspace } from "@/features/itinerary/actions";
+import { enqueueIdeaApplication, enqueueIdeaInNewPlan } from "../enqueue-idea-workflow";
 import type { ResearchItem, ResearchPlanSnapshot, ResearchSort } from "../types";
 import { activityNeedsDay } from "./idea-comparison-labels";
-import {
-  applyIdeaChoiceToBlankVariant,
-  applyIdeaChoiceToNewVariant,
-} from "../idea-plan-variant-actions";
-import { ideaJourneyDates } from "../idea-plan-dates";
 import { IdeaComparisonCreateDialog } from "./idea-comparison-create-dialog";
 import { IdeaComparisonViewDialog } from "./idea-comparison-view-dialog";
 import { IdeaComparisonDeleteDialog } from "./idea-comparison-delete-dialog";
 import { IdeasToolbar } from "./ideas-toolbar";
+import { IdeaComparisonList } from "./idea-comparison-list";
 
 function defaultTitle(choices: string[][], items: ResearchItem[], t: (value: string) => string) {
   const selected = new Set(choices.flat());
@@ -63,23 +56,33 @@ export function IdeaComparisons({
   sort: ResearchSort;
   tripId: string;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const queryClient = useQueryClient();
-  const router = useRouter();
+  const owner = useBackgroundActions(tripId, "idea-workflows"),
+    variants = useVariantSync(tripId, plan.variant ? [plan.variant] : []);
+  const fields = useDurableFields(
+    editingStorageKey(useDraftScope(tripId, plan.variantId), "comparison"),
+    { title: "", choices: [[], []] as string[][], dayIds: {} as Record<string, string> },
+  );
+  const { title, choices, dayIds } = fields.values;
+  const setTitle = (value: string) => fields.set("title", value);
+  const setChoices = (value: SetStateAction<string[][]>) => fields.set("choices", value);
+  const setDayIds = (value: SetStateAction<Record<string, string>>) => fields.set("dayIds", value);
+  const generation = useRef(0),
+    handled = useRef(new Set<string>());
   const [comparisons, setComparisons] = useState<IdeaComparison[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [view, setView] = useState<IdeaComparison>();
   const [deleting, setDeleting] = useState<IdeaComparison>();
-  const [title, setTitle] = useState("");
-  const [choices, setChoices] = useState<string[][]>([[], []]);
-  const [dayIds, setDayIds] = useState<Record<string, string>>({});
-  const [pending, setPending] = useState(false);
+  const pending = false;
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const byId = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
 
   const refresh = useCallback(async () => {
+    const request = ++generation.current;
     const result = await loadIdeaComparisons(tripId);
+    if (request !== generation.current) return;
     if (result.data) {
       setComparisons(result.data);
       setError(undefined);
@@ -87,8 +90,9 @@ export function IdeaComparisons({
   }, [tripId]);
   useEffect(() => {
     let active = true;
+    const request = ++generation.current;
     void loadIdeaComparisons(tripId).then((result) => {
-      if (!active) return;
+      if (!active || request !== generation.current) return;
       if (result.data) {
         setComparisons(result.data);
         setError(undefined);
@@ -111,120 +115,119 @@ export function IdeaComparisons({
     );
   }
 
-  async function create() {
-    if (pending || choices.length < 2 || choices.some((choice) => !choice.length)) return;
-    setPending(true);
-    setError(undefined);
-    const operationId = newTelemetryOperationId();
-    const result = await createIdeaComparison({
-      tripId,
-      title: title.trim() || defaultTitle(choices, items, t),
-      choices,
+  const completed = owner?.completed ?? [];
+  useEffect(() => {
+    const fresh = completed.filter((row) => !handled.current.has(row.id));
+    if (!fresh.length) return;
+    fresh.forEach((row) => handled.current.add(row.id));
+    if (fresh.some((row) => row.intent.kind.startsWith("comparison."))) void refresh();
+  }, [completed.length, refresh]);
+  useEffect(() => {
+    const key = plannerQueryKey(tripId, plan.variantId);
+    if (queryClient.getQueryData(key)) return;
+    let current = true;
+    void loadPlannerWorkspace(tripId, plan.variantId).then((result) => {
+      if (current && result.data && !queryClient.getQueryData(key))
+        queryClient.setQueryData(key, result.data);
     });
-    setPending(false);
-    if (!result.data) {
-      setError(result.error);
+    return () => {
+      current = false;
+    };
+  }, [queryClient, tripId, plan.variantId]);
+  function create() {
+    if (
+      !owner ||
+      fields.getError() ||
+      choices.length < 2 ||
+      choices.some((choice) => !choice.length)
+    )
       return;
+    try {
+      owner.accept({
+        kind: "comparison.create",
+        input: {
+          tripId,
+          title: title.trim() || defaultTitle(choices, items, t),
+          choices,
+          operationId: newTelemetryOperationId(),
+        },
+      });
+      setCreateOpen(false);
+      setNotice(t("Saved locally"));
+      // Only this accepted draft is reset. Later input never waits on its ACK.
+      fields.set("title", "");
+      fields.set("choices", [[], []]);
+      fields.discard();
+    } catch (error) {
+      setError(String(error));
     }
-    captureBrowserProductEvent(
-      "comparison_created",
-      {
-        operation_id: operationId,
-        surface: "ideas_comparison",
-      },
-      { actorType: "authenticated" },
-    );
-    setCreateOpen(false);
-    setTitle("");
-    setChoices([[], []]);
-    await refresh();
   }
-
-  async function apply(
+  function apply(
     comparison: IdeaComparison,
     choiceId: string,
     destination: "current" | "new" | "blank" = "current",
     anchorDayNumber = 1,
   ) {
-    if (pending) return;
+    if (!owner || !variants || fields.getError()) return;
     const choice = comparison.choices.find((entry) => entry.id === choiceId);
     if (!choice) return;
-    const needsDay = choice.itemIds.some((id) => {
-      const item = byId.get(id);
-      return item ? activityNeedsDay(item, plan) : false;
-    });
-    const selectedDayId = dayIds[choiceId] ?? "";
-    if (destination === "current" && needsDay && !selectedDayId) {
+    const selected = choice.itemIds
+      .map((id) => byId.get(id))
+      .filter((item): item is ResearchItem => Boolean(item));
+    if (selected.length !== choice.itemIds.length) {
+      setError(t("The choice could not be loaded."));
+      return;
+    }
+    const dayId = dayIds[choiceId] ?? "";
+    if (
+      destination === "current" &&
+      selected.some((item) => activityNeedsDay(item, plan)) &&
+      !dayId
+    ) {
       setError(t("Choose a Plan day."));
       return;
     }
-    setPending(true);
-    setError(undefined);
-    const operationId = newTelemetryOperationId();
-    const input = {
-      comparisonId: comparison.id,
-      choiceId,
-      dayId: selectedDayId || null,
-      operationId,
-      tripId,
-      variantId: plan.variantId,
-      anchorDayNumber,
-    };
-    const hasDatedTransport = choice.itemIds.some((id) => {
-      const item = byId.get(id);
-      return item && ideaJourneyDates(item).length > 0;
-    });
-    const result =
-      destination === "blank"
-        ? await applyIdeaChoiceToBlankVariant(input)
-        : destination === "new"
-          ? await applyIdeaChoiceToNewVariant(input)
-          : hasDatedTransport
-            ? await applyIdeaChoiceWithConfirmedCalendar(input)
-            : await applyIdeaChoice(input);
-    setPending(false);
-    if (!result.data) {
-      setError(result.error);
-      return;
+    try {
+      const identity = { comparisonId: comparison.id, choiceId };
+      if (destination === "current")
+        enqueueIdeaApplication(
+          owner,
+          queryClient,
+          selected,
+          plan,
+          { dayId, beforeItemId: "", anchorDayNumber },
+          identity,
+        );
+      else
+        enqueueIdeaInNewPlan(
+          owner,
+          variants,
+          queryClient,
+          selected,
+          plan,
+          destination === "blank",
+          anchorDayNumber,
+          locale,
+          identity,
+        );
+      setView(undefined);
+      setNotice(t("Saved locally"));
+    } catch (error) {
+      setError(String(error));
     }
-    captureBrowserProductEvent(
-      "switched" in result.data && result.data.switched
-        ? "comparison_choice_switched"
-        : "comparison_choice_applied",
-      {
-        operation_id: operationId,
-        surface: "ideas_comparison",
-      },
-      { actorType: "authenticated" },
-    );
-    if (destination !== "current" && "variantId" in result.data) {
-      router.push(`/trips/${tripId}?variant=${encodeURIComponent(String(result.data.variantId))}`);
-      return;
-    }
-    void queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId, plan.variantId) });
-    router.push(`/trips/${tripId}?variant=${encodeURIComponent(plan.variantId)}`);
-    router.refresh();
-    setView(undefined);
-    setNotice(t("Added to Plan. Other choices stay here, so you can switch later."));
   }
-
-  async function removeComparison() {
-    if (!deleting || pending) return;
-    setPending(true);
-    setError(undefined);
-    const result = await deleteIdeaComparison({
-      tripId,
-      comparisonId: deleting.id,
-      operationId: newTelemetryOperationId(),
-    });
-    setPending(false);
-    if (!result.data) {
-      setError(result.error);
-      return;
+  function removeComparison() {
+    if (!deleting || !owner) return;
+    try {
+      owner.accept({
+        kind: "comparison.delete",
+        input: { tripId, comparisonId: deleting.id, operationId: newTelemetryOperationId() },
+      });
+      setDeleting(undefined);
+      setNotice(t("Saved locally"));
+    } catch (error) {
+      setError(String(error));
     }
-    setComparisons((current) => current.filter((entry) => entry.id !== deleting.id));
-    setDeleting(undefined);
-    setNotice(t("Comparison deleted. Saved ideas and Plan items remain."));
   }
 
   return (
@@ -250,41 +253,18 @@ export function IdeaComparisons({
         sort={sort}
         tripId={tripId}
       />
-      {comparisons.length ? (
-        <div className="overflow-hidden rounded-xl border bg-card">
-          {comparisons.map((comparison) => (
-            <div
-              className="flex min-w-0 items-center border-b p-1 last:border-b-0"
-              key={comparison.id}
-            >
-              <Button
-                className="min-h-11 min-w-0 flex-1 justify-start text-left"
-                onClick={() => {
-                  setError(undefined);
-                  setDayIds({});
-                  setView(comparison);
-                }}
-                type="button"
-                variant="ghost"
-              >
-                <span className="min-w-0 truncate">{comparison.title}</span>
-              </Button>
-              <Button
-                aria-label={t("Delete comparison {title}", { title: comparison.title })}
-                className="size-11 shrink-0 p-0"
-                onClick={() => {
-                  setError(undefined);
-                  setDeleting(comparison);
-                }}
-                type="button"
-                variant="ghost"
-              >
-                <Trash2 aria-hidden="true" className="size-4" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      <IdeaComparisonList
+        comparisons={comparisons}
+        onView={(comparison) => {
+          setError(undefined);
+          setDayIds({});
+          setView(comparison);
+        }}
+        onDelete={(comparison) => {
+          setError(undefined);
+          setDeleting(comparison);
+        }}
+      />
       {notice ? (
         <p className="text-sm text-emerald-700" role="status">
           {notice}

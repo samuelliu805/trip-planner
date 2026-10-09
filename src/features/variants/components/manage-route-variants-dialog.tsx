@@ -23,16 +23,11 @@ import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { variantHref } from "../active";
 import { maxRouteVariants } from "../limits";
 import { buildDeleteVariantInput, resolveManageVariantReload } from "../delete-variant-reload";
-import {
-  refetchRouteVariantList,
-  useDeleteRouteVariant,
-  useSetPrimaryRouteVariant,
-} from "../queries";
+import { refetchRouteVariantList } from "../queries";
 import { RouteVariantEditorDialog } from "./route-variant-editor-dialog";
 import { VariantIdentity } from "./route-variant-identity";
 import { DeleteRouteVariantDialog } from "./delete-route-variant-dialog";
-import { loadRouteVariants } from "../actions";
-import { variantListQueryKey } from "../variant-list-reload";
+import { useVariantSync } from "../use-variant-sync";
 
 export function ManageRouteVariantsDialog({
   activeVariantId,
@@ -58,8 +53,8 @@ export function ManageRouteVariantsDialog({
   const [reloadPending, setReloadPending] = useState(false);
   const deletingRef = useRef(false);
   const [deletePending, setDeletePending] = useState(false);
-  const primaryMutation = useSetPrimaryRouteVariant(tripId);
-  const deleteMutation = useDeleteRouteVariant(tripId);
+  const runtime = useVariantSync(tripId, variants);
+  const primaryMutation = { isPending: false };
   const limitReached = variants.length >= maxRouteVariants;
 
   async function setPrimary(variant: PlannerVariant) {
@@ -67,20 +62,19 @@ export function ManageRouteVariantsDialog({
     setConflict(false);
     setNotice(undefined);
     try {
-      const latest = await loadRouteVariants(tripId);
-      if (!latest.data) throw new Error(latest.error ?? "The latest Plans could not be loaded.");
-      queryClient.setQueryData(variantListQueryKey(tripId), latest.data);
-      const current = latest.data.find(({ id }) => id === variant.id);
+      if (!runtime) throw new Error("The primary Plan request could not be stored locally.");
+      const current = runtime.project().find(({ id }) => id === variant.id);
       if (!current) return;
-      const result = await primaryMutation.mutateAsync({
-        expectedVersion: current.version,
-        operationId: newTelemetryOperationId(),
-        tripId,
-        variantId: variant.id,
+      runtime.accept({
+        kind: "primary",
+        input: {
+          expectedVersion: current.version,
+          operationId: newTelemetryOperationId(),
+          tripId,
+          variantId: variant.id,
+        },
       });
-      const saved = result.variants.find(({ id }) => id === variant.id);
-      setNotice(t("{variant} is now the primary Plan.", { variant: saved?.name ?? current.name }));
-      router.refresh();
+      setNotice(t("Saved locally"));
     } catch (caught) {
       setConflict(isItineraryConflict(caught));
       setError(caught instanceof Error ? caught.message : "The primary Plan could not be changed.");
@@ -95,24 +89,23 @@ export function ManageRouteVariantsDialog({
     setConflict(false);
     setNotice(undefined);
     try {
-      const latest = await loadRouteVariants(tripId);
-      if (!latest.data) throw new Error(latest.error ?? "The latest Plans could not be loaded.");
-      queryClient.setQueryData(variantListQueryKey(tripId), latest.data);
-      const current = latest.data.find(({ id }) => id === deleteVariant.id);
+      if (!runtime) throw new Error("The delete request could not be stored locally.");
+      const current = runtime.project().find(({ id }) => id === deleteVariant.id);
       if (!current) {
         setDeleteVariant(undefined);
         router.refresh();
         return;
       }
       const wasActive = deleteVariant.id === activeVariantId;
-      const result = await deleteMutation.mutateAsync(
-        buildDeleteVariantInput(tripId, current, newTelemetryOperationId()),
-      );
+      const result = runtime.accept({
+        kind: "delete",
+        input: buildDeleteVariantInput(tripId, current, newTelemetryOperationId()),
+      });
       setDeleteVariant(undefined);
       if (wasActive) {
         const primary = result.variants.find(({ is_primary }) => is_primary);
         if (primary) window.location.assign(variantHref(tripId, primary.id));
-      } else router.refresh();
+      }
     } catch (caught) {
       setConflict(isItineraryConflict(caught));
       setError(caught instanceof Error ? caught.message : "The Plan could not be deleted.");
@@ -245,7 +238,7 @@ export function ManageRouteVariantsDialog({
           key={`metadata:${editVariant.id}`}
           mode="metadata"
           onOpenChange={(editorOpen) => !editorOpen && setEditVariant(undefined)}
-          onSaved={() => router.refresh()}
+          onSaved={() => onOpenChange(true)}
           open
           tripId={tripId}
           variants={variants}

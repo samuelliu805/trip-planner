@@ -18,6 +18,7 @@ import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 import { deleteResearchItem } from "../actions";
+import { useResearchSync } from "../use-research-sync";
 import { researchLinksWithSource } from "../links";
 import { inferredRentalCompany } from "../idea-rental-company";
 import { formatMoney } from "../money";
@@ -74,6 +75,7 @@ export function ResearchItemRow({
   plan: ResearchPlanSnapshot;
 }) {
   const { locale, t } = useI18n();
+  const sync = useResearchSync(item.trip_id);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [error, setError] = useState<string>();
@@ -221,13 +223,23 @@ export function ResearchItemRow({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
-                const result = await deleteResearchItem({
+                const input = {
                   category: item.category as ResearchCategory,
                   expectedVersion: item.version,
                   id: item.id,
                   operationId: newTelemetryOperationId(),
                   tripId: item.trip_id,
-                });
+                };
+                if (sync) {
+                  try {
+                    sync.accept({ kind: "delete", input }, item);
+                    onDeleted(item.id);
+                  } catch (failure) {
+                    setError(failure instanceof Error ? failure.message : String(failure));
+                  }
+                  return;
+                }
+                const result = await deleteResearchItem(input);
                 if (result.error) setError(result.error);
                 else onDeleted(item.id);
               }}

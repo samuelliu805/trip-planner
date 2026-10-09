@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useDurableFields } from "@/features/editing/use-durable-fields";
+import { useDraftScope } from "@/features/editing/draft-scope";
+import { editingStorageKey } from "@/features/editing/draft-storage";
 
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
@@ -56,13 +59,14 @@ export function useDayRoute(
   tripId: string,
 ): DayRouteUi {
   const persistence = usePlannerPersistence();
-  const [draftState, setDraftState] = useState<{
-    dayId: string;
-    value: DayRouteEditorDraft;
-  } | null>(null);
+  const local = useDurableFields(editingStorageKey(useDraftScope(tripId, "routes"), "days"), {
+    drafts: {} as Record<string, DayRouteEditorDraft | null>,
+  });
+  const draftKey = `${workspace.variant.id}:${activeDay?.id}`;
+  const [hiddenDraftKey, setHiddenDraftKey] = useState<string>();
   const [errorState, setErrorState] = useState<{ dayId: string; value: string } | null>(null);
   const [conflictDayId, setConflictDayId] = useState<string>();
-  const rawDraft = draftState && draftState.dayId === activeDay?.id ? draftState.value : null;
+  const rawDraft = hiddenDraftKey === draftKey ? null : (local.values.drafts[draftKey] ?? null);
   const error = errorState && errorState.dayId === activeDay?.id ? errorState.value : undefined;
   const conflict = conflictDayId === activeDay?.id;
   const plan = workspace.routePlans.find(
@@ -127,16 +131,17 @@ export function useDayRoute(
   }
 
   function setDraft(value: DayRouteEditorDraft | null) {
-    setDraftState(value && activeDay ? { dayId: activeDay.id, value } : null);
+    if (!activeDay) return;
+    setHiddenDraftKey(undefined);
+    local.set("drafts", (drafts) => ({ ...drafts, [draftKey]: value }));
   }
 
   function updateDraft(updater: (current: DayRouteEditorDraft) => DayRouteEditorDraft) {
     if (!activeDay) return;
-    setDraftState((current) =>
-      current?.dayId === activeDay.id
-        ? { dayId: activeDay.id, value: updater(current.value) }
-        : current,
-    );
+    local.set("drafts", (drafts) => ({
+      ...drafts,
+      [draftKey]: drafts[draftKey] ? updater(drafts[draftKey]) : null,
+    }));
     setError(undefined);
   }
 
@@ -215,13 +220,28 @@ export function useDayRoute(
     }));
   }
 
-  const { clearRoute, pending, persistAndCalculate, reloadLatest } = useDayRouteActions({
+  const { clearRoute, pending, failure, persistAndCalculate, reloadLatest } = useDayRouteActions({
     activeDay,
     actorType: persistence?.actorType ?? "authenticated",
     plan,
     previousDay,
     setConflictDayId,
-    setDraft,
+    discardDraftIfMatches: (submitted) => {
+      const current = local.getValues().drafts[draftKey];
+      if (
+        !current ||
+        JSON.stringify(
+          fixedDayRouteDraft(
+            current,
+            eligibleItems.map(({ id }) => id),
+            suggestedMode,
+            previousHotel?.id,
+            currentHotel?.id,
+          ),
+        ) === JSON.stringify(submitted)
+      )
+        setDraft(null);
+    },
     setError,
     stopItems,
     tripId,
@@ -253,7 +273,7 @@ export function useDayRoute(
     activeDay,
     addStop,
     cancelEditing: () => {
-      setDraft(null);
+      setHiddenDraftKey(draftKey);
       setError(undefined);
     },
     canCalculate: canCalculateDayRouteDraft(displayDraft, stopItems),
@@ -263,24 +283,25 @@ export function useDayRoute(
       if (requestRouteAccountIfNeeded()) return;
       await persistAndCalculate(computeDraft);
     },
-    conflict,
+    conflict: conflict || failure?.status === "conflict",
     displayDraft,
     draft,
     editing: draft !== null,
     eligibleItems,
-    error,
+    error: error ?? failure?.error ?? local.error,
     fitKey: plan?.calculation?.computed_at
       ? `day-route:${activeDay?.id}:${plan.calculation.computed_at}`
       : undefined,
     hasCalculation: Boolean(plan?.calculation) && status === "current",
     openCreate: () => {
       if (requestRouteAccountIfNeeded()) return;
-      setDraft(defaultDraft);
+      setDraft(local.getValues().drafts[draftKey] ?? defaultDraft);
       setError(undefined);
     },
     openEdit: () => {
       if (requestRouteAccountIfNeeded()) return;
-      if (plan) setDraft(synchronized?.draft ?? savedDraft(plan));
+      if (local.getValues().drafts[draftKey]) setDraft(local.getValues().drafts[draftKey]);
+      else if (plan) setDraft(synchronized?.draft ?? savedDraft(plan));
       else setDraft(defaultDraft);
       setError(undefined);
     },

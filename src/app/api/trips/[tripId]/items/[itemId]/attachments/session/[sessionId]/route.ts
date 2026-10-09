@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -24,14 +25,33 @@ async function authorizedRoute(
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ itemId: string; sessionId: string; tripId: string }> },
 ) {
-  void params;
-  return Response.json(
-    { error: "Attachment drafts are committed by saving the itinerary item." },
-    { status: 405 },
+  const authorized = await authorizedRoute(params);
+  if ("error" in authorized) return authorized.error;
+  const input = z
+    .object({ operationId: z.uuid() })
+    .safeParse(await request.json().catch(() => null));
+  if (!input.success)
+    return Response.json({ error: "The attachment request is invalid." }, { status: 400 });
+  const { route, database } = authorized;
+  const result = await database.rpc(
+    request.headers.get("X-Trip-Planner-Attachment-Delta") === "1"
+      ? "commit_attachment_session_v4"
+      : "commit_attachment_session_v3",
+    {
+      target_trip_id: route.tripId,
+      target_entity_id: route.itemId,
+      requested_target: "itinerary",
+      requested_draft_session_id: route.sessionId,
+      target_operation_id: input.data.operationId,
+    },
   );
+  if (result.error)
+    return Response.json({ error: attachmentError(result.error.message) }, { status: 400 });
+  revalidatePath(`/trips/${route.tripId}`);
+  return Response.json(result.data);
 }
 
 export async function DELETE(
@@ -53,7 +73,7 @@ export async function DELETE(
   });
   if (result.error)
     return Response.json({ error: attachmentError(result.error.message) }, { status: 400 });
-  await drainAssetDeletionQueue(10);
+  after(() => drainAssetDeletionQueue(10));
   revalidatePath(`/trips/${route.tripId}`);
   return new Response(null, { status: 204 });
 }

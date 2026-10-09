@@ -5,14 +5,18 @@ import { revalidatePath } from "next/cache";
 import { getRequestLocale } from "@/features/i18n/server";
 import { safeMutationErrorCode } from "@/lib/telemetry/errors";
 import { captureServerProductEvent } from "@/lib/telemetry/product-server";
-import { getAuthProvider, getTripRepository } from "@/platform/composition/server";
+import {
+  getAuthProvider,
+  getTripRepository,
+  getRelationalDatabase,
+} from "@/platform/composition/server";
 import { getServerProviderConfig } from "@/platform/config/server";
 import type { Json } from "@/types/database";
 
 import { guestTripDraftSchema, type GuestTripDraft } from "./schema";
 
 export type ClaimGuestTripResult =
-  { data: { tripId: string }; error?: never } | { data?: never; error: string };
+  { data: { tripId: string; actorId: string }; error?: never } | { data?: never; error: string };
 
 export async function claimGuestTrip(draft: GuestTripDraft): Promise<ClaimGuestTripResult> {
   const parsed = guestTripDraftSchema.safeParse(draft);
@@ -41,6 +45,13 @@ export async function claimGuestTrip(draft: GuestTripDraft): Promise<ClaimGuestT
       locale,
       payload: parsed.data as unknown as Json,
     });
+    const database = await getRelationalDatabase();
+    const continued = await database.rpc("continue_guest_import_v1", {
+      guest_draft_id: parsed.data.draftId,
+      guest_payload: parsed.data as unknown as Json,
+      guest_locale: locale,
+    });
+    if (continued.error) throw new Error(continued.error.message);
     await captureServerProductEvent(
       "guest_trip_import_succeeded",
       { surface: "guest_trip" },
@@ -48,7 +59,7 @@ export async function claimGuestTrip(draft: GuestTripDraft): Promise<ClaimGuestT
     );
     revalidatePath("/trips");
     revalidatePath(`/trips/${trip.id}`);
-    return { data: { tripId: trip.id } };
+    return { data: { tripId: trip.id, actorId: user.id } };
   } catch (error) {
     await captureServerProductEvent(
       "guest_trip_import_failed",

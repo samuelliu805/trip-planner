@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useDurableFields } from "@/features/editing/use-durable-fields";
+import { useDraftScope } from "@/features/editing/draft-scope";
+import { editingStorageKey } from "@/features/editing/draft-storage";
 
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import type { RouteMode } from "@/lib/telemetry/events";
@@ -9,10 +13,14 @@ import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 
 import { isOverviewRouteLeg, type OverviewStage } from "./overview";
-import { useCalculateOverviewRoute } from "./queries";
+import { useRouteTasks } from "./use-route-tasks";
+import { overviewTaskKey } from "./route-task-runtime";
+import { matchingOverviewResults, type OverviewTaskResult } from "./overview-results";
+import { overviewInputSnapshot } from "./input-snapshot";
 import type { OverviewRouteMode } from "./types";
 
 type OverviewRouteState = {
+  generation?: number;
   calculatedLegs: CalculatedRouteLeg[];
   error?: string;
   modes: Array<OverviewRouteMode | undefined>;
@@ -61,22 +69,47 @@ export function useOverviewRoute(
 ): OverviewRouteUi {
   const persistence = usePlannerPersistence();
   const stageKey = keyForStages(stages, defaultModes, variantId);
-  const [storedState, setStoredState] = useState<OverviewRouteState | null>(null);
+  const scope = useDraftScope(tripId, "routes");
+  const local = useDurableFields(editingStorageKey(scope, "overview"), {
+    states: {} as Record<string, OverviewRouteState>,
+  });
   const [editing, setEditing] = useState(false);
-  const mutation = useCalculateOverviewRoute();
-  const currentState: OverviewRouteState =
-    storedState?.stageKey === stageKey
-      ? storedState
-      : { calculatedLegs: [], modes: [...defaultModes], stageKey };
+  const runtime = useRouteTasks(tripId, variantId);
+  const taskScope = useDraftScope(tripId, variantId);
+  const { data: results } = useQuery<OverviewTaskResult[]>({
+    queryKey: overviewTaskKey(taskScope),
+    initialData: [],
+    enabled: false,
+  });
+  const currentState: OverviewRouteState = local.values.states[stageKey]
+    ? local.values.states[stageKey]
+    : { calculatedLegs: [], modes: [...defaultModes], stageKey };
+  const durableLegs = matchingOverviewResults(
+    results,
+    stageKey,
+    currentState.generation ?? 0,
+    currentState.modes,
+  );
+  const calculatedLegs = [
+    ...currentState.calculatedLegs.filter(
+      (leg) => !durableLegs.some((row) => row.position === leg.position),
+    ),
+    ...durableLegs,
+  ].sort((a, b) => a.position - b.position);
+  const operations =
+    runtime?.queue.operations.filter(
+      (op) =>
+        (op.intent as { kind: string; stageKey?: string }).kind === "overview" &&
+        (op.intent as { stageKey?: string }).stageKey === stageKey,
+    ) ?? [];
 
   function updateState(updater: (current: OverviewRouteState) => OverviewRouteState) {
-    setStoredState((stored) =>
-      updater(
-        stored?.stageKey === stageKey
-          ? stored
-          : { calculatedLegs: [], modes: [...defaultModes], stageKey },
+    local.set("states", (states) => ({
+      ...states,
+      [stageKey]: updater(
+        states[stageKey] ?? { calculatedLegs: [], modes: [...defaultModes], stageKey },
       ),
-    );
+    }));
   }
 
   const segments = stages.slice(1).flatMap((to, index): OverviewRouteSegment[] => {
@@ -84,7 +117,7 @@ export function useOverviewRoute(
     if (!isOverviewRouteLeg(from, to)) return [];
     return [
       {
-        calculatedLeg: currentState.calculatedLegs.find(({ position }) => position === index + 1),
+        calculatedLeg: calculatedLegs.find(({ position }) => position === index + 1),
         from,
         mode: currentState.modes[index],
         position: index + 1,
@@ -99,6 +132,8 @@ export function useOverviewRoute(
       return;
     }
     const changed = segments.filter(({ calculatedLeg, mode }) => mode && !calculatedLeg);
+    const submittedModes = [...currentState.modes];
+    const submittedGeneration = currentState.generation ?? 0;
     if (!changed.length) {
       setEditing(false);
       return;
@@ -119,23 +154,23 @@ export function useOverviewRoute(
       { actorType: "authenticated" },
     );
     try {
-      const calculated = await mutation.mutateAsync({
-        legs: changed.map(({ mode, position }) => ({ mode: mode!, position })),
-        tripId,
-        variantId,
-        operationId,
-        telemetryRouteMode: routeMode,
-      });
-      updateState((current) => {
-        const changedPositions = new Set(calculated.map(({ position }) => position));
-        return {
-          ...current,
-          calculatedLegs: [
-            ...current.calculatedLegs.filter(({ position }) => !changedPositions.has(position)),
-            ...calculated,
-          ].sort((a, b) => a.position - b.position),
-          error: undefined,
-        };
+      if (!runtime)
+        throw new Error(
+          "The calculation request could not be stored locally. Your configuration is kept.",
+        );
+      runtime.accept({
+        kind: "overview",
+        stageKey,
+        generation: submittedGeneration,
+        modes: submittedModes.map((mode) => mode ?? null),
+        input: {
+          legs: changed.map(({ mode, position }) => ({ mode: mode!, position })),
+          tripId,
+          variantId,
+          operationId,
+          telemetryRouteMode: routeMode,
+          expectedInputSnapshot: overviewInputSnapshot(stages),
+        },
       });
       setEditing(false);
     } catch (error) {
@@ -149,12 +184,20 @@ export function useOverviewRoute(
 
   return {
     calculate,
-    calculatedLegs: currentState.calculatedLegs,
+    calculatedLegs,
     editing,
-    error: currentState.error,
-    pending: mutation.isPending,
+    error:
+      currentState.error ??
+      operations.find((op) => op.status === "failed" || op.status === "conflict")?.error ??
+      local.error,
+    pending: operations.some((op) => op.status === "queued" || op.status === "sending"),
     reset: () => {
-      setStoredState({ calculatedLegs: [], modes: [...defaultModes], stageKey });
+      updateState((current) => ({
+        calculatedLegs: [],
+        modes: [...defaultModes],
+        stageKey,
+        generation: (current.generation ?? 0) + 1,
+      }));
       setEditing(false);
     },
     segments,

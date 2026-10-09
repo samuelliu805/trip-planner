@@ -1,63 +1,86 @@
 "use client";
-
-import { Localized, T } from "@/features/i18n/i18n-provider";
-import { LoaderCircle, Plus } from "lucide-react";
-import { useActionState, useEffect, useRef } from "react";
-
+import { Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { createTrip } from "@/features/trips/actions";
-import { tripDateInZone } from "@/features/trips/create-defaults";
+import { T, useI18n } from "@/features/i18n/i18n-provider";
+import { useBackgroundActions } from "@/features/editing/use-background-actions";
+import { PlannerSyncStatus } from "@/features/itinerary/components/planner-sync-status";
+import {
+  defaultTripCurrencyForRegion,
+  defaultTripDayCount,
+  defaultTripTitle,
+  tripDateInZone,
+} from "../create-defaults";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
-import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
-
-/** One tap creates a default trip and opens its planner. */
-export function CreateTripButton() {
-  const [state, action, pending] = useActionState(createTrip, {});
-  const timezoneRef = useRef<HTMLInputElement>(null);
-  const todayRef = useRef<HTMLInputElement>(null);
-  const operationRef = useRef<HTMLInputElement>(null);
-
+/** The list remains usable while this accepted request creates its real trip. */
+export function CreateTripButton({ initialCurrency }: { initialCurrency?: string }) {
+  const owner = useBackgroundActions("", "trip-list"),
+    router = useRouter(),
+    { locale } = useI18n();
+  const started = useRef<string | undefined>(undefined),
+    [error, setError] = useState<string>();
+  const completed = owner?.completed ?? [];
   useEffect(() => {
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (!timezone) return;
-    if (timezoneRef.current) timezoneRef.current.value = timezone;
-    if (todayRef.current) todayRef.current.value = tripDateInZone(timezone, new Date());
-  }, []);
-
-  const beginCreate = () => {
-    const operationId = newTelemetryOperationId();
-    if (operationRef.current) operationRef.current.value = operationId;
-    captureBrowserProductEvent(
-      "trip_create_started",
-      { operation_id: operationId, surface: "trip_list" },
-      { actorType: "authenticated" },
+    const row = completed.find(
+      (row) => row.id === started.current && row.intent.kind === "trip.create",
     );
-  };
-
+    if (row) {
+      started.current = undefined;
+      router.push(`/trips/${(row.result as { data: { id: string } }).data.id}`);
+    }
+  }, [completed.length, router]);
+  const pending = Boolean(
+    owner?.queue.operations.some(
+      (op) =>
+        (op.intent as { kind: string }).kind === "trip.create" &&
+        ["queued", "sending"].includes(op.status),
+    ),
+  );
+  function create() {
+    try {
+      if (!owner) throw new Error("Local storage is unavailable.");
+      const operationId = newTelemetryOperationId(),
+        timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      owner.accept({
+        kind: "trip.create",
+        input: {
+          tripId: "",
+          operationId,
+          currency:
+            initialCurrency ??
+            defaultTripCurrencyForRegion(
+              process.env.NEXT_PUBLIC_APP_REGION === "cn" ? "cn" : "global",
+            ),
+          dayCount: defaultTripDayCount,
+          locale,
+          timezone,
+          title: defaultTripTitle(tripDateInZone(timezone, new Date())),
+        },
+      });
+      started.current = operationId;
+      setError(undefined);
+    } catch (error) {
+      setError(String(error));
+    }
+  }
   return (
-    <form action={action} className="min-w-0 shrink-0">
-      <input defaultValue="UTC" name="timezone" ref={timezoneRef} type="hidden" />
-      <input defaultValue="" name="today" ref={todayRef} type="hidden" />
-      <input name="operation_id" ref={operationRef} type="hidden" />
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <PlannerSyncStatus mutating={false} />
       <Button
-        aria-busy={pending}
         className="h-12 shrink-0 sm:h-[3.25rem]"
-        disabled={pending}
-        onClick={beginCreate}
-        type="submit"
+        disabled={!owner || pending}
+        onClick={create}
+        type="button"
       >
-        {pending ? (
-          <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-        ) : (
-          <Plus aria-hidden="true" className="size-4" />
-        )}
-        <T message={" New trip "} />
+        <Plus className="size-4" />
+        <T message=" New trip " />
       </Button>
-      {state.error ? (
-        <p className="mt-2 max-w-64 text-sm font-medium text-destructive" role="alert">
-          <Localized value={state.error} />
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
         </p>
       ) : null}
-    </form>
+    </div>
   );
 }

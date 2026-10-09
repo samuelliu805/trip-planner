@@ -2,7 +2,11 @@
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { MapPin, TextCursorInput } from "lucide-react";
-import { useId, useState } from "react";
+import { useId } from "react";
+import {
+  usePersistentEditorKey,
+  usePersistentEditorState,
+} from "@/features/editing/persistent-editor-fields";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,14 +87,19 @@ export function ResearchPlaceField({
   textName: string;
 }) {
   const stored = toPlaceSnapshot(initialPlace);
-  const [manual, setManual] = useState(false);
-  const [place, setPlace] = useState<PlaceSnapshot | null>(stored);
-  const [placeId, setPlaceId] = useState(initialPlaceId ?? "");
-  const [text, setText] = useState(initialText ?? stored?.displayName ?? "");
-  const [searchText, setSearchText] = useState(
+  const [manual, setManual] = usePersistentEditorState(`${textName}:manual`, false);
+  const [place, setPlace] = usePersistentEditorState<PlaceSnapshot | null>(snapshotName, stored);
+  const [placeId, setPlaceId] = usePersistentEditorState(placeIdName, initialPlaceId ?? "");
+  const [text, setText] = usePersistentEditorState(
+    textName,
+    initialText ?? stored?.displayName ?? "",
+  );
+  const [searchText, setSearchText] = usePersistentEditorState(
+    `${textName}:query`,
     stored ? "" : (initialSearchText ?? initialText ?? ""),
   );
   const labelId = useId();
+  const resolutionKey = usePersistentEditorKey(snapshotName);
   const { t } = useI18n();
 
   function useManualEntry() {
@@ -142,8 +151,10 @@ export function ResearchPlaceField({
       ) : (
         <div className="min-w-0 space-y-1">
           <PlaceAutocomplete
+            resolutionKey={resolutionKey}
             includedPrimaryTypes={includedPrimaryTypes}
             initialQuery={searchText}
+            initialOptionsDismissed={Boolean(searchText)}
             onChange={(next) => {
               setPlace(next);
               setPlaceId("");

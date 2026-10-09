@@ -121,6 +121,7 @@ export type ResearchPlanSnapshot = {
   days: ResearchPlanDay[];
   variantId: string;
   variantName: string;
+  variant?: import("../itinerary/types").PlannerVariant;
 };
 
 export type ResearchWorkspaceSnapshot = {

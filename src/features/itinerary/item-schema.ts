@@ -135,6 +135,7 @@ const itemBaseSchema = z.object({
   expectedItemsVersion: z.number().int().positive(),
   notes: optionalText(5000),
   operationId: z.uuid(),
+  orderedItemIds: z.array(z.uuid()).max(2000).optional(),
   placeId: z.uuid().optional().nullable(),
   placeSnapshot: placeSnapshotSchema.optional().nullable(),
   priceAmount: z.number().min(0).max(9_999_999_999.99).optional().nullable(),

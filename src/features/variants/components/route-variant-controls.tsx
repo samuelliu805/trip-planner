@@ -18,12 +18,14 @@ import { RouteVariantEditorDialog } from "./route-variant-editor-dialog";
 import { RouteVariantSwitcher, type RouteVariantAction } from "./route-variant-switcher";
 import { useRouteVariants } from "../queries";
 import { maxRouteVariants } from "../limits";
+import { useVariantSync } from "../use-variant-sync";
 
 export function RouteVariantControls({
   activeVariantId,
   activeSection = "plan",
   comparisonBlockingReason,
   onCompare,
+  onNavigate,
   researchCategory,
   title,
   tripId,
@@ -33,6 +35,7 @@ export function RouteVariantControls({
   activeSection?: TripSection;
   comparisonBlockingReason?: string;
   onCompare?: () => void;
+  onNavigate?: (variantId: string) => boolean;
   researchCategory?: ResearchCategory;
   title: string;
   tripId: string;
@@ -40,6 +43,13 @@ export function RouteVariantControls({
 }) {
   const pathname = usePathname();
   const variantQuery = useRouteVariants(tripId, variants);
+  const runtime = useVariantSync(tripId, variants);
+  const pendingVariantIds =
+    runtime?.queue.operations
+      .filter(
+        (op) => op.status !== "acknowledged" && (op.intent as { kind: string }).kind === "create",
+      )
+      .map((op) => op.id) ?? [];
   const currentVariants = variantQuery.data ?? variants;
   const currentResearchCategory =
     parseResearchCategoryRouteSegment(pathname.split("/").at(-1)) ?? researchCategory;
@@ -53,6 +63,7 @@ export function RouteVariantControls({
   if (!activeVariant) return null;
 
   function navigateToVariant(variantId: string) {
+    if (onNavigate?.(variantId)) return;
     // A fresh document prevents a client RSC navigation from racing a newly committed Plan on
     // either deployment platform, and keeps later Plan switches on the same reliable path.
     window.location.assign(
@@ -61,6 +72,7 @@ export function RouteVariantControls({
   }
 
   function switchVariant(variantId: string) {
+    if (pendingVariantIds.includes(variantId) && !onNavigate) return;
     setSheetOpen(false);
     if (variantId !== activeVariantId) {
       captureBrowserProductEvent(
@@ -91,6 +103,8 @@ export function RouteVariantControls({
         sheetOpen={sheetOpen}
         title={title}
         variants={currentVariants}
+        pendingVariantIds={pendingVariantIds}
+        pendingNavigationEnabled={Boolean(onNavigate)}
         comparisonBlockingReason={comparisonBlockingReason}
         onCompare={
           onCompare
@@ -107,7 +121,7 @@ export function RouteVariantControls({
         key={`blank:${activeVariant.id}:${createOpen}`}
         mode="blank"
         onOpenChange={setCreateOpen}
-        onSaved={navigateToVariant}
+        onSaved={onNavigate ? navigateToVariant : undefined}
         open={createOpen}
         tripId={tripId}
         variants={currentVariants}
@@ -117,7 +131,7 @@ export function RouteVariantControls({
         key={`duplicate:${activeVariant.id}:${duplicateOpen}`}
         mode="duplicate"
         onOpenChange={setDuplicateOpen}
-        onSaved={navigateToVariant}
+        onSaved={onNavigate ? navigateToVariant : undefined}
         open={duplicateOpen}
         tripId={tripId}
         variants={currentVariants}

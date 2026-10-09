@@ -70,6 +70,16 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - name: Verify durable editing and attachment faults in Chromium
+        run: CHROME_PATH=/usr/bin/google-chrome npm run test:e2e:nonblocking
+      - name: Verify Guest offline editing and refresh recovery on its actual route
+        run: CHROME_PATH=/usr/bin/google-chrome npm run test:e2e:guest-nonblocking
+      - name: Verify new and upgraded regional database chains
+        run: |
+          npm run test:database:nonblocking
+          NONBLOCKING_DB_UPGRADE=1 npm run test:database:nonblocking
+          NONBLOCKING_DB_PROVIDER=cloudbase npm run test:database:nonblocking
+          NONBLOCKING_DB_PROVIDER=cloudbase NONBLOCKING_DB_UPGRADE=1 npm run test:database:nonblocking
       - name: Verify sharing designs, gestures, and export in Chromium
         run: CHROME_PATH=/usr/bin/google-chrome npm run test:e2e:sharing-design
       - name: Verify first day navigation in WebKit

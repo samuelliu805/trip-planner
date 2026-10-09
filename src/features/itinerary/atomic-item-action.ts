@@ -5,7 +5,7 @@ import { insertedActivityOrderIds } from "./activity-order";
 import { mutationError } from "./action-helpers";
 import { normalizedScheduleEndTime, scheduleKind } from "./mutation-helpers";
 import type { ItineraryItem, MutationResult } from "./types";
-import { getItineraryItem } from "./data";
+import { getPlannerWorkspace } from "./data";
 import { nameTripAfterFirstPlace } from "@/features/trips/auto-title";
 
 type AtomicItemInput = {
@@ -20,6 +20,7 @@ type AtomicItemInput = {
   links?: Array<{ label: string; url: string }>;
   notes?: string | null;
   operationId: string;
+  orderedItemIds?: string[];
   placeId?: string | null;
   placeSnapshot?: Json | null;
   priceAmount?: number | null;
@@ -47,15 +48,24 @@ export async function saveAtomicItineraryItem(input: AtomicItemInput): Promise<M
       id: String(item.id),
     }))
     .filter(({ id }) => id !== input.id);
-  const orderedItemIds = insertedActivityOrderIds(
-    currentItems,
-    {
-      id: input.id,
-      sort_order: Math.max(-1, ...currentItems.map(({ sort_order }) => sort_order)) + 1,
-      type: input.type,
-    },
-    input.insertAfterItemId,
-  );
+  const existingIndex = dayItems?.findIndex(({ id }) => String(id) === input.id) ?? -1;
+  const preservedAnchor =
+    input.expectedVersion !== null && input.insertAfterItemId === undefined && existingIndex >= 0
+      ? existingIndex === 0
+        ? null
+        : String(dayItems![existingIndex - 1].id)
+      : input.insertAfterItemId;
+  const orderedItemIds =
+    input.orderedItemIds ??
+    insertedActivityOrderIds(
+      currentItems,
+      {
+        id: input.id,
+        sort_order: Math.max(-1, ...currentItems.map(({ sort_order }) => sort_order)) + 1,
+        type: input.type,
+      },
+      preservedAnchor,
+    );
   const endTime = normalizedScheduleEndTime(
     input.type,
     input.details,
@@ -100,11 +110,16 @@ export async function saveAtomicItineraryItem(input: AtomicItemInput): Promise<M
     };
   if (!result.data || typeof result.data !== "object" || Array.isArray(result.data))
     return { error: "The saved itinerary item could not be read." };
-  const saved = await getItineraryItem(input.id);
-  if (!saved.data) return { error: saved.error ?? "The saved itinerary item could not be read." };
+  const delta = await getPlannerWorkspace(input.tripId, input.variantId, [input.dayId]);
+  const saved = delta.data?.days[0]?.items.find(({ id }) => id === input.id);
+  if (!saved || !delta.data)
+    return { error: delta.error ?? "The saved itinerary item could not be read." };
   if (input.placeSnapshot)
     await nameTripAfterFirstPlace(input.tripId, input.placeSnapshot as never).catch(
       () => undefined,
     );
-  return { data: saved.data };
+  return {
+    data: saved,
+    sync: { operationId: input.operationId, full: false, workspace: delta.data },
+  };
 }

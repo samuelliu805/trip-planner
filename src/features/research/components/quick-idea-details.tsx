@@ -24,6 +24,7 @@ export function QuickIdeaDetails({
   preview,
   providerTitle,
   route,
+  resolutionKey,
 }: {
   candidateLocation: string | null;
   classification: IdeaClassification;
@@ -38,6 +39,7 @@ export function QuickIdeaDetails({
   preview: IdeaUrlFields;
   providerTitle: string | null;
   route: string | null;
+  resolutionKey: string;
 }) {
   const priceAmount = preview.priceAmount ?? metadata?.priceAmount ?? null;
   const priceCurrency = preview.priceCurrency ?? metadata?.priceCurrency ?? null;
@@ -73,6 +75,7 @@ export function QuickIdeaDetails({
       {(classification.kind === "stay" || classification.kind === "activity") &&
       candidateLocation ? (
         <QuickIdeaPlaceConfirmation
+          resolutionKey={`${resolutionKey}:place`}
           candidate={ideaPlaceQuery(metadata?.title ?? providerTitle, candidateLocation)}
           onChange={onPlaceChange}
           sourceKey={classification.sourceUrl ?? "manual"}
@@ -81,6 +84,7 @@ export function QuickIdeaDetails({
       ) : null}
       {classification.kind === "car" && preview.originText ? (
         <QuickIdeaPlaceConfirmation
+          resolutionKey={`${resolutionKey}:pickup`}
           candidate={ideaPlaceQuery(classification.provider, preview.originText)}
           label="Pick-up location"
           onChange={onOriginPlaceChange}
@@ -92,6 +96,7 @@ export function QuickIdeaDetails({
       preview.destinationText &&
       preview.destinationText !== preview.originText ? (
         <QuickIdeaPlaceConfirmation
+          resolutionKey={`${resolutionKey}:return`}
           candidate={ideaPlaceQuery(classification.provider, preview.destinationText)}
           label="Return location"
           onChange={onDestinationPlaceChange}

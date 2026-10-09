@@ -1421,21 +1421,24 @@ test("authenticated share exports keep one start and one matching terminal ident
 });
 
 test("long-image export start and terminal reporters have one authoritative owner", async () => {
-  const [actions, controller, serverTelemetry] = await Promise.all([
+  const [actions, controller, serverTelemetry, ownedJob] = await Promise.all([
     readFile(new URL("./long-image/actions.ts", import.meta.url), "utf8"),
     readFile(new URL("./components/use-long-image-export.ts", import.meta.url), "utf8"),
     readFile(new URL("./telemetry.server.ts", import.meta.url), "utf8"),
+    readFile(new URL("./long-image/image-export-job.ts", import.meta.url), "utf8"),
   ]);
   assert.doesNotMatch(controller, /captureBrowserProductEvent|share_export_started/);
   assert.doesNotMatch(controller + actions, /reportShareImageExportFailure/);
   assert.match(
     controller,
-    /const operationId = newTelemetryOperationId\(\)[\s\S]*prepareShareImageVersion\([\s\S]*operationId[\s\S]*finalizeShareImageVersion\([\s\S]*operationId[\s\S]*failShareImageVersion\([\s\S]*operationId/,
+    /const operationId = newTelemetryOperationId\(\)[\s\S]*owner\.accept\([\s\S]*kind: "image.generate"/,
   );
+  assert.match(ownedJob, /prepareShareImageVersion\([\s\S]*operationId: input\.operationId/);
   assert.match(
-    controller,
-    /let exportFinalized = false[\s\S]*exportFinalized = true[\s\S]*if \(versionId && !exportFinalized\)/,
+    ownedJob,
+    /job\.finalizing = true[\s\S]*imageExportStorage\.put\(job\)[\s\S]*finalizeShareImageVersion\([\s\S]*input\.finalizeOperationId/,
   );
+  assert.doesNotMatch(ownedJob, /failShareImageVersion/);
   assert.equal(actions.match(/await reportShareExportStarted\(/g)?.length, 1);
   const authenticated = actions.indexOf("if (!user) return");
   const ownershipValidated = actions.indexOf("if (!page.success)");

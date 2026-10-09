@@ -1,27 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useI18n } from "@/features/i18n/i18n-provider";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
-import { getBrowserStorageProvider } from "@/platform/composition/client";
+import { useBackgroundActions } from "@/features/editing/use-background-actions";
+import { ownerShareImageStateSchema } from "../long-image/schema";
 
-import {
-  failShareImageVersion,
-  finalizeShareImageVersion,
-  prepareShareImageVersion,
-  revokeShareImageExport,
-} from "../long-image/actions";
-import { authorizeShareImageUpload, removeShareImageUploads } from "../long-image/storage-actions";
-import type {
-  LongImageScope,
-  OwnerShareImageState,
-  PublicItineraryLink,
-  ShareImagePartInput,
-} from "../types";
+import type { LongImageScope, OwnerShareImageState, PublicItineraryLink } from "../types";
 import { copyTextToClipboard } from "./copy-to-clipboard";
 import { downloadShareImageParts } from "./share-image-download";
-import { uploadShareImagePart } from "./upload-share-image-part";
 
 type GenerateMode = "new_export" | "replace_existing";
 
@@ -40,134 +28,57 @@ export function useLongImageExport({
   const [error, setError] = useState<string>();
   const [progress, setProgress] = useState<string>();
   const [copied, setCopied] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const owner = useBackgroundActions(sharePage.tripId ?? "", `images:${sharePage.id}`);
+  const pending = Boolean(
+    owner?.queue.operations.some((op) => op.status === "sending" || op.status === "queued"),
+  );
+  const started = useRef<string | undefined>(undefined),
+    handled = useRef(new Set<string>());
+  const completed = owner?.completed ?? [];
+  useEffect(() => {
+    const fresh = completed.filter((row) => !handled.current.has(row.id));
+    if (!fresh.length) return;
+    fresh.forEach((row) => handled.current.add(row.id));
+    const latest = fresh.at(-1)!;
+    if (latest.intent.kind === "image.revoke") {
+      onImageStateChange(null);
+      setProgress(t("Permanent image link revoked."));
+    } else if (latest.intent.kind === "image.generate") {
+      const state = ownerShareImageStateSchema.parse((latest.result as { data: unknown }).data);
+      onImageStateChange(state);
+      setProgress(t("Image ready. Open it from this panel."));
+      if (started.current === latest.id && window.matchMedia("(min-width: 1200px)").matches)
+        downloadShareImageParts(state.permanentSlug, state.partCount);
+    }
+    // Completed jobs are replayed into this view once, without another render/upload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completed.length]);
   const permanentUrl = imageState ? `${siteUrl}/share/image/${imageState.permanentSlug}` : "";
 
   function generate(mode: GenerateMode, scope?: LongImageScope) {
+    if (!owner || pending) return;
     setError(undefined);
     setCopied(false);
     setProgress(t("Preparing snapshot…"));
-    const operationId = newTelemetryOperationId();
-    const exportMode = mode === "replace_existing" ? "replace" : "new";
-    startTransition(async () => {
-      const uploadedPaths: string[] = [];
-      let versionId: string | undefined;
-      let exportFinalized = false;
-      try {
-        const prepared = await prepareShareImageVersion({
-          exportId: mode === "replace_existing" ? (imageState?.exportId ?? null) : null,
-          locale,
+    try {
+      const operationId = newTelemetryOperationId();
+      owner.accept({
+        kind: "image.generate",
+        input: {
+          tripId: sharePage.tripId!,
+          operationId,
+          finalizeOperationId: newTelemetryOperationId(),
           mode,
-          operationId,
-          sharePageId: sharePage.id,
-          scope,
-        });
-        if ("error" in prepared) throw new Error(prepared.error);
-        versionId = prepared.data.versionId;
-        setProgress(t("Rendering the published Timeline…"));
-
-        const { renderTimelineExport, sha256 } = await import("../long-image/dom-renderer");
-        const parts = await renderTimelineExport({
-          destinationUrl: prepared.data.qrDestinationUrl,
-          destinationType: prepared.data.qrDestinationType,
-          itinerary: prepared.data.sourceSnapshot,
           locale,
-          templateId: sharePage.templateId,
-          templateVersion: sharePage.templateVersion,
-        });
-        const metadata: ShareImagePartInput[] = [];
-        const storage = getBrowserStorageProvider("share-images");
-
-        for (const [index, rendered] of parts.entries()) {
-          const storagePath = `${prepared.data.uploadPathPrefix}/part-${index + 1}.jpg`;
-          const checksum = await sha256(rendered.blob);
-          setProgress(
-            t("Uploading part {part} of {total}…", { part: index + 1, total: parts.length }),
-          );
-          const authorization = await authorizeShareImageUpload({
-            path: storagePath,
-            versionId: prepared.data.versionId,
-          });
-          if ("error" in authorization) throw new Error(authorization.error);
-          await uploadShareImagePart(storage, {
-            body: rendered.blob,
-            cacheControl: "31536000",
-            contentType: "image/jpeg",
-            path: storagePath,
-            signedUrl: authorization.data.signedUrl,
-            token: authorization.data.token,
-            upsert: false,
-            versionId: prepared.data.versionId,
-          });
-          uploadedPaths.push(storagePath);
-          metadata.push({
-            byteSize: rendered.blob.size,
-            checksum,
-            contentType: "image/jpeg",
-            height: rendered.height,
-            partNumber: index + 1,
-            storagePath,
-            width: rendered.width,
-          });
-        }
-
-        setProgress(t("Publishing permanent image link…"));
-        const finalized = await finalizeShareImageVersion({
-          exportMode,
-          operationId,
-          parts: metadata,
-          versionId,
-        });
-        if ("error" in finalized) throw new Error(finalized.error);
-        exportFinalized = true;
-        const now = new Date().toISOString();
-        onImageStateChange({
-          createdAt: mode === "replace_existing" ? (imageState?.createdAt ?? now) : now,
-          expiresAt: finalized.data.expiresAt,
-          exportId: prepared.data.exportId,
-          partCount: finalized.data.partCount,
-          permanentSlug: finalized.data.permanentSlug,
-          renderConfig: prepared.data.renderConfig,
-          sourceSnapshotHash: prepared.data.sourceSnapshotHash,
-          updatedAt: now,
-          versionNumber: prepared.data.versionNumber,
-        });
-        if (window.matchMedia("(min-width: 1200px)").matches) {
-          setProgress(
-            finalized.data.partCount === 1
-              ? t("Image ready. Download started.")
-              : t("Image ready. Downloading {count} files.", {
-                  count: finalized.data.partCount,
-                }),
-          );
-          downloadShareImageParts(finalized.data.permanentSlug, finalized.data.partCount);
-        } else {
-          setProgress(t("Image ready. Open it from this panel."));
-        }
-      } catch (caught) {
-        if (uploadedPaths.length) {
-          try {
-            await removeShareImageUploads(uploadedPaths);
-          } catch {
-            // Cleanup failure must not suppress the authoritative export failure outcome.
-          }
-        }
-        if (versionId && !exportFinalized) {
-          try {
-            await failShareImageVersion(
-              versionId,
-              caught instanceof Error ? caught.message : "Timeline export failed",
-              operationId,
-              exportMode,
-            );
-          } catch {
-            // Failure reporting cannot prevent the export UI from recovering.
-          }
-        }
-        setProgress(undefined);
-        setError(t(caught instanceof Error ? caught.message : "Timeline export failed."));
-      }
-    });
+          scope,
+          sharePage,
+          imageState,
+        },
+      });
+      started.current = operationId;
+    } catch (error) {
+      setError(String(error));
+    }
   }
 
   function downloadCurrent() {
@@ -209,24 +120,27 @@ export function useLongImageExport({
   }
 
   function revokePermanentLink() {
-    if (!imageState) return;
-    setError(undefined);
-    startTransition(async () => {
-      const result = await revokeShareImageExport(imageState.exportId, newTelemetryOperationId());
-      if ("error" in result) {
-        setError(result.error);
-        return;
-      }
-      setProgress(t("Permanent image link revoked."));
-      onImageStateChange(null);
-    });
+    if (!imageState || !owner) return;
+    try {
+      owner.accept({
+        kind: "image.revoke",
+        input: {
+          exportId: imageState.exportId,
+          operationId: newTelemetryOperationId(),
+          tripId: sharePage.tripId!,
+        },
+      });
+      setError(undefined);
+    } catch (error) {
+      setError(String(error));
+    }
   }
 
   return {
     copied,
     copyPermanentLink,
     downloadCurrent,
-    error,
+    error: error ?? owner?.queue.operations.find((op) => op.error)?.error,
     generate,
     pending,
     permanentUrl,

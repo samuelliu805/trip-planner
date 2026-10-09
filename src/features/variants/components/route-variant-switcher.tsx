@@ -30,6 +30,8 @@ export function RouteVariantSwitcher({
   sheetOpen,
   title,
   variants,
+  pendingVariantIds = [],
+  pendingNavigationEnabled = false,
 }: {
   activeVariant: PlannerVariant;
   activeVariantId: string;
@@ -42,6 +44,8 @@ export function RouteVariantSwitcher({
   sheetOpen: boolean;
   title: string;
   variants: PlannerVariant[];
+  pendingVariantIds?: string[];
+  pendingNavigationEnabled?: boolean;
 }) {
   const { t } = useI18n();
   return (
@@ -71,8 +75,17 @@ export function RouteVariantSwitcher({
               <T message={"Plans"} />
             </div>
             {variants.map((variant) => (
-              <DropdownMenuItem key={variant.id} onSelect={() => onSwitch(variant.id)}>
+              <DropdownMenuItem
+                key={variant.id}
+                disabled={!pendingNavigationEnabled && pendingVariantIds.includes(variant.id)}
+                onSelect={() => onSwitch(variant.id)}
+              >
                 <VariantIdentity variant={variant} />
+                {pendingVariantIds.includes(variant.id) ? (
+                  <span>
+                    <T message="Pending sync" />
+                  </span>
+                ) : null}
                 {variant.id === activeVariantId ? <Check className="ml-auto size-4" /> : null}
               </DropdownMenuItem>
             ))}
@@ -138,10 +151,16 @@ export function RouteVariantSwitcher({
               <Button
                 className="h-11 w-full justify-between px-3 font-normal"
                 key={variant.id}
+                disabled={!pendingNavigationEnabled && pendingVariantIds.includes(variant.id)}
                 onClick={() => onSwitch(variant.id)}
                 variant={variant.id === activeVariantId ? "outline" : "ghost"}
               >
                 <VariantIdentity variant={variant} />
+                {pendingVariantIds.includes(variant.id) ? (
+                  <span>
+                    <T message="Pending sync" />
+                  </span>
+                ) : null}
                 {variant.id === activeVariantId ? <Check className="size-4" /> : null}
               </Button>
             ))}

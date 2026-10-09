@@ -1,15 +1,16 @@
 "use client";
 
 import { T } from "@/features/i18n/i18n-provider";
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
+import {
+  usePersistentEditorState,
+  PersistentTextField as PlannerEditorTextField,
+  PersistentInput as Input,
+  PersistentTextarea as Textarea,
+} from "@/features/editing/persistent-editor-fields";
 
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  PlannerEditorField,
-  PlannerEditorTextField,
-} from "@/features/itinerary/components/planner-editor-fields";
+import { PlannerEditorField } from "@/features/itinerary/components/planner-editor-fields";
 
 import { DateRangeFields } from "./date-range-fields";
 import {
@@ -26,8 +27,8 @@ import { researchItemPriceStep, type ResearchItemFormStep } from "../research-it
 import type { ResearchCategory, ResearchItem } from "../types";
 
 function StayFields({ item }: { item?: ResearchItem }) {
-  const [startDate, setStartDate] = useState(item?.start_date ?? "");
-  const [endDate, setEndDate] = useState(item?.end_date ?? "");
+  const [startDate, setStartDate] = usePersistentEditorState("startDate", item?.start_date ?? "");
+  const [endDate, setEndDate] = usePersistentEditorState("endDate", item?.end_date ?? "");
   return (
     <section
       className="min-w-0 space-y-6"
@@ -66,11 +67,20 @@ function RentalFieldPages({
   activeStepId: ResearchItemFormStep["id"];
   item?: ResearchItem;
 }) {
-  const [startDate, setStartDate] = useState(item?.start_date ?? "");
-  const [endDate, setEndDate] = useState(item?.end_date ?? "");
-  const [returnToPickup, setReturnToPickup] = useState(item ? rentalReturnsToPickup(item) : true);
-  const [startTime, setStartTime] = useState(item ? (item.start_time ?? "") : "12:00");
-  const [endTime, setEndTime] = useState(item ? (item.end_time ?? "") : "12:00");
+  const [startDate, setStartDate] = usePersistentEditorState("startDate", item?.start_date ?? "");
+  const [endDate, setEndDate] = usePersistentEditorState("endDate", item?.end_date ?? "");
+  const [returnToPickup, setReturnToPickup] = usePersistentEditorState(
+    "returnToPickup",
+    item ? rentalReturnsToPickup(item) : true,
+  );
+  const [startTime, setStartTime] = usePersistentEditorState(
+    "startTime",
+    item ? (item.start_time ?? "") : "12:00",
+  );
+  const [endTime, setEndTime] = usePersistentEditorState(
+    "endTime",
+    item ? (item.end_time ?? "") : "12:00",
+  );
   return (
     <>
       <input name="returnToPickup" type="hidden" value={returnToPickup ? "true" : ""} />

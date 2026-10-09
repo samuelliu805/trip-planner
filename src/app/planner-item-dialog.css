@@ -33,8 +33,22 @@ body.planner-editor-viewport-locked {
   overscroll-behavior-y: auto !important;
 }
 
-body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
+body:has(.planner-item-dialog[data-state="open"]:not([data-nonblocking])) .trip-planner-page {
   visibility: hidden;
+}
+
+@media (min-width: 1200px) {
+  .planner-item-dialog[data-nonblocking] {
+    top: 5rem !important;
+    right: 1rem !important;
+    left: auto !important;
+    width: min(32rem, 42vw) !important;
+    height: calc(100dvh - 6rem) !important;
+    max-height: calc(100dvh - 6rem) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 1rem !important;
+    box-shadow: 0 12px 40px #0002 !important;
+  }
 }
 
 .planner-item-dialog .planner-item-form {

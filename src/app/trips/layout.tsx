@@ -1,3 +1,4 @@
+import { DraftScopeProvider } from "@/features/editing/draft-scope";
 import { T } from "@/features/i18n/i18n-provider";
 import { LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
@@ -24,42 +25,46 @@ export default async function TripsLayout({ children }: { children: React.ReactN
   const locale = await getRequestLocale();
 
   return (
-    <div className="trips-shell min-h-dvh bg-background">
-      <AuthenticatedGuestStorageCleanup />
-      <AuthenticatedTelemetryIdentity appUserId={user.id} locale={locale} />
-      <header className="trips-global-header sticky top-0 z-[80] border-b bg-card/95 backdrop-blur">
-        <div className="flex h-14 w-full items-center justify-between px-4 sm:h-16 lg:px-5">
-          <Link className="font-semibold tracking-tight" href="/trips">
-            {tripPlannerWordmark}
-          </Link>
-          <div className="flex min-w-0 items-center gap-1 sm:gap-2">
-            <LanguageSwitcher />
-            <Button asChild className="min-h-11 min-w-0 px-2 sm:px-3" variant="ghost">
-              <Link href="/account" title={appUserIdentityLabel(user)}>
-                <UserRound aria-hidden="true" className="size-4 shrink-0" />
-                <span className="max-w-28 truncate sm:max-w-64">{appUserIdentityLabel(user)}</span>
-              </Link>
-            </Button>
-            <form action={logout}>
-              <input name="surface" type="hidden" value="global_header" />
-              <Button
-                aria-label="Log out"
-                data-i18n-aria-label={"Log out"}
-                className="size-11 p-0 sm:w-auto sm:px-3"
-                size="sm"
-                type="submit"
-                variant="ghost"
-              >
-                <LogOut aria-hidden="true" className="size-4" />
-                <span className="hidden sm:inline">
-                  <T message={"Log out"} />
-                </span>
+    <DraftScopeProvider actorId={user.id}>
+      <div className="trips-shell min-h-dvh bg-background">
+        <AuthenticatedGuestStorageCleanup />
+        <AuthenticatedTelemetryIdentity appUserId={user.id} locale={locale} />
+        <header className="trips-global-header sticky top-0 z-[80] border-b bg-card/95 backdrop-blur">
+          <div className="flex h-14 w-full items-center justify-between px-4 sm:h-16 lg:px-5">
+            <Link className="font-semibold tracking-tight" href="/trips">
+              {tripPlannerWordmark}
+            </Link>
+            <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+              <LanguageSwitcher />
+              <Button asChild className="min-h-11 min-w-0 px-2 sm:px-3" variant="ghost">
+                <Link href="/account" title={appUserIdentityLabel(user)}>
+                  <UserRound aria-hidden="true" className="size-4 shrink-0" />
+                  <span className="max-w-28 truncate sm:max-w-64">
+                    {appUserIdentityLabel(user)}
+                  </span>
+                </Link>
               </Button>
-            </form>
+              <form action={logout}>
+                <input name="surface" type="hidden" value="global_header" />
+                <Button
+                  aria-label="Log out"
+                  data-i18n-aria-label={"Log out"}
+                  className="size-11 p-0 sm:w-auto sm:px-3"
+                  size="sm"
+                  type="submit"
+                  variant="ghost"
+                >
+                  <LogOut aria-hidden="true" className="size-4" />
+                  <span className="hidden sm:inline">
+                    <T message={"Log out"} />
+                  </span>
+                </Button>
+              </form>
+            </div>
           </div>
-        </div>
-      </header>
-      {children}
-    </div>
+        </header>
+        {children}
+      </div>
+    </DraftScopeProvider>
   );
 }
