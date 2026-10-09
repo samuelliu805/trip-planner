@@ -4908,7 +4908,7 @@ async function verifyTabletMatrixViewport(browser, options) {
       alignment.length > 0 && alignment.every(({ delta }) => Math.abs(delta) <= 1),
       `${surface} Matrix first-line alignment: ${JSON.stringify(alignment)}`,
     );
-    const result = await evaluate(
+    const result = await waitFor(
       browser,
       `(async () => {
         const matrix = document.querySelector(${JSON.stringify(matrixSelector)});
@@ -4944,12 +4944,16 @@ async function verifyTabletMatrixViewport(browser, options) {
           if (matrix.scrollLeft > 0 && (targetTop === 0 || matrix.scrollTop > 0)) break;
         }
         await nextFrame();
+        if (!matrix.isConnected || !header.isConnected || rows.some((row) => !row.isConnected))
+          return null;
         const matrixRect = matrix.getBoundingClientRect();
         const headerRect = header.getBoundingClientRect();
         const visibleBodyRow = rows.find((row) => {
           const rect = row.getBoundingClientRect();
           return rect.bottom > headerRect.bottom + 2 && rect.top < matrixRect.bottom - 2;
         });
+        if (!visibleBodyRow)
+          throw new Error('The connected Matrix has no visible body row after scrolling.');
         const frozenBody = visibleBodyRow.querySelector('[role="rowheader"]:first-child');
         const bodyCells = [...visibleBodyRow.querySelectorAll('[role="gridcell"]')];
         const frozenRect = frozenBody.getBoundingClientRect();
@@ -4978,6 +4982,8 @@ async function verifyTabletMatrixViewport(browser, options) {
         });
         matrix.scrollTop = matrix.scrollHeight - matrix.clientHeight;
         await nextFrame();
+        if (!matrix.isConnected || !header.isConnected || rows.some((row) => !row.isConnected))
+          return null;
         const lastRowRect = rows.at(-1).getBoundingClientRect();
         const matrixContentBottom = matrixRect.top + matrix.clientTop + matrix.clientHeight;
         return {
@@ -5011,6 +5017,8 @@ async function verifyTabletMatrixViewport(browser, options) {
           windowScrollY: scrollY,
         };
       })()`,
+      `${surface} ${viewport.label} connected Matrix measurement`,
+      45_000,
     );
     const message = `${surface} ${viewport.label}`;
     assert(result.scrollLeft > 0, `${message} Matrix did not scroll horizontally.`);
