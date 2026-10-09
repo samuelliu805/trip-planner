@@ -16,7 +16,8 @@ export function CrossPlanCopyProbe({ source, target }) {
   });
   React.useEffect(() => {
     window.__crossCopy = runtime;
-  }, [runtime]);
+    window.__crossClipboard = clipboard;
+  }, [runtime, clipboard]);
   return (
     <section>
       <button

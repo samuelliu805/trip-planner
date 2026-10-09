@@ -2394,6 +2394,112 @@ try {
     },
   );
   await scenario(
+    "cross-Plan clipboard restores an unopened source queue before capturing its fields",
+    async (page) => {
+      delay = 3000;
+      await page.waitForFunction(() => window.__crossCopy && window.__crossClipboard);
+      const source = [...planWorkspaces.values()].find(
+        (row) => row.variant.name === "Unopened source",
+      );
+      const parent = await page.evaluate(async (source) => {
+        const scope = [...window.__runtime.scope.slice(0, 3), source.variant.id];
+        const operationId = crypto.randomUUID(),
+          day = source.days[0],
+          item = day.items[0];
+        const intent = {
+          kind: "update",
+          input: {
+            tripId: source.variant.trip_id,
+            variantId: source.variant.id,
+            dayId: day.id,
+            id: item.id,
+            type: item.type,
+            title: "Restored source edit",
+            details: {},
+            expectedItemsVersion: day.items_version,
+            expectedVersion: item.version,
+            operationId,
+          },
+        };
+        localStorage.setItem(
+          `trip-planner:sync-baseline:v1:${JSON.stringify(scope)}`,
+          JSON.stringify(source),
+        );
+        localStorage.setItem(
+          `trip-planner:outbox:v1:${JSON.stringify(scope)}:${operationId}`,
+          JSON.stringify({
+            id: operationId,
+            createdAt: Date.now(),
+            resources: [day.id],
+            dependsOn: [],
+            intent,
+            status: "queued",
+            attempts: 0,
+          }),
+        );
+        await window.__crossClipboard.pastePayload({
+          kind: "trip-planner/items",
+          version: 2,
+          source: { tripId: source.variant.trip_id, variantId: source.variant.id },
+          sourceColumn: 1,
+          cells: [{ rowOffset: 0, columnOffset: 0, items: [item.id] }],
+        });
+        return operationId;
+      }, source);
+      const child = await page.evaluate(() => window.__crossCopy.queue.operations[0]);
+      assert.equal(child.intent.sources[0].title, "Restored source edit");
+      assert.equal(child.intent.copiedItems[0].title, "Restored source edit");
+      assert.ok(child.dependsOn.includes(parent));
+      assert.equal(calls.filter((call) => call.kind === "copy").length, 0);
+      await page.waitForFunction(() => window.__crossCopy.queue.operations.length === 0, null, {
+        timeout: 16000,
+      });
+      const request = calls.find((call) => call.kind === "copy");
+      assert.equal(source.days[0].items[0].title, "Restored source edit");
+      assert.equal(request.input.sourceVersions[0], source.days[0].items[0].version);
+      const target = planWorkspaces.get(request.input.variantId);
+      assert.equal(target.days[0].items.length, 1);
+      assert.equal(target.days[0].items[0].title, "Restored source edit");
+    },
+    () => {
+      const target = structuredClone(workspace),
+        id = randomUUID();
+      target.variant = { ...target.variant, id, name: "Other Plan", is_primary: false };
+      target.days = target.days.map((day) => ({
+        ...day,
+        id: randomUUID(),
+        variant_id: id,
+        items: [],
+      }));
+      target.routePlans = [];
+      planWorkspaces.set(id, target);
+      const source = structuredClone(workspace),
+        sourceId = randomUUID();
+      source.variant = {
+        ...source.variant,
+        id: sourceId,
+        name: "Unopened source",
+        is_primary: false,
+      };
+      source.days = source.days.map((day) => {
+        const id = randomUUID();
+        return {
+          ...day,
+          id,
+          variant_id: sourceId,
+          items: day.items.map((item) => ({
+            ...item,
+            id: randomUUID(),
+            day_id: id,
+            variant_id: sourceId,
+          })),
+        };
+      });
+      source.routePlans = [];
+      planWorkspaces.set(sourceId, source);
+    },
+  );
+  await scenario(
     "pending Idea is a copy source before its formal identity exists",
     async (page) => {
       delay = 1800;

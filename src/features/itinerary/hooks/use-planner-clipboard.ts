@@ -18,7 +18,7 @@ import { isItineraryConflict, requireData } from "@/features/itinerary/query-cac
 import { loadPlannerWorkspace } from "../actions";
 import { plannerClipboardOperations } from "../planner-clipboard-paste";
 import { usePlannerOutbox } from "../planner-outbox-provider";
-import { findPlannerRuntime } from "../planner-runtime-owner";
+import { ownedPlannerRuntime } from "../planner-runtime-owner";
 import { usePlannerCellReplacement } from "./use-planner-cell-replacement";
 import { usePlannerClipboardStorage } from "./use-planner-clipboard-storage";
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
@@ -153,9 +153,6 @@ export function usePlannerClipboard({
         if (payload.source && payload.source.tripId !== tripId)
           throw new Error("Paste blocked: copied items belong to another trip.");
         const sourceVariantId = payload.source?.variantId ?? variantId;
-        const sourceRuntime = outbox
-          ? findPlannerRuntime([...outbox.scope.slice(0, 3), sourceVariantId])
-          : undefined;
         const sourceWorkspace =
           sourceVariantId === variantId
             ? (queryClient.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId)) ??
@@ -164,7 +161,14 @@ export function usePlannerClipboard({
                 queryKey: plannerQueryKey(tripId, sourceVariantId),
                 queryFn: async () => {
                   const loaded = requireData(await loadPlannerWorkspace(tripId, sourceVariantId));
-                  return sourceRuntime ? sourceRuntime.reconcile(loaded) : loaded;
+                  const sourceRuntime = outbox
+                    ? ownedPlannerRuntime(
+                        [...outbox.scope.slice(0, 3), sourceVariantId],
+                        queryClient,
+                        loaded,
+                      )
+                    : undefined;
+                  return sourceRuntime ? sourceRuntime.project() : loaded;
                 },
                 staleTime: 0,
               });
