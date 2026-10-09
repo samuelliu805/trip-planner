@@ -12,14 +12,20 @@ export function projectApplication(
     !projection.confirmed ||
     projection.baseDaysVersion === undefined ||
     workspace.variant.days_version <= projection.baseDaysVersion;
+  const days =
+    projection.confirmed && applyStructure
+      ? projection.days.map(
+          (snapshot) => workspace.days.find((day) => day.id === snapshot.id) ?? snapshot,
+        )
+      : [
+          ...workspace.days,
+          ...(applyStructure
+            ? projection.days.filter((day) => !workspace.days.some((old) => old.id === day.id))
+            : []),
+        ];
   return {
     ...workspace,
-    days: [
-      ...workspace.days,
-      ...(applyStructure
-        ? projection.days.filter((day) => !workspace.days.some((old) => old.id === day.id))
-        : []),
-    ]
+    days: days
       .filter((day) => !applyStructure || !projection.removedDayIds?.includes(day.id))
       .map((day) => {
         const snapshot = projection.days.find((row) => row.id === day.id);

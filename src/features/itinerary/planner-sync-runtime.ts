@@ -20,6 +20,7 @@ import {
   reboundApplicationProjection,
   resolveApplicationParents,
 } from "../research/application-receipt";
+import { bindApplicationProjectionParents } from "../research/application-projection-parents";
 
 const json = (value: unknown): OutboxOperation["intent"] => JSON.parse(JSON.stringify(value));
 
@@ -119,11 +120,22 @@ export class PlannerSyncRuntime {
           kind: string;
           input: { variantId?: string };
           projection?: ApplicationProjection;
+          applicationParents?: string[];
         };
         return intent.projection && intent.input.variantId === this.variantId
           ? projectApplication(
               workspace,
-              reboundApplicationProjection(this.storage, this.scope, op.id, intent.projection),
+              reboundApplicationProjection(
+                this.storage,
+                this.scope,
+                op.id,
+                bindApplicationProjectionParents(
+                  intent.projection,
+                  intent.applicationParents ?? op.dependsOn,
+                  this.scope,
+                  this.storage,
+                ),
+              ),
             )
           : workspace;
       }, this.confirmed);
@@ -179,6 +191,12 @@ export class PlannerSyncRuntime {
   confirmVariant(variant: PlannerWorkspace["variant"]) {
     this.confirmed = mergeConfirmedWorkspace(this.confirmed, { ...this.confirmed, variant });
     this.storage.setItem(this.checkpointKey, JSON.stringify(this.confirmed));
+    this.publish();
+  }
+
+  async confirmWorkspace(workspace: PlannerWorkspace) {
+    this.confirmed = mergeConfirmedWorkspace(this.confirmed, workspace);
+    await this.persistConfirmed();
     this.publish();
   }
 
@@ -247,6 +265,18 @@ export class PlannerSyncRuntime {
         this.confirmed,
         operation.ack as unknown as PlannerSyncDelta,
       );
+    await this.persistConfirmed();
+    // The checkpoint is durable before a dependent intent can lose its predecessor's ACK.
+    queueMicrotask(() => {
+      try {
+        this.queue.compactAcknowledged();
+      } catch {
+        /* A retained ACK safely replays next time. */
+      }
+    });
+  }
+
+  private async persistConfirmed() {
     const checkpoint = async () => {
       const cached = JSON.parse(
         this.storage.getItem(this.checkpointKey) ?? "null",
@@ -257,13 +287,5 @@ export class PlannerSyncRuntime {
     };
     if (navigator.locks) await navigator.locks.request(this.checkpointKey, checkpoint);
     else await checkpoint();
-    // The checkpoint is durable before a dependent intent can lose its predecessor's ACK.
-    queueMicrotask(() => {
-      try {
-        this.queue.compactAcknowledged();
-      } catch {
-        /* A retained ACK safely replays next time. */
-      }
-    });
   }
 }

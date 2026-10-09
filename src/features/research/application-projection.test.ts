@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createLocalCopies, dayEditSnapshot, dayIds } from "../itinerary/structure-sync.ts";
 import { sourceSnapshot } from "../variants/source-snapshot.ts";
+import { bindApplicationProjectionParents } from "./application-projection-parents.ts";
 import { resolveApplicationSnapshotParents } from "./application-snapshot-receipt.ts";
 import test from "node:test";
 import { randomUUID } from "node:crypto";
@@ -77,6 +78,83 @@ function memory() {
     },
   } as Storage;
 }
+
+test("a following application binds canonical days without duplicating its predecessor", () => {
+  const { workspace, source, scope } = fixture();
+  source.start_date = "2026-10-10";
+  const first = captureApplicationProjection(workspace, [source], {});
+  const pending = projectApplication(workspace, first);
+  const next = captureApplicationProjection(
+    pending,
+    [{ ...source, id: randomUUID(), title: "B" }],
+    {
+      dayId: first.items[0].day_id,
+    },
+  );
+  const frozen = structuredClone(next);
+  const storage = memory(),
+    parent = randomUUID(),
+    canonicalDay = randomUUID();
+  const row = { ...first.items[0], id: randomUUID(), day_id: canonicalDay, version: 2 };
+  const rows = first.days.map((day) => ({
+    ...day,
+    id: day.id === first.items[0].day_id ? canonicalDay : day.id,
+    items_version: 2,
+    items: day.id === first.items[0].day_id ? [row] : [],
+  }));
+  saveApplicationReceipt(storage, scope, parent, first, rows);
+  const bound = bindApplicationProjectionParents(next, [parent], scope, storage);
+  const result = projectApplication({ ...workspace, days: rows }, bound);
+  assert.deepEqual(next, frozen);
+  assert.equal(result.days.length, rows.length);
+  assert.deepEqual(
+    result.days.find((day) => day.id === canonicalDay)?.items.map((item) => item.title),
+    ["Idea", "B"],
+  );
+  assert.equal(bound.items[0].day_id, canonicalDay);
+  assert.ok(!bound.previewSnapshot?.includes(first.items[0].day_id));
+});
+
+test("a following replacement receipt rebases later child fields against its canonical preview", () => {
+  const { workspace, source, scope } = fixture();
+  const first = captureApplicationProjection(workspace, [source], {});
+  const storage = memory(),
+    parent = randomUUID(),
+    child = randomUUID();
+  const canonical = {
+    ...first.items[0],
+    id: randomUUID(),
+    version: 2,
+    details: { ...(first.items[0].details as object), serverOnly: "A" },
+  };
+  const rows = [{ ...workspace.days[0], items_version: 2, items: [canonical] }];
+  saveApplicationReceipt(storage, scope, parent, first, rows);
+  const replacement = structuredClone(first);
+  replacement.items[0].title = "B";
+  const bound = bindApplicationProjectionParents(replacement, [parent], scope, storage);
+  assert.equal(bound.items[0].id, canonical.id);
+  assert.equal(bound.bindings[0].id, canonical.id);
+  assert.equal(bound.items[0].title, "B");
+  assert.equal((bound.items[0].details as Record<string, unknown>).serverOnly, "A");
+  const confirmed = {
+    ...bound.items[0],
+    version: 3,
+    details: { ...(bound.items[0].details as object), serverOnly: "B" },
+  };
+  saveApplicationReceipt(storage, scope, child, bound, [{ ...rows[0], items: [confirmed] }]);
+  const operation = {
+    intent: {
+      kind: "update",
+      input: { id: canonical.id, details: { ...(bound.items[0].details as object), local: "C" } },
+    },
+    dependsOn: [child],
+  } as unknown as OutboxOperation;
+  const resolved = resolveApplicationParents(operation, scope, storage).intent as {
+    input: { details: Record<string, unknown> };
+  };
+  assert.equal(resolved.input.details.serverOnly, "B");
+  assert.equal(resolved.input.details.local, "C");
+});
 
 test("pending application is idempotent and preserves unrelated editing", () => {
   const { workspace, source } = fixture();
@@ -209,6 +287,46 @@ test("retained application receipts cannot resurrect confirmed day or item delet
   );
   assert.equal(projected.days[0].date, "2026-11-01");
   assert.deepEqual(projected.days[0].items, []);
+});
+
+test("acknowledged structure uses the frozen request baseline after an owned predecessor", () => {
+  const { workspace, source, scope } = fixture();
+  const projection = captureApplicationProjection(workspace, [source], {});
+  const created = {
+    ...workspace.days[0],
+    id: randomUUID(),
+    day_number: 2,
+    date: "2026-10-10",
+    items: [],
+  };
+  projection.days.push(created);
+  const rows = [
+    { ...workspace.days[0], items_version: 2, items: projection.items },
+    { ...created, id: randomUUID() },
+  ];
+  const storage = memory(),
+    parent = randomUUID(),
+    before = JSON.stringify(projection);
+  // A preceding owned insert advanced the baseline before this immutable request was first sent.
+  workspace.variant.days_version = 2;
+  saveApplicationReceipt(storage, scope, parent, projection, rows, 2);
+  const rebound = reboundApplicationProjection(storage, scope, parent, projection);
+  const alias = { ...created, id: randomUUID() };
+  workspace.days.push(alias);
+  assert.equal(rebound.baseDaysVersion, 2);
+  assert.ok(
+    !projectApplication(workspace, rebound).days.some((day) => day.id === alias.id),
+    "the atomic calendar replaces an earlier logical alias",
+  );
+  assert.equal(projectApplication(workspace, rebound).days.length, 2);
+  assert.equal(JSON.stringify(projection), before, "the accepted intent stays immutable");
+  workspace.variant.days_version = 3;
+  workspace.days = [workspace.days[0]];
+  assert.equal(
+    projectApplication(workspace, rebound).days.length,
+    1,
+    "a later confirmed deletion remains authoritative",
+  );
 });
 
 test("atomic receipt binds a pending edit and rejects a subsequent foreign edit", () => {

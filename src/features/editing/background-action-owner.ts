@@ -1,11 +1,11 @@
 "use client";
+import { publishApplicationProjections } from "./publish-application-projections";
 import { ownerAttachmentSchema } from "../attachments/schema";
 import type { QueryClient } from "@tanstack/react-query";
 import { loadPlannerWorkspace } from "../itinerary/actions";
-import { findPlannerRuntime, ownedPlannerRuntime } from "../itinerary/planner-runtime-owner";
-import { plannerQueryKey } from "../itinerary/planner-query";
-import { projectApplication } from "../research/application-projection";
+import { ownedPlannerRuntime } from "../itinerary/planner-runtime-owner";
 import { saveApplicationReceipt } from "../research/application-receipt";
+import { bindApplicationProjectionParents } from "../research/application-projection-parents";
 import { resolveApplicationSnapshotParents } from "../research/application-snapshot-receipt";
 import { tripSyncQueues } from "./sync-registry";
 import { z } from "zod";
@@ -87,26 +87,12 @@ export class BackgroundActionOwner {
   };
   getRevision = () => this.revision;
   private emit = () => {
-    for (const op of this.queue?.operations ?? []) {
-      const intent = backgroundActionSchema.parse(op.intent);
-      if (
-        (intent.kind === "idea.apply" || intent.kind === "booking.apply") &&
-        intent.projection &&
-        this.client
-      ) {
-        const scope = [...this.scope.slice(0, 3), intent.input.variantId];
-        const runtime = findPlannerRuntime(scope);
-        if (runtime) runtime.publish();
-        else if (op.status !== "acknowledged") {
-          const key = plannerQueryKey(this.scope[2], intent.input.variantId);
-          this.client.setQueryData(
-            key,
-            (workspace: import("../itinerary/types").PlannerWorkspace | undefined) =>
-              workspace ? projectApplication(workspace, intent.projection!) : workspace,
-          );
-        }
-      }
-    }
+    publishApplicationProjections(
+      this.queue?.operations ?? [],
+      this.scope,
+      this.storage,
+      this.client,
+    );
     this.revision++;
     this.listeners.forEach((listener) => listener());
   };
@@ -211,26 +197,36 @@ export class BackgroundActionOwner {
     ) {
       const variantId =
         intent.kind === "booking.revert" ? intent.variantId : intent.input.variantId;
-      if (intent.kind !== "booking.revert" && intent.projection)
+      if (intent.kind !== "booking.revert" && intent.projection) {
+        const request = backgroundActionSchema.parse(op.wire ?? op.intent);
         saveApplicationReceipt(
           this.storage,
           this.scope,
           op.id,
-          intent.projection,
+          bindApplicationProjectionParents(
+            intent.projection,
+            intent.applicationParents ?? op.dependsOn,
+            this.scope,
+            this.storage,
+          ),
           (
             op.ack as unknown as {
               data: { projectionRows: import("../itinerary/types").PlannerDay[] };
             }
           ).data.projectionRows,
+          request.kind === "idea.apply" || request.kind === "booking.apply"
+            ? request.input.expectedDaysVersion
+            : undefined,
         );
+      }
       const loaded = await loadPlannerWorkspace(this.scope[2], variantId);
       if (!isAccountActive(this.scope[1])) return;
       if (!loaded.data) throw new Error(loaded.error ?? "The updated Plan could not be recovered.");
-      ownedPlannerRuntime(
+      await ownedPlannerRuntime(
         [this.scope[0], this.scope[1], this.scope[2], variantId],
         this.client,
         loaded.data,
-      );
+      ).confirmWorkspace(loaded.data);
       void this.client.invalidateQueries({ queryKey: ["research-workspace", this.scope[2]] });
       void this.client.invalidateQueries({ queryKey: ["variant-comparison", this.scope[2]] });
       void this.client.invalidateQueries({ queryKey: ["variant-decision-summary", this.scope[2]] });

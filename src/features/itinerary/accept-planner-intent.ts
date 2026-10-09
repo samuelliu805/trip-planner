@@ -19,6 +19,7 @@ import { canonicalActivityOrderIds } from "./activity-order";
 import { tripSyncQueues } from "../editing/sync-registry";
 import { itemEditableSnapshot } from "./item-editable-snapshot";
 import type { ApplicationProjection } from "../research/application-projection";
+import { bindApplicationProjectionParents } from "../research/application-projection-parents";
 const json = (value: unknown) => JSON.parse(JSON.stringify(value));
 type AcceptedPlannerContext = {
   scope: string[];
@@ -96,18 +97,26 @@ export function acceptPlannerIntent(context: AcceptedPlannerContext, intent: Pla
         input: { variantId?: string };
         variantId?: string;
         projection?: ApplicationProjection;
+        applicationParents?: string[];
       };
+      const projection = action.projection
+        ? bindApplicationProjectionParents(
+            action.projection,
+            action.applicationParents ?? op.dependsOn,
+            context.scope,
+            context.storage,
+          )
+        : undefined;
       const affectedDayId = "dayId" in intent.input ? intent.input.dayId : undefined;
       const affected =
-        !action.projection ||
+        !projection ||
         isStructureIntent(intent) ||
         ids.some(
           (id) =>
-            action.projection!.items.some((item) => item.id === id) ||
-            action.projection!.removedIds.includes(id),
+            projection.items.some((item) => item.id === id) || projection.removedIds.includes(id),
         ) ||
         (affectedDayId &&
-          action.projection.days.some(
+          projection.days.some(
             (day) =>
               day.id === affectedDayId &&
               !context.confirmed.days.some(
@@ -115,7 +124,7 @@ export function acceptPlannerIntent(context: AcceptedPlannerContext, intent: Pla
               ),
           )) ||
         (intent.kind === "reorder" &&
-          action.projection.items.some((item) => item.day_id === intent.input.dayId));
+          projection.items.some((item) => item.day_id === intent.input.dayId));
       if (
         ["idea.apply", "booking.apply", "booking.revert"].includes(action.kind) &&
         ((action.input.variantId ?? action.variantId) === context.variantId ||

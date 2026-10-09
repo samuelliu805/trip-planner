@@ -97,6 +97,26 @@ function serialized(value: ReturnType<typeof normalized>) {
   ]);
 }
 
+export function rebaseApplicationSnapshot(
+  snapshot: string,
+  parents: string[],
+  scope: string[],
+  storage: Storage,
+) {
+  for (const parent of new Set(parents)) {
+    const receipt = readApplicationReceipt(storage, scope, parent);
+    if (!receipt?.previewSnapshot || !receipt.confirmedSnapshot) continue;
+    snapshot = serialized(
+      overlay(
+        normalized(receipt.confirmedSnapshot, {}),
+        normalized(receipt.previewSnapshot, receipt.ids),
+        normalized(snapshot, receipt.ids),
+      ) as ReturnType<typeof normalized>,
+    );
+  }
+  return snapshot;
+}
+
 /** Three-way rebase uses only a scoped predecessor's atomic receipt, never a later remote read. */
 export function resolveApplicationSnapshotParents(
   operation: OutboxOperation,
@@ -110,19 +130,14 @@ export function resolveApplicationSnapshotParents(
     input?: Record<string, unknown>;
   };
   if (!["idea.apply", "booking.apply"].includes(intent.kind) || !intent.before) return operation;
-  for (const parent of new Set([...operation.dependsOn, ...(intent.applicationParents ?? [])])) {
+  const parents = [...operation.dependsOn, ...(intent.applicationParents ?? [])];
+  for (const parent of new Set(parents)) {
     const receipt = readApplicationReceipt(storage, scope, parent);
     if (!receipt?.previewSnapshot || !receipt.confirmedSnapshot) continue;
     for (const field of ["dayId", "targetItemId", "beforeItemId"])
       if (intent.input && typeof intent.input[field] === "string")
         intent.input[field] = receipt.ids[intent.input[field] as string] ?? intent.input[field];
-    intent.before = serialized(
-      overlay(
-        normalized(receipt.confirmedSnapshot, {}),
-        normalized(receipt.previewSnapshot, receipt.ids),
-        normalized(intent.before, receipt.ids),
-      ) as ReturnType<typeof normalized>,
-    );
   }
+  intent.before = rebaseApplicationSnapshot(intent.before, parents, scope, storage);
   return { ...operation, intent: JSON.parse(JSON.stringify(intent)) };
 }

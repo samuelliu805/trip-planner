@@ -17,6 +17,7 @@ export function applicationEntityId(
   return bytes ? (JSON.parse(bytes) as Receipt).ids?.[entityId] : undefined;
 }
 type Receipt = {
+  baseDaysVersion?: number;
   ids: Record<string, string>;
   pairs: Array<{ preview: ItineraryItem; confirmed: ItineraryItem }>;
   rows: PlannerDay[];
@@ -64,9 +65,15 @@ export function saveApplicationReceipt(
   id: string,
   projection: ApplicationProjection,
   rows: PlannerDay[],
+  sentDaysVersion?: number,
 ) {
   if (!Array.isArray(rows)) throw new Error("The application after-image could not be recovered.");
-  const receipt: Receipt = { ids: {}, pairs: [], rows };
+  const receipt: Receipt = {
+    ids: {},
+    pairs: [],
+    rows,
+    baseDaysVersion: sentDaysVersion ?? projection.baseDaysVersion,
+  };
   for (const day of projection.days) {
     const confirmed =
       rows.find((row) => row.id === day.id) ?? rows.find((row) => row.date === day.date);
@@ -141,6 +148,7 @@ export function reboundApplicationProjection(
   return {
     ...projection,
     confirmed: true,
+    baseDaysVersion: receipt.baseDaysVersion ?? projection.baseDaysVersion,
     days: receipt.rows.map((day) => ({ ...day, items: [] })),
     items: receipt.pairs.map((pair) => pair.confirmed),
   };

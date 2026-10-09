@@ -1857,6 +1857,7 @@ try {
   await scenario(
     "Idea then booking continues through its predecessor receipt without a false conflict",
     async (page) => {
+      const staleWorkspace = structuredClone(workspace);
       delay = 1800;
       await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
       await page
@@ -1896,6 +1897,44 @@ try {
         1,
       );
       assert.equal(await page.locator('[data-sync-status="Conflict"]').count(), 0);
+      const checkpoint = await page.evaluate(() =>
+        JSON.parse(
+          localStorage.getItem(
+            `trip-planner:sync-baseline:v1:${JSON.stringify(window.__runtime.scope)}`,
+          ),
+        ),
+      );
+      assert.deepEqual(
+        checkpoint.days,
+        workspace.days,
+        "both application ACKs are durable before compaction",
+      );
+      await page.route("**/", async (route) => {
+        const response = await route.fetch();
+        const html = await response.text();
+        const initial = `window.__initial=${JSON.stringify(workspace)}`;
+        assert.ok(html.includes(initial));
+        await route.fulfill({
+          response,
+          body: html.replace(initial, `window.__initial=${JSON.stringify(staleWorkspace)}`),
+        });
+      });
+      await page.reload();
+      await page.locator("[data-test-item]").filter({ hasText: "Idea 71" }).waitFor();
+      await page.locator("[data-test-item]").filter({ hasText: "Booked flight" }).waitFor();
+      assert.equal(
+        await page.locator("[data-test-item]").filter({ hasText: "Idea 71" }).count(),
+        1,
+      );
+      assert.equal(
+        await page.locator("[data-test-item]").filter({ hasText: "Booked flight" }).count(),
+        1,
+      );
+      assert.equal(
+        calls.filter((call) => ["idea-apply", "booking-apply"].includes(call.kind)).length,
+        2,
+        "a stale reload does not resend acknowledged applications",
+      );
     },
   );
   await scenario(
