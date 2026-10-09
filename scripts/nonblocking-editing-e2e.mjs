@@ -738,7 +738,14 @@ const server = createServer(async (request, response) => {
     };
     result = { data: tripSettings };
   } else if (kind === "idea" || kind === "merge")
-    result = { data: { ...input, id: input.id ?? key, title: input.title || "Idea", version: 1 } };
+    result = {
+      data: {
+        ...input,
+        id: input.id ?? key,
+        title: input.title || "Idea",
+        version: (input.expectedVersion ?? 0) + 1,
+      },
+    };
   else {
     const structural = ["insert", "remove-day", "reorder-days"].includes(kind);
     if (structural && input.expectedDaysVersion !== currentWorkspace.variant.days_version) {
@@ -2116,6 +2123,75 @@ try {
     },
     () => {
       workflowIdea = { category: "flight", start_date: workspace.days[0].date };
+    },
+  );
+  await scenario(
+    "Idea application waits for its pending source update",
+    async (page) => {
+      ideaDelay = 4000;
+      await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+      await page.waitForFunction(
+        () => window.__workflows && window.__ideas && window.__workflowItems,
+      );
+      const parent = await page.evaluate(() => {
+        const source = { ...window.__workflowItems[0], version: 1, title: "Original source Idea" };
+        const operationId = crypto.randomUUID();
+        window.__ideas.accept(
+          {
+            kind: "update",
+            input: {
+              tripId: source.trip_id,
+              operationId,
+              id: source.id,
+              expectedVersion: 1,
+              category: "activity",
+              title: window.__workflowItems[0].title,
+              currency: "USD",
+              segments: [],
+              links: [],
+            },
+          },
+          source,
+        );
+        return operationId;
+      });
+      await page
+        .locator("[data-workflow-probe]")
+        .getByRole("button", { name: "Add to Plan", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("combobox", { name: "Plan day", exact: true }).click();
+      await page.getByRole("option").first().click();
+      await dialog.getByRole("button", { name: "Add to Plan", exact: true }).click();
+      await dialog.waitFor({ state: "hidden", timeout: 750 });
+      const child = await page.evaluate(() => window.__workflows.queue.operations[0]);
+      assert.ok(
+        child.dependsOn.includes(parent),
+        "the pending source update is a required predecessor",
+      );
+      assert.equal(calls.filter((call) => call.kind === "idea-apply").length, 0);
+      await page.waitForFunction(
+        () =>
+          window.__ideas.queue.operations.length === 0 &&
+          window.__workflows.queue.operations.length === 0,
+        null,
+        { timeout: 15000 },
+      );
+      assert.equal(calls.filter((call) => call.kind === "idea-apply").length, 1);
+      assert.equal(await page.evaluate(() => window.__ideas.project()[0].version), 2);
+      assert.equal(
+        await page.evaluate(() => window.__ideas.project()[0].title),
+        "Edited source Idea",
+      );
+      assert.equal(
+        Object.values(
+          calls.find((call) => call.kind === "idea-apply").input.expectedResearchVersions,
+        )[0],
+        2,
+      );
+    },
+    () => {
+      workflowIdea = { version: 2, title: "Edited source Idea" };
     },
   );
   await scenario("new Plan then Idea waits for durable parent receipt", async (page) => {

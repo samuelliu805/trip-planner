@@ -48,6 +48,7 @@ export function WorkflowProbe({ workspace }) {
   const [application, setApplication] = React.useState();
   React.useEffect(() => {
     window.__workflows = owner;
+    window.__workflowItems = items;
   }, [owner]);
   return (
     <section data-workflow-probe>

@@ -150,8 +150,15 @@ export class BackgroundActionOwner {
         for (const op of entry.queue.operations.filter((op) => op.status !== "acknowledged")) {
           const parent = op.intent as {
             kind: string;
-            input: { variantId?: string; operationId?: string; researchItemId?: string };
+            input: {
+              variantId?: string;
+              operationId?: string;
+              researchItemId?: string;
+              id?: string;
+            };
           };
+          const sourceId =
+            parent.input.researchItemId ?? parent.input.id ?? parent.input.operationId;
           if (
             entry.scope[3] === target ||
             (entry.scope[3] === "variants" &&
@@ -160,11 +167,8 @@ export class BackgroundActionOwner {
             (entry.scope[3] === "ideas" &&
               intent.kind !== "booking.revert" &&
               (intent.kind === "idea.apply"
-                ? Object.hasOwn(
-                    intent.input.expectedResearchVersions,
-                    parent.input.researchItemId ?? parent.input.operationId ?? "",
-                  )
-                : intent.input.researchItemId === parent.input.researchItemId))
+                ? Object.hasOwn(intent.input.expectedResearchVersions, sourceId ?? "")
+                : intent.input.researchItemId === sourceId))
           )
             dependencies.push(op.id);
         }
