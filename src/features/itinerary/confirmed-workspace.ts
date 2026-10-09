@@ -1,5 +1,18 @@
 import { mergeAttachmentCollection } from "../attachments/merge-attachment-collection.ts";
-import type { PlannerSyncDelta, PlannerWorkspace } from "./types.ts";
+import type { PlannerSyncDelta, PlannerVariant, PlannerWorkspace } from "./types.ts";
+
+/** List metadata cannot certify day/item/route data that was not returned. */
+export function confirmVariantMetadata(current: PlannerWorkspace, variant: PlannerVariant) {
+  return mergeConfirmedWorkspace(current, {
+    ...current,
+    variant: {
+      ...variant,
+      content_version: current.variant.content_version,
+      days_version: current.variant.days_version,
+      items_version: current.variant.items_version,
+    },
+  });
+}
 
 export function mergeConfirmedWorkspace(
   current: PlannerWorkspace,
