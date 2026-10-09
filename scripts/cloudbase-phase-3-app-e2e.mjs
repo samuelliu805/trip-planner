@@ -3554,6 +3554,7 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
       `${error instanceof Error ? error.message : error}; bounded planner diagnostic: ${JSON.stringify(diagnostic)}`,
     );
   }
+  await waitForReactHydration(browser, addActivityExpression, "Add activity React hydration");
   await clickElement(browser, addActivityExpression, "Add activity");
   const placeSelector = 'input[aria-label="Place or activity name"]';
   try {

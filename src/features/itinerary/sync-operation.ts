@@ -6,7 +6,7 @@ import type {
 } from "./item-schema";
 import type { ReorderItineraryItemsInput, ClearItineraryItemsInput } from "./day-schema";
 import type { ItineraryItem, PlannerWorkspace } from "./types";
-import { insertActivityAtPlacement } from "./activity-order.ts";
+import { canonicalActivityOrderIds, insertActivityAtPlacement } from "./activity-order.ts";
 import { normalizedScheduleEndTime, scheduleKind } from "./mutation-helpers.ts";
 import { placeSnapshotFromJson } from "../../lib/providers/places/types.ts";
 import { removeItem, removeItems, replaceItem } from "./query-cache.ts";
@@ -143,7 +143,27 @@ export function projectSyncIntent(
   if (intent.kind === "update" && !existing) return workspace;
   const item = optimisticSavedItem(intent.input, existing);
   const next = replaceItem(workspace, item)!;
-  if (intent.kind === "update" && intent.input.insertAfterItemId === undefined) return next;
+  if (intent.kind === "update" && intent.input.insertAfterItemId === undefined) {
+    // The update RPC renumbers the full day even when no manual placement changes.
+    const positions = new Map(
+      canonicalActivityOrderIds(
+        workspace.days.find((day) => day.id === item.day_id)?.items ?? [],
+      ).map((id, position) => [id, position]),
+    );
+    return {
+      ...next,
+      days: next.days.map((day) =>
+        day.id === item.day_id
+          ? {
+              ...day,
+              items: day.items
+                .map((row) => ({ ...row, sort_order: positions.get(row.id) ?? row.sort_order }))
+                .sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id)),
+            }
+          : day,
+      ),
+    };
+  }
   return {
     ...next,
     days: next.days.map((day) =>

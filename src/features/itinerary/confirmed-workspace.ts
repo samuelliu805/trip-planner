@@ -45,6 +45,8 @@ export function mergeConfirmedWorkspace(
           const text = latest.version >= previous.version ? latest : previous;
           return mergeAttachmentCollection(previous, {
             ...text,
+            // Ordering changes may leave item text versions unchanged.
+            sort_order: item.sort_order,
             attachments: latest.attachments,
             attachments_version: latest.attachments_version,
           });
