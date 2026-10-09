@@ -247,7 +247,7 @@ const server = createServer(async (request, response) => {
   if (request.url === "/" || request.url === "/background") {
     response.setHeader("Content-Type", "text/html");
     response.end(
-      `<style>${css.css}</style><div id="fixture"></div><script>window.__initial=${JSON.stringify(workspace)};window.__trip=${JSON.stringify(tripSettings)};window.__initialVariants=${JSON.stringify([...planWorkspaces.values()].map((row) => row.variant))}</script><script>${bundle.outputFiles[0].text}</script>`,
+      `<style>${css.css}</style><div id="fixture"></div><script>window.__initial=${JSON.stringify(workspace)};window.__otherWorkspace=${JSON.stringify([...planWorkspaces.values()].find((row) => row.variant.id !== workspace.variant.id) ?? null)};window.__trip=${JSON.stringify(tripSettings)};window.__initialVariants=${JSON.stringify([...planWorkspaces.values()].map((row) => row.variant))}</script><script>${bundle.outputFiles[0].text}</script>`,
     );
     return;
   }
@@ -765,8 +765,9 @@ const server = createServer(async (request, response) => {
       currentWorkspace.variant.days_version++;
       result = { data: { id: key } };
     } else if (kind === "copy") {
+      const sourceWorkspace = planWorkspaces.get(input.sourceVariantId ?? input.variantId);
       const sources = input.sourceItemIds.map((id) =>
-        currentWorkspace.days.flatMap((day) => day.items).find((item) => item.id === id),
+        sourceWorkspace?.days.flatMap((day) => day.items).find((item) => item.id === id),
       );
       if (
         sources.some((source, index) => !source || source.version !== input.sourceVersions[index])
@@ -779,6 +780,7 @@ const server = createServer(async (request, response) => {
         ...source,
         id: input.copiedItemIds[index],
         day_id: target.id,
+        variant_id: input.variantId,
         version: 1,
         sort_order: target.items.length + index,
       }));
@@ -1894,6 +1896,101 @@ try {
         1,
       );
       assert.equal(await page.locator('[data-sync-status="Conflict"]').count(), 0);
+    },
+  );
+  await scenario(
+    "pending Idea is a copy source before its formal identity exists",
+    async (page) => {
+      delay = 1800;
+      await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+      await page
+        .locator("[data-workflow-probe]")
+        .getByRole("button", { name: "Add to Plan", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("combobox", { name: "Plan day", exact: true }).click();
+      await page.getByRole("option").first().click();
+      await dialog.getByRole("button", { name: "Add to Plan", exact: true }).click();
+      await dialog.waitFor({ state: "hidden", timeout: 750 });
+      await page
+        .locator("[data-test-item]")
+        .filter({ hasText: "Idea 71" })
+        .waitFor({ timeout: 750 });
+      await page.getByRole("button", { name: "Copy pending Idea to last", exact: true }).click();
+      assert.equal(calls.filter((call) => call.kind === "copy").length, 0);
+      await page.waitForFunction(
+        () =>
+          window.__workflows.queue.operations.length === 0 &&
+          window.__runtime.queue.operations.length === 0,
+        null,
+        { timeout: 16000 },
+      );
+      const copy = calls.find((call) => call.kind === "copy"),
+        parent = calls.find((call) => call.kind === "idea-apply");
+      assert.deepEqual(copy.input.sourceItemIds, [parent.input.operationId]);
+      assert.equal(workspace.days[0].items.filter((item) => item.title === "Idea 71").length, 1);
+      assert.equal(
+        workspace.days.at(-1).items.filter((item) => item.title === "Idea 71").length,
+        1,
+      );
+      assert.notEqual(
+        workspace.days[0].items.find((item) => item.title === "Idea 71").id,
+        workspace.days.at(-1).items.find((item) => item.title === "Idea 71").id,
+      );
+    },
+  );
+  await scenario(
+    "another Plan can copy a pending Idea through its source receipt",
+    async (page) => {
+      delay = 1800;
+      await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+      await page
+        .locator("[data-workflow-probe]")
+        .getByRole("button", { name: "Add to Plan", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("combobox", { name: "Plan day", exact: true }).click();
+      await page.getByRole("option").first().click();
+      await dialog.getByRole("button", { name: "Add to Plan", exact: true }).click();
+      await dialog.waitFor({ state: "hidden", timeout: 750 });
+      await page
+        .locator("[data-test-item]")
+        .filter({ hasText: "Idea 71" })
+        .waitFor({ timeout: 750 });
+      await page
+        .getByRole("button", { name: "Copy pending Idea to another Plan", exact: true })
+        .click();
+      assert.equal(calls.filter((call) => call.kind === "copy").length, 0);
+      await page.waitForFunction(
+        () =>
+          window.__workflows.queue.operations.length === 0 &&
+          window.__crossCopy?.queue.operations.length === 0,
+        null,
+        { timeout: 16000 },
+      );
+      const request = calls.find((call) => call.kind === "copy");
+      assert.equal(request.input.sourceVariantId, workspace.variant.id);
+      assert.notEqual(request.input.variantId, workspace.variant.id);
+      assert.deepEqual(request.input.sourceItemIds, [
+        calls.find((call) => call.kind === "idea-apply").input.operationId,
+      ]);
+      const target = planWorkspaces.get(request.input.variantId);
+      assert.equal(target.days[0].items.length, 1);
+      assert.equal(target.days[0].items[0].title, "Idea 71");
+      assert.equal(target.days[0].items[0].variant_id, target.variant.id);
+    },
+    () => {
+      const target = structuredClone(workspace),
+        id = randomUUID();
+      target.variant = { ...target.variant, id, name: "Other Plan", is_primary: false };
+      target.days = target.days.map((day) => ({
+        ...day,
+        id: randomUUID(),
+        variant_id: id,
+        items: [],
+      }));
+      target.routePlans = [];
+      planWorkspaces.set(id, target);
     },
   );
   await scenario("booking preview survives a lost ACK and binds once", async (page) => {

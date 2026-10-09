@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createLocalCopies, dayEditSnapshot, dayIds } from "../itinerary/structure-sync.ts";
 import { sourceSnapshot } from "../variants/source-snapshot.ts";
 import { resolveApplicationSnapshotParents } from "./application-snapshot-receipt.ts";
 import test from "node:test";
@@ -370,4 +371,117 @@ test("a following application rebases its own predecessor after compaction and r
     ).before,
     sourceSnapshot(pending),
   );
+});
+
+test("copy, clear and day removal bind pending application baselines without hiding later edits", () => {
+  const { workspace, source, scope } = fixture();
+  workspace.days.push({
+    ...workspace.days[0],
+    id: randomUUID(),
+    day_number: 2,
+    date: "2026-10-10",
+    items: [],
+  });
+  const projection = captureApplicationProjection(workspace, [source], {
+    dayId: workspace.days[0].id,
+  });
+  const preview = projection.items[0],
+    pending = projectApplication(workspace, projection),
+    parent = randomUUID(),
+    storage = memory();
+  const canonical = {
+    ...preview,
+    id: randomUUID(),
+    title: "Canonical A",
+    version: 3,
+    sort_order: 1,
+  };
+  workspace.days[0].items = [canonical];
+  workspace.days[0].content_version = 3;
+  saveApplicationReceipt(storage, scope, parent, projection, workspace.days);
+  const input = {
+    operationId: randomUUID(),
+    tripId: source.trip_id,
+    variantId: workspace.variant.id,
+    targetDayId: workspace.days[1].id,
+    copiedItemIds: [randomUUID()],
+    sourceItemIds: [preview.id],
+    sourceVersions: [1],
+    replaceTargetItemIds: [],
+    replaceTargetVersions: [],
+    expectedItemsVersion: 1,
+  };
+  const copy = {
+    id: input.operationId,
+    dependsOn: [parent],
+    intent: {
+      kind: "copy",
+      input,
+      sources: [preview],
+      replacements: [],
+      copiedItems: createLocalCopies(input, [preview]),
+    },
+  } as unknown as OutboxOperation;
+  const resolved = resolveApplicationParents(copy, scope, storage);
+  const prepared = prepareSyncIntent(resolved, workspace);
+  assert.ok(prepared.kind === "copy");
+  assert.deepEqual(prepared.input.sourceItemIds, [canonical.id]);
+  assert.deepEqual(prepared.input.sourceVersions, [3]);
+  assert.equal(prepared.copiedItems[0].id, input.copiedItemIds[0]);
+  assert.equal(prepared.copiedItems[0].title, canonical.title);
+  assert.equal(prepared.copiedItems[0].version, 1);
+  const remove = {
+    id: randomUUID(),
+    dependsOn: [parent],
+    intent: {
+      kind: "removeDay",
+      followsLocal: true,
+      beforeDays: dayIds(pending),
+      beforeDay: dayEditSnapshot(pending, pending.days[0].id),
+      input: {
+        operationId: randomUUID(),
+        tripId: source.trip_id,
+        variantId: workspace.variant.id,
+        dayId: pending.days[0].id,
+        expectedDaysVersion: 1,
+        expectedVersion: 1,
+        expectedContentVersion: 1,
+      },
+    },
+  } as unknown as OutboxOperation;
+  assert.equal(
+    (
+      prepareSyncIntent(resolveApplicationParents(remove, scope, storage), workspace).input as {
+        expectedContentVersion: number;
+      }
+    ).expectedContentVersion,
+    3,
+  );
+  const clear = {
+    id: randomUUID(),
+    dependsOn: [parent],
+    intent: {
+      kind: "clear",
+      followsLocal: true,
+      beforeItems: { [preview.id]: itemEditableSnapshot(preview) },
+      input: {
+        operationId: randomUUID(),
+        tripId: source.trip_id,
+        variantId: workspace.variant.id,
+        itemIds: [preview.id],
+        itemVersions: [1],
+        expectedItemsVersion: 1,
+      },
+    },
+  } as unknown as OutboxOperation;
+  assert.deepEqual(
+    (
+      prepareSyncIntent(resolveApplicationParents(clear, scope, storage), workspace).input as {
+        itemVersions: number[];
+      }
+    ).itemVersions,
+    [3],
+  );
+  workspace.days[0].items[0] = { ...canonical, title: "Foreign C", version: 4 };
+  assert.throws(() => prepareSyncIntent(resolved, workspace), /changed elsewhere/);
 });

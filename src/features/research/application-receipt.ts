@@ -2,6 +2,7 @@ import type { OutboxOperation } from "../editing/outbox";
 import { SyncFailure } from "../editing/outbox.ts";
 import type { ItineraryItem, PlannerDay } from "../itinerary/types";
 import { itemEditableSnapshot } from "../itinerary/item-editable-snapshot.ts";
+import { bindApplicationChild } from "./application-child-receipt.ts";
 import type { ApplicationProjection } from "./application-projection";
 
 const key = (scope: string[], id: string) =>
@@ -144,32 +145,6 @@ export function reboundApplicationProjection(
   };
 }
 
-function overlay(base: unknown, before: unknown, after: unknown): unknown {
-  if (JSON.stringify(before) === JSON.stringify(after)) return base;
-  if (
-    before &&
-    after &&
-    base &&
-    typeof before === "object" &&
-    typeof after === "object" &&
-    typeof base === "object" &&
-    !Array.isArray(after)
-  ) {
-    const result = { ...(base as object) } as Record<string, unknown>;
-    for (const name of new Set([...Object.keys(before), ...Object.keys(after)])) {
-      if (!Object.hasOwn(after, name)) delete result[name];
-      else
-        result[name] = overlay(
-          (base as Record<string, unknown>)[name],
-          (before as Record<string, unknown>)[name],
-          (after as Record<string, unknown>)[name],
-        );
-    }
-    return result;
-  }
-  return after;
-}
-
 /** Bind only unsent child intents against the parent's atomic after-image. */
 export function resolveApplicationParents(
   operation: OutboxOperation,
@@ -183,45 +158,7 @@ export function resolveApplicationParents(
     const receipt = JSON.parse(bytes) as Receipt;
     if (!receipt.ids || !Array.isArray(receipt.pairs))
       throw new SyncFailure("The application receipt needs recovery.", "conflict");
-    for (const pair of receipt.pairs) {
-      const input = intent.input as Record<string, unknown>;
-      if (input?.id === pair.preview.id && intent.kind === "update") {
-        if (input.details !== undefined)
-          input.details = overlay(pair.confirmed.details, pair.preview.details, input.details);
-        for (const [name, column] of [
-          ["title", "title"],
-          ["notes", "notes"],
-          ["startTime", "start_time"],
-          ["endTime", "end_time"],
-          ["priceAmount", "price_amount"],
-          ["priceCurrency", "price_currency"],
-          ["placeId", "place_id"],
-          ["bookingUrl", "booking_url"],
-        ]) {
-          const before = pair.preview[column as keyof ItineraryItem];
-          if (input[name] !== undefined && input[name] === before)
-            input[name] = pair.confirmed[column as keyof ItineraryItem];
-        }
-      }
-      if (intent.beforeItem && input?.id === pair.preview.id) {
-        intent.beforeItem = JSON.stringify(
-          overlay(
-            JSON.parse(itemEditableSnapshot(pair.confirmed)),
-            JSON.parse(itemEditableSnapshot(pair.preview)),
-            JSON.parse(String(intent.beforeItem)),
-          ),
-        );
-      }
-      const beforeItems = intent.beforeItems as Record<string, string> | undefined;
-      if (beforeItems?.[pair.preview.id])
-        beforeItems[pair.preview.id] = JSON.stringify(
-          overlay(
-            JSON.parse(itemEditableSnapshot(pair.confirmed)),
-            JSON.parse(itemEditableSnapshot(pair.preview)),
-            JSON.parse(beforeItems[pair.preview.id]),
-          ),
-        );
-    }
+    for (const pair of receipt.pairs) bindApplicationChild(intent, pair);
     const identityFields = new Set([
       "id",
       "day",
@@ -255,8 +192,11 @@ export function resolveApplicationParents(
     };
     intent = translate(intent) as Record<string, unknown>;
     for (const field of ["beforeItem", "beforeDay"])
-      if (typeof intent[field] === "string")
-        intent[field] = JSON.stringify(translate(JSON.parse(intent[field])));
+      if (typeof intent[field] === "string") {
+        const snapshot = translate(JSON.parse(intent[field])) as { items?: Array<{ id: string }> };
+        if (field === "beforeDay") snapshot.items?.sort((a, b) => a.id.localeCompare(b.id));
+        intent[field] = JSON.stringify(snapshot);
+      }
     if (intent.beforeItems)
       intent.beforeItems = Object.fromEntries(
         Object.entries(intent.beforeItems as Record<string, string>).map(([id, snapshot]) => [

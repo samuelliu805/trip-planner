@@ -80,6 +80,17 @@ export function acceptPlannerIntent(context: AcceptedPlannerContext, intent: Pla
   for (const entry of tripSyncQueues(context.scope)) {
     if (entry.queue === context.queue) continue;
     for (const op of entry.queue.operations.filter((op) => op.status !== "acknowledged")) {
+      if (
+        intent.kind === "copy" &&
+        intent.sources.some(
+          (source) =>
+            source.variant_id === entry.scope[3] && source.variant_id !== context.variantId,
+        ) &&
+        intentItemIds(op.intent as unknown as PlannerSyncIntent).some((id) =>
+          intent.input.sourceItemIds.includes(id),
+        )
+      )
+        dependencies.push(op.id);
       const action = op.intent as {
         kind: string;
         input: { variantId?: string };
@@ -107,7 +118,11 @@ export function acceptPlannerIntent(context: AcceptedPlannerContext, intent: Pla
           action.projection.items.some((item) => item.day_id === intent.input.dayId));
       if (
         ["idea.apply", "booking.apply", "booking.revert"].includes(action.kind) &&
-        (action.input.variantId ?? action.variantId) === context.variantId &&
+        ((action.input.variantId ?? action.variantId) === context.variantId ||
+          (intent.kind === "copy" &&
+            intent.sources.some(
+              (source) => source.variant_id === (action.input.variantId ?? action.variantId),
+            ))) &&
         affected
       )
         dependencies.push(op.id);

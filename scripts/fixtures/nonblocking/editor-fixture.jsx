@@ -31,6 +31,7 @@ import { WorkflowProbe } from "./workflow-probe";
 import { TripListProbe } from "./trip-list-probe";
 import { AttachmentProbe } from "./attachment-probe";
 import { PlaceProbe } from "./place-probe";
+import { CrossPlanCopyProbe } from "./cross-plan-copy-probe";
 
 const client = new QueryClient({
   defaultOptions: { queries: { retry: false, staleTime: Infinity } },
@@ -67,6 +68,11 @@ function EditorFixture() {
   }, [runtime, workspace, ideas]);
   return (
     <div>
+      {window.__otherWorkspace ? (
+        <PlannerOutboxProvider workspace={window.__otherWorkspace}>
+          <CrossPlanCopyProbe source={workspace} target={window.__otherWorkspace} />
+        </PlannerOutboxProvider>
+      ) : null}
       <PlannerSyncStatus mutating={false} />
       <button onClick={() => setPlaces((value) => !value)}>Toggle place search</button>
       {places ? <PlaceProbe tripId={initial.variant.trip_id} /> : null}
@@ -112,6 +118,23 @@ function EditorFixture() {
         }
       >
         Copy first to last
+      </button>
+      <button
+        onClick={() => {
+          const source = day.items.find((item) => item.details?.ideaResearchItemId);
+          if (!source) return;
+          copy.mutate({
+            tripId: initial.variant.trip_id,
+            variantId: initial.variant.id,
+            targetDayId: workspace.days.at(-1).id,
+            sourceItemIds: [source.id],
+            sourceVersions: [source.version],
+            expectedItemsVersion: workspace.days.at(-1).items_version,
+            operationId: crypto.randomUUID(),
+          });
+        }}
+      >
+        Copy pending Idea to last
       </button>
       <button onClick={() => setInline(true)}>Inline edit first</button>
       {inline ? <PlannerInlineFields item={day.items[0]} onClose={() => setInline(false)} /> : null}
