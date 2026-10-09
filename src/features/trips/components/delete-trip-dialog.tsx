@@ -104,6 +104,9 @@ export function DeleteTripDialog({
   const visibleState: TripActionState = failure
     ? { error: failure.error, conflict: failure.status === "conflict" }
     : state;
+  const visibleStateKey = failure
+    ? `${failure.id}:${failure.status}:${failure.attempts}:${failure.error}`
+    : state;
   function setOpen(next: boolean) {
     setInternalOpen(next);
     onOpenChange?.(next);
@@ -116,7 +119,11 @@ export function DeleteTripDialog({
         setOpen(false);
         return;
       }
-      if (failure?.status === "conflict" && reloadState.reloadSucceeded)
+      if (
+        failure?.status === "conflict" &&
+        reloadState.hiddenErrorState === visibleStateKey &&
+        reloadState.latestSnapshot
+      )
         owner.queue.archiveBranch(failure.id);
       owner.accept({
         kind: "trip.delete",
@@ -133,7 +140,7 @@ export function DeleteTripDialog({
       setState({ error: String(error) });
     }
   }
-  const [reloadState, setReloadState] = useState<TripDeleteReloadState<typeof state>>({
+  const [reloadState, setReloadState] = useState<TripDeleteReloadState<TripActionState | string>>({
     latestSnapshot: null,
     reloadSucceeded: false,
   });
@@ -144,7 +151,7 @@ export function DeleteTripDialog({
   );
   const checkingSharePages = effectiveSnapshot.activeSharePageCount === null;
   const visibleError =
-    visibleState !== reloadState.hiddenErrorState ? visibleState.error : undefined;
+    visibleStateKey !== reloadState.hiddenErrorState ? visibleState.error : undefined;
   const operationRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => onPendingChange?.(pending), [onPendingChange, pending]);
@@ -159,7 +166,7 @@ export function DeleteTripDialog({
         onUnavailable?.("This trip is no longer available. The delete dialog was closed safely.");
         return;
       }
-      setReloadState(completedTripDeleteReload(snapshot, state));
+      setReloadState(completedTripDeleteReload(snapshot, visibleStateKey));
     } finally {
       setReloadPending(false);
     }
@@ -228,7 +235,7 @@ export function DeleteTripDialog({
           {visibleError ? (
             <div className="px-5 pb-3 text-sm text-destructive sm:px-6" role="alert">
               <Localized value={visibleError} />
-              {visibleState.conflict && visibleState !== reloadState.hiddenErrorState ? (
+              {visibleState.conflict && visibleStateKey !== reloadState.hiddenErrorState ? (
                 <Button
                   className="mt-3 min-h-11 w-full sm:w-auto"
                   disabled={reloadPending}

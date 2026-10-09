@@ -6,7 +6,7 @@ import {
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -5302,22 +5302,65 @@ async function captureMutationForms(browser) {
 }
 
 async function forgeForm(browser, path, entries, replacements = {}) {
-  return evaluate(
+  const fields = { ...Object.fromEntries(entries), ...replacements };
+  const settings = "title" in fields;
+  const exportedName = settings ? "saveTripSettings" : "runTripBackgroundAction";
+  const manifest = JSON.parse(
+    await readFile(".next/server/server-reference-manifest.json", "utf8"),
+  );
+  const actions = Object.entries(manifest.node).filter(([, action]) =>
+    Object.values(action.workers).some((worker) => worker.exportedName === exportedName),
+  );
+  assert.equal(
+    actions.length,
+    1,
+    `${exportedName} must resolve in the exact compiled application.`,
+  );
+  const input = {
+    tripId: fields.trip_id,
+    expectedVersion: Number(fields.expected_version),
+    expectedContentVersion: Number(fields.expected_content_version),
+    operationId: randomUUID(),
+  };
+  const args = settings
+    ? [
+        {
+          ...input,
+          title: fields.title,
+          timezone: fields.timezone,
+          currency: fields.currency,
+          startDate: fields.start_date,
+          endDate: fields.end_date,
+          dayCount: Number(fields.day_count),
+        },
+      ]
+    : [{ kind: "trip.delete", input }];
+  const result = await evaluate(
     browser,
     `(async () => {
-      const entries = ${JSON.stringify(entries)};
-      const replacements = ${JSON.stringify(replacements)};
-      const body = new FormData();
-      for (const [name, value] of entries) body.append(name, name in replacements ? replacements[name] : value);
       const response = await fetch(${JSON.stringify(path)}, {
-        body,
+        body: JSON.stringify(${JSON.stringify(args)}),
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8', 'Next-Action': ${JSON.stringify(actions[0][0])} },
         credentials: "include",
         method: "POST",
         redirect: "manual",
       });
-      return { status: response.status, text: (await response.text()).slice(0, 500) };
+      const text = await response.text();
+      return {
+        status: response.status,
+        hasError: /"error"\\s*:/.test(text),
+        invalidAction: /Failed to find Server Action|invalid.*(?:UUID|input|action)|Sign in|Authentication required/i.test(text),
+      };
     })()`,
   );
+  assert.equal(result.status, 200, `${exportedName} must reach its actual authorization boundary.`);
+  assert.equal(result.hasError, true, `${exportedName} must reject user B's write.`);
+  assert.equal(
+    result.invalidAction,
+    false,
+    `${exportedName} must test the authenticated authorization boundary.`,
+  );
+  return result;
 }
 
 async function deleteTripThroughUi(browser, tripId) {
@@ -5390,6 +5433,22 @@ async function deleteTripThroughUi(browser, tripId) {
   await clickButtonText(browser, "Delete trip");
   await waitFor(
     browser,
+    `!document.querySelector('[role="alertdialog"]')`,
+    "accepted Trip deletion closes",
+  );
+  await assert.rejects(
+    waitForTripOutbox(browser, tripId, {
+      evaluate,
+      waitFor,
+      domains: ["trip-card"],
+      label: "Trip delete session captured conflict",
+    }),
+    /failed; outbox:.*"status":"conflict"/,
+  );
+  await openTripMenu(browser);
+  await clickButtonText(browser, "Delete trip");
+  await waitFor(
+    browser,
     `[...document.querySelectorAll('[role="alertdialog"] button')]
       .some((button) => button.textContent.trim() === "Reload latest" && !button.disabled)`,
     "Trip delete session structured conflict",
@@ -5401,6 +5460,13 @@ async function deleteTripThroughUi(browser, tripId) {
     `document.querySelector('[role="alertdialog"]')?.textContent.includes('Latest trip loaded. You can retry deletion.') &&
       document.querySelector('input[name="expected_version"]')?.value !== ${JSON.stringify(initialDeleteVersion)}`,
     "Trip delete session V2 reload",
+  );
+  assert.equal(
+    await evaluate(
+      browser,
+      `Boolean(document.querySelector('[role="alertdialog"] [role="alert"]'))`,
+    ),
+    false,
   );
   await clickButtonText(browser, "Cancel");
   await waitFor(
@@ -5430,7 +5496,7 @@ async function deleteTripThroughUi(browser, tripId) {
   );
   assert.deepEqual(reopenedSession, {
     expectedVersion: initialDeleteVersion,
-    hasOldConflict: false,
+    hasOldConflict: true,
     hasOldReloadSuccess: false,
   });
   await clickButtonText(browser, "Cancel");
@@ -5455,8 +5521,24 @@ async function deleteTripThroughUi(browser, tripId) {
       .find((button) => button.textContent.trim() === "Delete trip" && !button.disabled)`,
     "final refreshed Trip delete confirmation",
   );
+  await clickButtonText(browser, "Reload latest");
+  await waitFor(
+    browser,
+    `document.querySelector('[role="alertdialog"]')?.textContent.includes('Latest trip loaded. You can retry deletion.') &&
+      Number(document.querySelector('input[name="expected_version"]')?.value) === ${updatedTrip[0].version}`,
+    "final reviewed Trip delete tokens",
+  );
   await clickButtonText(browser, "Delete trip");
   await waitFor(browser, 'location.pathname === "/trips"', "trip deletion", 45_000);
+  assert.equal(
+    (
+      await controlledData(
+        () => db.from("trips").select("id").eq("id", tripId),
+        "UI Trip deletion database confirmation",
+      )
+    ).length,
+    0,
+  );
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
