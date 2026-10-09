@@ -24,6 +24,7 @@ import { registerSyncQueue, subscribeSync } from "./sync-registry";
 import { publicItineraryLinkSchema } from "../sharing/schema";
 import { prepareBackgroundAction } from "./prepare-background-action";
 import { resolveOwnedSourceReceipts } from "../research/resolve-owned-source-receipts";
+import { navigateConfirmedTripDeletion } from "./navigate-confirmed-trip-deletion";
 
 const completedSchema = z.object({
   id: z.string(),
@@ -286,5 +287,6 @@ export class BackgroundActionOwner {
     };
     if (navigator.locks) await navigator.locks.request(this.checkpoint, write);
     else await write();
+    navigateConfirmedTripDeletion(this.scope, intent, op.ack);
   }
 }

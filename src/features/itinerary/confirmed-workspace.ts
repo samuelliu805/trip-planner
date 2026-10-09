@@ -51,6 +51,8 @@ export function mergeConfirmedWorkspace(
       const items = next.items_version >= before.items_version ? next.items : before.items;
       return {
         ...row,
+        day_number: day.day_number,
+        date: day.date,
         items: items.map((item) => {
           const previous = before.items.find((old) => old.id === item.id),
             latest = next.items.find((incoming) => incoming.id === item.id);
@@ -81,7 +83,10 @@ export function applyConfirmedDelta(
     ...incoming,
     // A day delta cannot restore/delete structure or unrelated days.
     variant: { ...incoming.variant, days_version: current.variant.days_version },
-    days: current.days.map((day) => incoming.days.find(({ id }) => id === day.id) ?? day),
+    days: current.days.map((day) => {
+      const updated = incoming.days.find(({ id }) => id === day.id);
+      return updated ? { ...updated, day_number: day.day_number, date: day.date } : day;
+    }),
     routePlans: [
       ...current.routePlans.filter(({ day_id }) => !ids.has(day_id)),
       ...incoming.routePlans,
