@@ -51,7 +51,10 @@ test("a failed or conflicted application blocks cold-navigation acceptance and b
       [key("fixture-trip", "idea-workflows")]: row(status, {
         error: "stale baseline",
         intent: { privateInput: "must-not-appear" },
-        wire: { token: "must-not-appear" },
+        wire: {
+          token: "must-not-appear",
+          input: { expectedResearchVersions: { "private-source-id": 2 } },
+        },
       }),
     });
     await assert.rejects(
@@ -65,6 +68,8 @@ test("a failed or conflicted application blocks cold-navigation acceptance and b
         assert.match(error.message, /fixture confirmation failed/);
         assert.match(error.message, new RegExp(status));
         assert.match(error.message, /stale baseline/);
+        assert.match(error.message, /sourceVersions.:\[2\]/);
+        assert.doesNotMatch(error.message, /private-source-id/);
         assert.doesNotMatch(error.message, /must-not-appear/);
         return true;
       },

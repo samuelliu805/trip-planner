@@ -15,6 +15,8 @@ export async function waitForTripOutbox(browser, tripId, { evaluate, waitFor, do
         counters: Object.fromEntries(['expectedVersion', 'expectedVariantVersion',
           'expectedContentVersion', 'expectedDaysVersion', 'expectedItemsVersion']
           .filter((name) => typeof input[name] === 'number').map((name) => [name, input[name]])),
+        sourceVersions: Object.values(input.expectedResearchVersions || {})
+          .filter((version) => typeof version === 'number'),
         error: typeof op.error === 'string' ? op.error.slice(0, 240) : undefined });
     }
     return { operations, failed: operations.some((op) => ['failed', 'conflict'].includes(op.status)) };
