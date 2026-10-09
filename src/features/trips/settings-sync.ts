@@ -5,18 +5,21 @@ import { DurableOutbox, SyncFailure, type OutboxOperation } from "../editing/out
 import { browserResourceLock } from "../editing/browser-resource-lock";
 import { registerAccountQueue } from "../editing/account-runtime";
 import { registerSyncQueue } from "../editing/sync-registry";
+import { tripSyncQueues, subscribeSync } from "../editing/sync-registry";
+import { hasScopeReceipt } from "../editing/dependency-receipts";
 import { useDraftScope } from "../editing/draft-scope";
 import { stableJson } from "../editing/stable-json";
 import type { Trip } from "@/platform/contracts/trips";
 import type { PlannerWorkspace } from "../itinerary/types";
 import { optimisticTripDayDates } from "./date-fields";
 import { saveTripSettings } from "./settings-actions";
+import { loadLatestTripSettings } from "./settings-read";
 import { updateTripSchema } from "./schema";
 import type { z } from "zod";
 import { setLocalActivity } from "../editing/sync-registry";
 
 type Input = z.infer<typeof updateTripSchema>;
-type Intent = { input: Input; before?: string };
+type Intent = { input: Input; before?: string; followsLocal?: boolean };
 const json = (value: unknown): OutboxOperation["intent"] => JSON.parse(JSON.stringify(value));
 const fields = (trip: Trip) =>
   stableJson([
@@ -71,9 +74,13 @@ class SettingsSync {
           throw new Error("The settings queue is damaged. Your draft is kept.");
         updateTripSchema.parse(value.input);
       },
+      (id) => hasScopeReceipt(storage, scope, id),
     );
     this.queue.subscribe(() => this.publish());
     registerSyncQueue({ scope, queue: this.queue });
+    subscribeSync(() => {
+      void this.queue.pump();
+    });
     registerAccountQueue(scope[1], (enabled) => {
       if (enabled) {
         this.reloadCheckpoint();
@@ -108,10 +115,29 @@ class SettingsSync {
     const dependencies = this.queue.operations
       .filter((op) => op.status !== "acknowledged")
       .map((op) => op.id);
+    const followsLocal = dependencies.length > 0;
+    if (
+      parsed.dayCount !== previous.day_count ||
+      (parsed.startDate || null) !== previous.start_date ||
+      (parsed.endDate || null) !== previous.end_date
+    )
+      for (const entry of tripSyncQueues(this.scope)) {
+        if (entry.queue === this.queue) continue;
+        for (const op of entry.queue.operations)
+          if (
+            op.status !== "acknowledged" &&
+            (entry.queue.prefix.startsWith("trip-planner:outbox:") ||
+              entry.queue.prefix.startsWith("trip-planner:variants-outbox:") ||
+              ["idea.apply", "booking.apply", "booking.revert"].includes(
+                String((op.intent as { kind?: unknown } | null)?.kind),
+              ))
+          )
+            dependencies.push(op.id);
+      }
     this.queue.enqueue(
       parsed.operationId,
       ["*"],
-      json({ input: parsed, ...(dependencies.length && { before: fields(previous) }) }),
+      json({ input: parsed, before: fields(previous), followsLocal }),
       dependencies,
     );
     return this.project();
@@ -126,12 +152,26 @@ class SettingsSync {
     const cached = JSON.parse(this.storage.getItem(this.checkpoint) ?? "null") as Trip | null;
     if (cached?.id === this.confirmed.id) this.confirmed = this.merge(this.confirmed, cached);
   }
-  private prepare(op: OutboxOperation) {
+  private async prepare(op: OutboxOperation) {
     this.reloadCheckpoint();
     const intent = structuredClone(op.intent) as unknown as Intent;
     if (intent.before) {
-      if (fields(this.confirmed) !== intent.before)
+      const latest = await loadLatestTripSettings(this.confirmed.id);
+      if (fields(latest) !== intent.before)
         throw new SyncFailure("Trip settings changed elsewhere. Your draft is kept.", "conflict");
+      if (
+        !intent.followsLocal &&
+        intent.input.dayCount < latest.day_count &&
+        latest.content_version !==
+          (intent.followsLocal
+            ? this.confirmed.content_version
+            : intent.input.expectedContentVersion)
+      )
+        throw new SyncFailure(
+          "Trip content changed before shortening it. Review the latest Plan. Your draft is kept.",
+          "conflict",
+        );
+      this.confirmed = this.merge(this.confirmed, latest);
       intent.input.expectedVersion = this.confirmed.version;
       intent.input.expectedContentVersion = this.confirmed.content_version;
     }

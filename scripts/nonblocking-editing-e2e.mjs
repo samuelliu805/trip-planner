@@ -207,6 +207,7 @@ const tripFixture = () => ({
   status: "open",
 });
 let tripSettings = tripFixture();
+let workflowIdea = null;
 let planWorkspaces = new Map([[workspace.variant.id, workspace]]);
 let planHold;
 let members = [],
@@ -247,7 +248,7 @@ const server = createServer(async (request, response) => {
   if (request.url === "/" || request.url === "/background") {
     response.setHeader("Content-Type", "text/html");
     response.end(
-      `<style>${css.css}</style><div id="fixture"></div><script>window.__initial=${JSON.stringify(workspace)};window.__otherWorkspace=${JSON.stringify([...planWorkspaces.values()].find((row) => row.variant.id !== workspace.variant.id) ?? null)};window.__trip=${JSON.stringify(tripSettings)};window.__initialVariants=${JSON.stringify([...planWorkspaces.values()].map((row) => row.variant))}</script><script>${bundle.outputFiles[0].text}</script>`,
+      `<style>${css.css}</style><div id="fixture"></div><script>window.__workflowIdea=${JSON.stringify(workflowIdea)};window.__initial=${JSON.stringify(workspace)};window.__otherWorkspace=${JSON.stringify([...planWorkspaces.values()].find((row) => row.variant.id !== workspace.variant.id) ?? null)};window.__trip=${JSON.stringify(tripSettings)};window.__initialVariants=${JSON.stringify([...planWorkspaces.values()].map((row) => row.variant))}</script><script>${bundle.outputFiles[0].text}</script>`,
     );
     return;
   }
@@ -409,17 +410,23 @@ const server = createServer(async (request, response) => {
           ? { ideaResearchItemId: input.researchItemId, ideaJourneyIndex: 0 }
           : { researchSourceId: input.researchItemId, segmentIndex: 0 },
     };
-    target.items.push(saved);
-    target.items_version++;
-    target.content_version++;
-    currentWorkspace.variant.items_version++;
-    currentWorkspace.variant.content_version++;
+    const alreadyApplied =
+      kind === "idea-apply"
+        ? target.items.find((item) => item.details?.ideaResearchItemId === input.researchItemId)
+        : undefined;
+    if (!alreadyApplied) {
+      target.items.push(saved);
+      target.items_version++;
+      target.content_version++;
+      currentWorkspace.variant.items_version++;
+      currentWorkspace.variant.content_version++;
+    }
     result =
       kind === "idea-apply"
         ? {
             data: {
-              status: "applied",
-              affectedEntityIds: [key],
+              status: alreadyApplied ? "already_applied" : "applied",
+              affectedEntityIds: [alreadyApplied?.id ?? key],
               projectionRows: structuredClone(currentWorkspace.days),
             },
           }
@@ -882,6 +889,7 @@ async function scenario(name, run, setup) {
   ideaDelay = 0;
   operations = new Map();
   tripSettings = tripFixture();
+  workflowIdea = null;
   setup?.();
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
@@ -1408,6 +1416,83 @@ try {
     await page.getByRole("button", { name: "Trip settings", exact: true }).click();
     assert.equal(await field.inputValue(), "Settings B");
   });
+  await scenario(
+    "structural trip settings wait for their pending planner predecessor",
+    async (page) => {
+      delay = 2500;
+      await page.getByRole("button", { name: "Edit first", exact: true }).click();
+      await page.locator('input[id^="item-title-"]').fill("Prior local planning edit");
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => window.__runtime.queue.operations.length > 0);
+      await page.getByRole("button", { name: "Trip settings", exact: true }).click();
+      await page.getByRole("textbox", { name: "Trip name" }).fill("Dependent settings");
+      await page.locator("#trip-day-count").fill("12");
+      tripSettings.content_version++;
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
+      assert.equal(calls.filter((call) => call.kind === "settings").length, 0);
+      await page.locator('[data-sync-status="Synced"]').waitFor({ timeout: 15000 });
+      assert.equal(workspace.days[0].items[0].title, "Prior local planning edit");
+      assert.equal(tripSettings.title, "Dependent settings");
+      assert.equal(tripSettings.day_count, 12);
+      assert.equal(calls.find((call) => call.kind === "settings").input.expectedContentVersion, 2);
+    },
+  );
+  for (const shorten of [false, true])
+    await scenario(
+      `trip settings ${shorten ? "shortening preserves conflict" : "growth binds latest content"} after prior planning edits`,
+      async (page) => {
+        let reads = 0;
+        const stale = structuredClone(tripSettings);
+        await page.route("**/api/trips/*/settings", async (route) => {
+          if (++reads !== 1) return route.continue();
+          await new Promise((resolve) => setTimeout(resolve, 1800));
+          await route.fulfill({
+            contentType: "application/json",
+            body: JSON.stringify({ trip: stale }),
+          });
+        });
+        await page.getByRole("button", { name: "Trip settings", exact: true }).click();
+        await page.getByRole("textbox", { name: "Trip name" }).fill("Fresh settings");
+        await page.locator("#trip-day-count").fill(shorten ? "1" : "12");
+        tripSettings.content_version++;
+        await page.getByRole("button", { name: "Save", exact: true }).click();
+        await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
+        if (shorten) {
+          await page.locator('[data-sync-status="Conflict"]').waitFor();
+          assert.equal(calls.filter((call) => call.kind === "settings").length, 0);
+          assert.equal(tripSettings.day_count, 2);
+          const retained = await page.evaluate(() =>
+            Object.keys(localStorage)
+              .filter(
+                (key) =>
+                  key.startsWith("trip-planner:settings-outbox:") &&
+                  JSON.parse(localStorage.getItem(key))?.intent,
+              )
+              .map((key) => JSON.parse(localStorage.getItem(key))),
+          );
+          assert.equal(retained[0].intent.input.title, "Fresh settings");
+          assert.equal(retained[0].intent.input.dayCount, 1);
+        } else {
+          await page.locator('[data-sync-status="Synced"]').waitFor();
+          await page.waitForFunction(
+            () => window.__client.getQueryData(["trip-settings", window.__trip.id])?.version === 2,
+          );
+          assert.equal(tripSettings.title, "Fresh settings");
+          assert.equal(tripSettings.day_count, 12);
+          assert.equal(
+            calls.find((call) => call.kind === "settings").input.expectedContentVersion,
+            2,
+          );
+          await page.reload();
+          await page.getByRole("button", { name: "Trip settings", exact: true }).click();
+          assert.equal(
+            await page.getByRole("textbox", { name: "Trip name" }).inputValue(),
+            "Fresh settings",
+          );
+        }
+      },
+    );
   for (const status of [401, 403, 404, 409, 500])
     await scenario(`HTTP ${status} preserves edit and independent B`, async (page) => {
       fault = status;
@@ -1825,6 +1910,87 @@ try {
       2,
     );
   });
+  await scenario(
+    "dated flight draft returns to existing Plans without unrelated receipts",
+    async (page) => {
+      await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+      await page
+        .locator("[data-workflow-probe]")
+        .getByRole("button", { name: "Add to Plan", exact: true })
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Create empty Plan + idea", exact: true })
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Create Plan", exact: true })
+        .click();
+      await page.waitForFunction(() => window.__workflows.queue.operations.length === 0);
+      await page.reload();
+      await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+      await page
+        .locator("[data-workflow-probe]")
+        .getByRole("button", { name: "Add to Plan", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("heading", { name: "New Plan dates", exact: true }).waitFor();
+      await dialog.getByRole("button", { name: "Back", exact: true }).click();
+      const variants = dialog.locator("input[data-variant-id]");
+      await page.waitForFunction(
+        () => document.querySelectorAll('[role="dialog"] input[data-variant-id]').length === 2,
+      );
+      assert.equal(
+        await variants.nth(1).isEnabled(),
+        true,
+        "creation's ACK does not disable this separate explicit review",
+      );
+      assert.equal(
+        await dialog.getByRole("button", { name: "Update this Plan", exact: true }).isDisabled(),
+        true,
+      );
+      await variants.nth(1).check();
+      const confirm = dialog.getByRole("button", { name: "Update selected Plans", exact: true });
+      assert.equal(await confirm.isDisabled(), true);
+      for (let i = 0; i < 2; i++) {
+        await dialog.getByRole("combobox", { name: "Plan day", exact: true }).nth(i).click();
+        await page.getByRole("option").first().click();
+        if (i === 0)
+          assert.equal(
+            await confirm.isDisabled(),
+            true,
+            "each selected Plan requires its own anchor",
+          );
+      }
+      assert.equal(await confirm.isEnabled(), true);
+      assert.equal(
+        calls.filter((call) => call.kind === "idea-apply").length,
+        1,
+        "reviewing and selecting never resends an application",
+      );
+      await confirm.click();
+      await dialog.waitFor({ state: "hidden", timeout: 750 });
+      assert.equal(
+        await page.evaluate(() => window.__navigation.at(-1)),
+        `/trips/${workspace.variant.trip_id}?variant=${workspace.variant.id}`,
+        "multi-Plan acceptance opens the first selected Plan",
+      );
+      await page.waitForFunction(() => window.__workflows.queue.operations.length === 0);
+      assert.equal(calls.filter((call) => call.kind === "idea-apply").length, 3);
+      for (const target of planWorkspaces.values())
+        assert.equal(
+          target.days
+            .flatMap((day) => day.items)
+            .filter(
+              (item) => item.details?.ideaResearchItemId === "00000000-0000-4000-8000-000000000071",
+            ).length,
+          1,
+        );
+    },
+    () => {
+      workflowIdea = { category: "flight", start_date: workspace.days[0].date };
+    },
+  );
   await scenario("new Plan then Idea waits for durable parent receipt", async (page) => {
     await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
     await page

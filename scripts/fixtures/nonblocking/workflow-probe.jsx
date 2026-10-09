@@ -41,7 +41,10 @@ export const planFixture = (workspace) => ({
 export function WorkflowProbe({ workspace }) {
   const owner = useBackgroundActions(workspace.variant.trip_id, "idea-workflows");
   const plan = planFixture(workspace),
-    items = [researchFixture(workspace), researchFixture(workspace, "72")];
+    items = [
+      { ...researchFixture(workspace), ...(window.__workflowIdea ?? {}) },
+      researchFixture(workspace, "72"),
+    ];
   const [application, setApplication] = React.useState();
   React.useEffect(() => {
     window.__workflows = owner;

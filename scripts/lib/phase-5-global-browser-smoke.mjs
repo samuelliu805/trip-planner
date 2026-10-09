@@ -1433,6 +1433,16 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   await waitFor(
     browser,
+    `document.querySelector('[role="dialog"][data-state="open"]')?.innerText.includes('New Plan dates')`,
+    "returning flight import retains its previous creation draft",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].find((button) => button.textContent.trim() === 'Back')`,
+    "choose existing Plans from the retained creation draft",
+  );
+  await waitFor(
+    browser,
     `(() => {
       const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
         .find((element) => element.getClientRects().length > 0);

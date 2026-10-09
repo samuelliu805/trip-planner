@@ -16,12 +16,7 @@ import { useSettingsSync } from "../settings-sync";
 import { updateTripSchema } from "../schema";
 import { useQuery } from "@tanstack/react-query";
 import { Settings2 } from "lucide-react";
-
-async function loadLatestTripSettings(tripId: string): Promise<Trip> {
-  const response = await fetch(`/api/trips/${tripId}/settings`, { cache: "no-store" });
-  if (!response.ok) throw new Error("Latest trip settings could not be loaded.");
-  return ((await response.json()) as { trip: Trip }).trip;
-}
+import { loadLatestTripSettings } from "../settings-read";
 
 export function TripForm({
   onSaved,
@@ -71,6 +66,7 @@ export function TripForm({
           return;
         }
         if (syncRef.current?.queue.operations.length) return;
+        syncRef.current?.reconcile(latest);
         setCurrentTrip(latest);
         draft.set("title", latest.title);
         draft.set("dayCount", String(latest.day_count));

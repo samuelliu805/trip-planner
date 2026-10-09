@@ -51,6 +51,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
       placements: {} as Record<string, IdeaVariantPlacement>,
       mode: "existing" as IdeaApplyMode,
       copyAnchor: null as number | null,
+      applicationIds: {} as Record<string, string>,
     },
   );
   const { selectedIds, placements, mode, copyAnchor } = fields.values;
@@ -65,7 +66,11 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
   const [loading, setLoading] = useState(false);
   const results: Record<string, IdeaApplyResult> = {};
   for (const row of owner?.completed ?? [])
-    if (row.intent.kind === "idea.apply" && row.intent.input.researchItemId === item.id)
+    if (
+      row.intent.kind === "idea.apply" &&
+      row.intent.input.researchItemId === item.id &&
+      fields.values.applicationIds[row.intent.input.variantId] === row.id
+    )
       results[row.intent.input.variantId] = {
         status:
           (row.result as { data: { status: string } }).data.status === "already_applied"
@@ -139,17 +144,19 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
   function applyToSelected() {
     if (!canApply || !owner || !remainingPlans.length) return;
     try {
-      for (const candidate of remainingPlans)
-        enqueueIdeaApplication(
+      for (const candidate of remainingPlans) {
+        const id = enqueueIdeaApplication(
           owner,
           queryClient,
           [item],
           candidate,
           placements[candidate.variantId] ?? initialIdeaVariantPlacement(item, candidate),
         );
+        fields.set("applicationIds", (current) => ({ ...current, [candidate.variantId]: id }));
+      }
       setOpen(false);
       setNotice(t("Saved locally"));
-      if (remainingPlans.length === 1)
+      if (remainingPlans.length > 0)
         router.push(tripSectionHref(item.trip_id, "plan", remainingPlans[0].variantId));
     } catch (error) {
       setError(String(error));
@@ -271,7 +278,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
             onModeChange={changeMode}
             pending={pending}
             remainingCount={remainingPlans.length}
-            retrying={Object.values(results).some((result) => result.status)}
+            retrying={selectedPlans.some((candidate) => results[candidate.variantId]?.status)}
             selectedCount={selectedPlans.length}
           />
         </DialogContent>
