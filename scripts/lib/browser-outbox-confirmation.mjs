@@ -37,6 +37,41 @@ export async function readTripOutbox(browser, tripId, { evaluate, domains }) {
   return evaluate(browser, tripOutboxSnapshot(tripId, domains));
 }
 
+/** Receipts prove acceptance even when a fast ACK has already compacted the queue. */
+export async function readTripAcceptedOperations(browser, tripId, { evaluate, domains }) {
+  return evaluate(
+    browser,
+    `(() => {
+    const accepted = new Map();
+    for (const key of Object.keys(localStorage)) {
+      const match = key.match(/^trip-planner:(?:[a-z-]+-)?outbox:v1:(\\[.*\\])(?::|-receipt:)([^:]+)$/);
+      if (!match) continue;
+      const scope = JSON.parse(match[1]);
+      if (scope[2] !== ${JSON.stringify(tripId)} || !${JSON.stringify(domains)}.includes(scope[3])) continue;
+      const completed = key.includes('-receipt:');
+      if (completed && localStorage.getItem(key) !== '1') continue;
+      const identity = scope[3] + ':' + match[2];
+      accepted.set(identity, { domain: scope[3], id: match[2], completed:
+        completed || accepted.get(identity)?.completed || false });
+    }
+    return [...accepted.values()];
+  })()`,
+  );
+}
+
+/** Safe diagnostics contain counts only, never operation identities or payloads. */
+export function summarizeNewTripOperations(before, after) {
+  const previous = new Set(before.map((row) => row.domain + ":" + row.id));
+  const counts = {};
+  for (const row of after) {
+    if (previous.has(row.domain + ":" + row.id)) continue;
+    counts[row.domain] ??= { accepted: 0, completed: 0 };
+    counts[row.domain].accepted++;
+    if (row.completed) counts[row.domain].completed++;
+  }
+  return counts;
+}
+
 /** Wait for requested operations and their actual queued predecessors, including ACK recovery. */
 export async function waitForTripOutbox(browser, tripId, { evaluate, waitFor, domains, label }) {
   const snapshot = tripOutboxSnapshot(tripId, domains);

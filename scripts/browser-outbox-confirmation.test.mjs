@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
-import { waitForTripOutbox } from "./lib/browser-outbox-confirmation.mjs";
+import {
+  waitForTripOutbox,
+  readTripAcceptedOperations,
+  summarizeNewTripOperations,
+} from "./lib/browser-outbox-confirmation.mjs";
 
 const key = (trip, domain, id = "op") =>
   `trip-planner:${domain === "variants" ? "variants" : "actions"}-outbox:v1:${JSON.stringify(["global", "actor", trip, domain])}:${id}`;
@@ -118,4 +122,23 @@ test("confirmation exposes a failed source predecessor and ignores unrelated sou
       return true;
     },
   );
+});
+
+test("acceptance survives ACK compaction while counts exclude previous and unrelated operations", async () => {
+  const operation = key("fixture-trip", "variants", "private-id");
+  const driver = fixture({ [operation]: row("queued", { intent: { private: "secret" } }) });
+  const options = { evaluate: driver.evaluate, domains: ["variants", "idea-workflows"] };
+  const before = await readTripAcceptedOperations(null, "fixture-trip", options);
+  driver.localStorage[operation.replace("]:private-id", "]-receipt:private-id")] = "1";
+  delete driver.localStorage[operation];
+  const child = key("fixture-trip", "idea-workflows", "private-child");
+  driver.localStorage[child.replace("]:private-child", "]-receipt:private-child")] = "1";
+  driver.localStorage[key("other-trip", "idea-workflows")] = row("queued");
+  const after = await readTripAcceptedOperations(null, "fixture-trip", options);
+  assert.equal(after.length, 2);
+  assert.ok(after.every((row) => row.completed));
+  const counts = summarizeNewTripOperations(before, after);
+  assert.deepEqual(counts, { "idea-workflows": { accepted: 1, completed: 1 } });
+  assert.doesNotMatch(JSON.stringify(counts), /private|secret/);
+  assert.deepEqual(summarizeNewTripOperations(after, after), {});
 });

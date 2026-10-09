@@ -1,0 +1,89 @@
+name: Temporary Global acceptance diagnostic
+on:
+  push:
+    branches: [diagnostics/nonblocking-global-71646]
+permissions:
+  contents: read
+  deployments: read
+concurrency:
+  group: phase-6-dual-environment
+  cancel-in-progress: false
+jobs:
+  global-live:
+    if: github.repository == 'samuelliu805/trip-planner' && github.actor == github.repository_owner
+    environment: cloudbase-pg-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      APP_REGION: global
+      AUTH_PROVIDER: supabase
+      CRON_SECRET: ${{ secrets.SUPABASE_DEV_CRON_SECRET }}
+      DATA_PROVIDER: supabase
+      NEXT_PUBLIC_APP_REGION: global
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+      NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID }}
+      NEXT_PUBLIC_MAPS_PROVIDER: google
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3100
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_DEV_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_DEV_URL }}
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+      NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
+      NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: development
+      PHASE3_GLOBAL_BASE_URL: http://127.0.0.1:3100
+      PHASE5_EXPECT_SUPABASE_CAPTCHA: ${{ vars.PHASE5_EXPECT_SUPABASE_CAPTCHA }}
+      PHASE5_GOOGLE_ALLOWED_HOSTNAME: trip-planner-ivory-one.vercel.app
+      PHASE5_REQUIRE_BROWSER_SMOKE: "1"
+      STORAGE_PROVIDER: supabase
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_DEV_SECRET_KEY }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          cache: npm
+          node-version: 24
+      - name: Verify exact workflow head
+        env:
+          PHASE5_CANDIDATE_SHA: ${{ github.sha }}
+          PHASE5_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$PHASE5_CANDIDATE_SHA"
+          test "$PHASE5_CANDIDATE_SHA" = "$PHASE5_SOURCE_SHA"
+      - run: npm ci
+      - name: Require controlled Global Preview configuration
+        run: |
+          npm run check:phase-5-environment -- global --live
+      - name: Build the exact Global selector and scan secrets
+        run: |
+          npm run build
+          npm run check:build-secret-boundary
+          npm run check:build-provider-isolation
+      - name: Require an exact-SHA Git-integrated Vercel Preview
+        id: preview
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PHASE5_CANDIDATE_SHA: ${{ github.sha }}
+          PHASE5_GLOBAL_PREVIEW_URL: ${{ vars.PHASE5_GLOBAL_PREVIEW_URL }}
+          PHASE5_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+          PHASE5_SOURCE_SHA: ${{ github.sha }}
+        run: node scripts/verify-vercel-preview-deployment.mjs
+      - name: Run Global Auth, CRUD, RPC, RLS, share, browser, and residue suite
+        env:
+          PHASE5_GLOBAL_BASE_URL: http://127.0.0.1:3100
+          PHASE5_GLOBAL_DEPLOYMENT_URL: ${{ steps.preview.outputs.url }}
+          PHASE5_START_APP: "1"
+        run: npm run test:global-phase-5-live
+      - name: Prove Global rejects CN cookies
+        run: npm run test:global-cookie-isolation
+      - name: Run private Storage, signed URL, cleanup, and zero-residue suite
+        if: ${{ always() }}
+        run: npm run test:supabase-phase-4-storage
+      - name: Record Global evidence identity
+        if: ${{ always() }}
+        run: |
+          printf '## Phase 6 Global live evidence\n\n- SHA: `%s`\n- Target: controlled Supabase dev/Preview\n- Run: `%s`\n' \
+            "${{ github.sha }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            >> "$GITHUB_STEP_SUMMARY"
+
