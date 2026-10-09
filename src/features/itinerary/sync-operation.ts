@@ -10,6 +10,7 @@ import { canonicalActivityOrderIds, insertActivityAtPlacement } from "./activity
 import { normalizedScheduleEndTime, scheduleKind } from "./mutation-helpers.ts";
 import { placeSnapshotFromJson } from "../../lib/providers/places/types.ts";
 import { removeItem, removeItems, replaceItem } from "./query-cache.ts";
+import { itemEditableSnapshot } from "./item-editable-snapshot.ts";
 import {
   projectStructureIntent,
   isStructureIntent,
@@ -144,6 +145,8 @@ export function projectSyncIntent(
   const item = optimisticSavedItem(intent.input, existing);
   const next = replaceItem(workspace, item)!;
   if (intent.kind === "update" && intent.input.insertAfterItemId === undefined) {
+    // The RPC's no-op path keeps the existing collection, including legacy gaps.
+    if (existing && itemEditableSnapshot(existing) === itemEditableSnapshot(item)) return next;
     // The update RPC renumbers the full day even when no manual placement changes.
     const positions = new Map(
       canonicalActivityOrderIds(

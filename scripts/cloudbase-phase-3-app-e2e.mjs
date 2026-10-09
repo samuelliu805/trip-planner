@@ -2645,7 +2645,8 @@ async function verifySetPrimaryConflictRetryThroughUi(browser, tripId, createdVa
       const alert = dialog?.querySelector('[role="alert"]');
       if (alert?.textContent.trim()) return { kind: 'error', text: alert.textContent.trim() };
       const status = dialog?.querySelector('[role="status"]');
-      return status?.textContent.trim() ? { kind: 'status', text: status.textContent.trim() } : null;
+      return status?.textContent.trim() && status.textContent.trim() !== 'Saved locally'
+        ? { kind: 'status', text: status.textContent.trim() } : null;
     })()`,
     "Set Primary automatic retry result",
     45_000,
@@ -2821,6 +2822,12 @@ async function verifyVariantDeleteRefreshThroughUi(browser, tripId, createdVaria
     "Plan delete with refreshed version",
     45_000,
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: ["variants"],
+    label: "Plan deletion confirmed after navigation",
+  });
   const deleted = await controlledData(
     () => db.from("route_variants").select("id").eq("id", createdVariant.createdVariantId),
     "Plan delete with refreshed version evidence",
