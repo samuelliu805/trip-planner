@@ -53,15 +53,19 @@ test("trip saves use atomic versions, idempotent history, and no conflict audit"
 });
 
 test("conflicts offer entity-local reload and roles/history remain discoverable", async () => {
-  const [tripForm, itemForm, itemReload, card, menu] = await Promise.all([
+  const [tripForm, tripSettingsRead, itemForm, itemReload, card, menu] = await Promise.all([
     source("src/features/trips/components/trip-form.tsx"),
+    source("src/features/trips/settings-read.ts"),
     source("src/features/itinerary/components/planner-item-form.tsx"),
     source("src/features/itinerary/components/use-planner-item-conflict-reload.ts"),
     source("src/features/trips/components/trip-card.tsx"),
     source("src/features/trips/components/trip-app-bar-menu.tsx"),
   ]);
   assert.match(tripForm, /Reload latest/);
-  assert.match(tripForm, /api\/trips\/\$\{tripId\}\/settings/);
+  assert.match(tripForm, /import \{ loadLatestTripSettings \} from "\.\.\/settings-read"/);
+  assert.match(tripForm, /await loadLatestTripSettings\(trip\.id\)/);
+  assert.match(tripSettingsRead, /api\/trips\/\$\{tripId\}\/settings/);
+  assert.match(tripSettingsRead, /cache: "no-store"/);
   assert.match(itemReload, /refetchQueries[\s\S]*currentDayItems[\s\S]*currentItem/);
   assert.match(itemForm, /setOrderPreviewItems\(latest\.items\)/);
   assert.doesNotMatch(itemForm, /Reapply my draft|Replace draft/);
