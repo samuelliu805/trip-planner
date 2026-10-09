@@ -3125,6 +3125,12 @@ async function clickElement(
           hit: hit ? { className: String(hit.className).slice(0, 160), tagName: hit.tagName } : null,
         };
       }
+      window.__phase3LastClick = {};
+      for (const type of ['pointerdown', 'pointerup', 'click'])
+        document.addEventListener(type, (event) => {
+          window.__phase3LastClick[type] = { trusted: event.isTrusted,
+            expectedTarget: event.composedPath().includes(element) };
+        }, { once: true, capture: true });
       return { available: true, x, y };
     })()`,
   );
@@ -3550,15 +3556,24 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
   }
   await clickElement(browser, addActivityExpression, "Add activity");
   const placeSelector = 'input[aria-label="Place or activity name"]';
-  await waitFor(
-    browser,
-    `(() => {
+  try {
+    await waitFor(
+      browser,
+      `(() => {
       const input = document.querySelector(${JSON.stringify(placeSelector)});
       return input instanceof HTMLInputElement && !input.disabled;
     })()`,
-    "activity place search",
-    45_000,
-  );
+      "activity place search",
+      45_000,
+    );
+  } catch (error) {
+    const activity = await readBoundedActivitySaveDiagnostic(browser);
+    const pointer = await evaluate(browser, "window.__phase3LastClick ?? {}").catch(() => ({}));
+    throw new Error(
+      `${error.message}; activity opening diagnostic: ${JSON.stringify({ activity, pointer })}`,
+      { cause: error },
+    );
+  }
   await setInputValue(browser, placeSelector, query);
   try {
     await waitFor(
