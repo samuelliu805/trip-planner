@@ -1,35 +1,25 @@
 "use client";
+import { acceptPlannerIntent } from "./accept-planner-intent";
 
 import { type QueryClient } from "@tanstack/react-query";
 import { DurableOutbox, type OutboxOperation } from "../editing/outbox";
 import { loadPlannerWorkspace } from "./actions";
 import { prepareSyncIntent } from "./prepare-sync-intent";
 import { sendSyncIntent } from "./send-sync-intent";
-import { dayIds, dayEditSnapshot, isStructureIntent } from "./structure-sync";
 import { plannerQueryKey } from "./planner-query";
-import { intentItemIds, projectSyncIntent, type PlannerSyncIntent } from "./sync-operation";
+import { projectSyncIntent, type PlannerSyncIntent } from "./sync-operation";
 import type { PlannerSyncDelta, PlannerWorkspace } from "./types";
-import {
-  createItineraryItemSchema,
-  updateItineraryItemSchema,
-  deleteItineraryItemSchema,
-} from "./item-schema";
-import {
-  clearItineraryItemsSchema,
-  reorderItineraryItemsSchema,
-  insertTripDaySchema,
-  removeTripDaySchema,
-  reorderVariantDaysSchema,
-  copyItineraryItemsSchema,
-} from "./day-schema";
-import { canonicalActivityOrderIds } from "./activity-order";
 import { hasScopeReceipt } from "../editing/dependency-receipts";
 import { browserResourceLock } from "../editing/browser-resource-lock";
 import { applyConfirmedDelta, mergeConfirmedWorkspace } from "./confirmed-workspace";
-import { itemEditableSnapshot } from "./item-editable-snapshot";
 import { registerSyncQueue, subscribeSync, tripSyncQueues } from "../editing/sync-registry";
 import { projectVariantList, type VariantSyncIntent } from "../variants/sync-intent";
 import { validatePlannerIntent } from "./sync-validation";
+import { projectApplication, type ApplicationProjection } from "../research/application-projection";
+import {
+  reboundApplicationProjection,
+  resolveApplicationParents,
+} from "../research/application-receipt";
 
 const json = (value: unknown): OutboxOperation["intent"] => JSON.parse(JSON.stringify(value));
 
@@ -96,137 +86,20 @@ export class PlannerSyncRuntime {
   }
 
   accept(intent: PlannerSyncIntent) {
-    if (!this.storage.getItem(this.checkpointKey))
-      this.storage.setItem(this.checkpointKey, JSON.stringify(this.confirmed));
-    const schema =
-      intent.kind === "create"
-        ? createItineraryItemSchema
-        : intent.kind === "update"
-          ? updateItineraryItemSchema
-          : intent.kind === "delete"
-            ? deleteItineraryItemSchema
-            : intent.kind === "clear"
-              ? clearItineraryItemsSchema
-              : intent.kind === "insertDay"
-                ? insertTripDaySchema
-                : intent.kind === "removeDay"
-                  ? removeTripDaySchema
-                  : intent.kind === "reorderDays"
-                    ? reorderVariantDaysSchema
-                    : intent.kind === "copy"
-                      ? copyItineraryItemsSchema
-                      : reorderItineraryItemsSchema;
-    const validation = schema.safeParse(intent.input);
-    if (!validation.success)
-      throw new Error(validation.error.issues[0]?.message ?? "This edit is incomplete.");
-    const workspace = this.project();
-    if (
-      intent.kind === "reorder" ||
-      (intent.kind === "update" && intent.input.insertAfterItemId !== undefined)
-    )
-      intent.beforeOrder = canonicalActivityOrderIds(
-        workspace.days.find(({ id }) => id === intent.input.dayId)?.items ?? [],
-      );
-    if (intent.kind === "insertDay") intent.input.stableIdentity = true;
-    if (isStructureIntent(intent) && intent.kind !== "copy") intent.beforeDays = dayIds(workspace);
-    const ids = intentItemIds(intent);
-    const dependencies = this.queue.operations
-      .filter(
-        (operation) =>
-          operation.status !== "acknowledged" &&
-          intentItemIds(operation.intent as unknown as PlannerSyncIntent).some((id) =>
-            ids.includes(id),
-          ),
-      )
-      .map(({ id }) => id);
-    const planParent = `trip-planner:variants-outbox:v1:${JSON.stringify([this.scope[0], this.scope[1], this.scope[2], "variants"])}:${this.variantId}`;
-    if (this.storage.getItem(planParent)) dependencies.push(this.variantId);
-    for (const entry of tripSyncQueues(this.scope)) {
-      if (entry.queue === this.queue) continue;
-      for (const op of entry.queue.operations.filter((op) => op.status !== "acknowledged")) {
-        const action = op.intent as {
-          kind: string;
-          input: { variantId?: string };
-          variantId?: string;
-        };
-        if (
-          ["idea.apply", "booking.apply", "booking.revert"].includes(action.kind) &&
-          (action.input.variantId ?? action.variantId) === this.variantId
-        )
-          dependencies.push(op.id);
-      }
-    }
-    const targetDayId =
-      intent.kind === "copy"
-        ? intent.input.targetDayId
-        : "dayId" in intent.input
-          ? intent.input.dayId
-          : undefined;
-    for (const operation of this.queue.operations.filter((op) => op.status !== "acknowledged")) {
-      const pending = operation.intent as unknown as PlannerSyncIntent;
-      const structure = isStructureIntent(intent) && intent.kind !== "copy";
-      if (
-        (pending.kind === "insertDay" && pending.input.operationId === targetDayId) ||
-        (structure && isStructureIntent(pending) && pending.kind !== "copy") ||
-        (intent.kind === "removeDay" && operation.resources.includes(intent.input.dayId)) ||
-        (intent.kind === "clear" &&
-          intent.input.itemIds.some((id) => intentItemIds(pending).includes(id)))
-      ) {
-        if (!dependencies.includes(operation.id)) dependencies.push(operation.id);
-      }
-    }
-    if (intent.kind === "removeDay") {
-      if (workspace.days.length <= 1) throw new Error("The last day cannot be removed.");
-      intent.beforeDay = dayEditSnapshot(workspace, intent.input.dayId);
-      intent.followsLocal = dependencies.length > 0;
-    }
-    if (intent.kind === "clear" && dependencies.length) {
-      intent.followsLocal = true;
-      intent.beforeItems = Object.fromEntries(
-        workspace.days
-          .flatMap((day) => day.items)
-          .filter((item) => intent.input.itemIds.includes(item.id))
-          .map((item) => [item.id, itemEditableSnapshot(item)]),
-      );
-    }
-    if (intent.kind === "update" || intent.kind === "delete") {
-      const item = workspace.days
-        .flatMap(({ items }) => items)
-        .find(({ id }) => id === intent.input.id);
-      if (!item) throw new Error("This item is no longer available. The local draft is kept.");
-      // Successive local revisions depend on their predecessor, whose projected version is stable.
-      if (dependencies.length) {
-        intent.input.expectedVersion = item.version;
-        intent.followsLocal = true;
-        intent.beforeItem = itemEditableSnapshot(item);
-      }
-    }
-    const dayId = "dayId" in intent.input ? intent.input.dayId : undefined;
-    const sourceDay =
-      intent.kind === "update" || intent.kind === "delete"
-        ? workspace.days.find(({ items }) => items.some(({ id }) => id === intent.input.id))?.id
-        : undefined;
-    const resources =
-      intent.kind === "clear" || (isStructureIntent(intent) && intent.kind !== "copy")
-        ? ["*"]
-        : ([
-            ...new Set(
-              [
-                dayId,
-                sourceDay,
-                intent.kind === "copy" ? intent.input.targetDayId : undefined,
-                ...(intent.kind === "copy"
-                  ? intent.sources
-                      .filter((item) => item.variant_id === this.variantId)
-                      .map((item) => item.day_id)
-                  : []),
-              ].filter(Boolean),
-            ),
-          ] as string[]);
-    this.queue.enqueue(intent.input.operationId, resources, json(intent), dependencies);
-    const projected = this.project();
-    this.publish();
-    return projected;
+    return acceptPlannerIntent(
+      {
+        scope: this.scope,
+        storage: this.storage,
+        checkpointKey: this.checkpointKey,
+        confirmed: this.confirmed,
+        tripId: this.tripId,
+        variantId: this.variantId,
+        queue: this.queue,
+        project: () => this.project(),
+        publish: () => this.publish(),
+      },
+      intent,
+    );
   }
 
   project() {
@@ -239,12 +112,31 @@ export class PlannerSyncRuntime {
             operation.ack as unknown as PlannerSyncDelta,
           );
       });
+    const applicationBase = tripSyncQueues(this.scope)
+      .flatMap(({ queue }) => queue.operations)
+      .reduce((workspace, op) => {
+        const intent = op.intent as {
+          kind: string;
+          input: { variantId?: string };
+          projection?: ApplicationProjection;
+        };
+        return intent.projection && intent.input.variantId === this.variantId
+          ? projectApplication(
+              workspace,
+              reboundApplicationProjection(this.storage, this.scope, op.id, intent.projection),
+            )
+          : workspace;
+      }, this.confirmed);
     const projected = this.queue.operations
       .filter(({ status }) => status !== "acknowledged")
       .reduce(
         (workspace, operation) =>
-          projectSyncIntent(workspace, operation.intent as unknown as PlannerSyncIntent),
-        this.confirmed,
+          projectSyncIntent(
+            workspace,
+            resolveApplicationParents(operation, this.scope, this.storage)
+              .intent as unknown as PlannerSyncIntent,
+          ),
+        applicationBase,
       );
     const variantIntents = tripSyncQueues(this.scope)
       .filter((entry) => entry.queue.prefix.startsWith("trip-planner:variants-outbox:"))
@@ -334,14 +226,19 @@ export class PlannerSyncRuntime {
     this.publish();
   }
 
-  private publish() {
+  publish() {
     if (!this.queue.isEnabled) return;
     this.client.setQueryData(plannerQueryKey(this.tripId, this.variantId), this.project());
   }
 
   private prepare(operation: OutboxOperation) {
     this.reloadCheckpoint();
-    return json(prepareSyncIntent(operation, this.confirmed));
+    return json(
+      prepareSyncIntent(
+        resolveApplicationParents(operation, this.scope, this.storage),
+        this.confirmed,
+      ),
+    );
   }
 
   private async acknowledge(operation: OutboxOperation) {

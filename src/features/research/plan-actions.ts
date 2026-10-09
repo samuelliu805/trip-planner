@@ -49,7 +49,7 @@ export async function applyResearchItem(input: {
   )
     return { error: "Reload the target Plan before applying this booking." };
   const { data, error } = guarded
-    ? await database.rpc("apply_research_item_to_variant_v4", {
+    ? await database.rpc("apply_research_item_to_variant_v5", {
         ...args,
         expected_variant_version: parsed.data.expectedVariantVersion!,
         expected_content_version: parsed.data.expectedContentVersion!,
@@ -99,7 +99,13 @@ export async function applyResearchItem(input: {
   if (application.error || !application.data || selection.error || !selection.data)
     return { error: "The Plan changed, but its saved change record could not be refreshed." };
   revalidateResearch(parsed.data.tripId);
-  return { data: { application: application.data, selection: selection.data } };
+  return {
+    data: {
+      application: application.data,
+      selection: selection.data,
+      projectionRows: result.projectionRows,
+    },
+  };
 }
 
 export async function revertResearchApplication(input: {

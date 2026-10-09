@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 233,
+  "publicFunctionCount": 235,
   "catalog": [
     {
       "schema": "public",
@@ -57,6 +57,31 @@
     {
       "schema": "public",
       "signature": "apply_idea_request_v1(uuid,uuid,uuid,uuid,uuid,uuid,uuid,integer,jsonb,bigint,bigint,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_comparison_id", "type": "uuid" },
+        { "name": "target_choice_id", "type": "uuid" },
+        { "name": "requested_day_id", "type": "uuid" },
+        { "name": "requested_before_item_id", "type": "uuid" },
+        { "name": "requested_anchor_day_number", "type": "integer" },
+        { "name": "expected_research_versions", "type": "jsonb" },
+        { "name": "expected_variant_version", "type": "bigint" },
+        { "name": "expected_content_version", "type": "bigint" },
+        { "name": "expected_days_version", "type": "bigint" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "apply_idea_request_v2(uuid,uuid,uuid,uuid,uuid,uuid,uuid,integer,jsonb,bigint,bigint,bigint,bigint,uuid)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
         { "name": "target_variant_id", "type": "uuid" },
@@ -258,6 +283,28 @@
     {
       "schema": "public",
       "signature": "apply_research_item_to_variant_v4(uuid,uuid,uuid,bigint,uuid,text,bigint,bigint,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "expected_research_version", "type": "bigint" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" },
+        { "name": "expected_variant_version", "type": "bigint" },
+        { "name": "expected_content_version", "type": "bigint" },
+        { "name": "expected_days_version", "type": "bigint" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_v5(uuid,uuid,uuid,bigint,uuid,text,bigint,bigint,bigint,bigint,uuid)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
         { "name": "target_variant_id", "type": "uuid" },
@@ -3563,6 +3610,7 @@
     "bump_flight_endpoint_membership()",
     "bump_trip_content_version()",
     "bump_variant_day_content_version()",
+    "capture_application_rows(uuid,uuid)",
     "collaboration_identifier_user_id(text)",
     "collaboration_user_id()",
     "collaboration_user_label(text)",

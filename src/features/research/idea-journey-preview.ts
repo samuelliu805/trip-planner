@@ -59,6 +59,12 @@ export function ideaJourneyPreview(item: FlightIdea) {
       destination: legs.at(-1)!.destination,
       departureDate: legs[0].departureDate,
       arrivalDate: legs.at(-1)!.arrivalDate ?? legs.at(-1)!.departureDate,
+      departureTime: legs[0].departureTime,
+      arrivalTime: legs.at(-1)!.arrivalTime,
+      serviceNumber: legs
+        .map((leg) => leg.serviceNumber)
+        .filter(Boolean)
+        .join(" / "),
       missingTimes: legs.some((leg) => !leg.departureTime || !leg.arrivalTime),
     }));
 }

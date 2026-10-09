@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { applicationDraftEntity } from "../research/application-receipt.ts";
 
 const recordSchema = z.object({
   schema: z.literal(1),
@@ -10,6 +11,13 @@ const recordSchema = z.object({
 export type DraftRecord = z.infer<typeof recordSchema>;
 
 export function editingStorageKey(scope: string[], entity: string) {
+  if (typeof window !== "undefined") {
+    try {
+      entity = applicationDraftEntity(localStorage, scope, entity);
+    } catch {
+      /* The draft owner exposes inaccessible browser storage. */
+    }
+  }
   return `trip-planner:editing:v1:${JSON.stringify([...scope, entity])}`;
 }
 

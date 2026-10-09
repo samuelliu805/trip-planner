@@ -5,6 +5,7 @@ export type StoredUpload = {
   entityId: string;
   sessionId: string;
   parentOperationId?: string;
+  applicationParent?: boolean;
   operationId: string;
   commitOperationId: string;
   file: File;
@@ -34,7 +35,7 @@ export function validStoredUpload(record: StoredUpload) {
     record.file instanceof File &&
     (record.expectedVersion === undefined ||
       (Number.isInteger(record.expectedVersion) && record.expectedVersion > 0)) &&
-    [record.bytesUploaded, record.uploaded, record.binding].every(
+    [record.bytesUploaded, record.uploaded, record.binding, record.applicationParent].every(
       (value) => value === undefined || typeof value === "boolean",
     ) &&
     (record.error === undefined || typeof record.error === "string")

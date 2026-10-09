@@ -404,6 +404,10 @@ const server = createServer(async (request, response) => {
       variant_id: currentWorkspace.variant.id,
       title: kind === "idea-apply" ? "Idea 71" : "Booked flight",
       version: 1,
+      details:
+        kind === "idea-apply"
+          ? { ideaResearchItemId: input.researchItemId, ideaJourneyIndex: 0 }
+          : { researchSourceId: input.researchItemId, segmentIndex: 0 },
     };
     target.items.push(saved);
     target.items_version++;
@@ -412,9 +416,16 @@ const server = createServer(async (request, response) => {
     currentWorkspace.variant.content_version++;
     result =
       kind === "idea-apply"
-        ? { data: { status: "applied", affectedEntityIds: [key] } }
+        ? {
+            data: {
+              status: "applied",
+              affectedEntityIds: [key],
+              projectionRows: structuredClone(currentWorkspace.days),
+            },
+          }
         : {
             data: {
+              projectionRows: structuredClone(currentWorkspace.days),
               application: {
                 id: key,
                 version: 1,
@@ -1721,6 +1732,10 @@ try {
         .getByRole("button", { name: "Add to Plan", exact: true })
         .click();
       await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
+      await page
+        .locator("[data-test-item]")
+        .filter({ hasText: "Idea 71" })
+        .waitFor({ timeout: 750 });
       await page.getByRole("button", { name: "Edit other day", exact: true }).click();
       await page.keyboard.press("Escape");
       await page.waitForFunction(
@@ -1742,6 +1757,72 @@ try {
       );
     },
   );
+  await scenario("pending Idea accepts an edit before its application ACK", async (page) => {
+    delay = 3000;
+    await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+    await page
+      .locator("[data-workflow-probe]")
+      .getByRole("button", { name: "Add to Plan", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("combobox", { name: "Plan day", exact: true }).click();
+    await page.getByRole("option").first().click();
+    await dialog.getByRole("button", { name: "Add to Plan", exact: true }).click();
+    await dialog.waitFor({ state: "hidden", timeout: 750 });
+    const pendingItem = page.locator("[data-test-item]").filter({ hasText: "Idea 71" });
+    await pendingItem.click();
+    await page.locator('input[id^="item-title-"]').fill("Edited before application ACK");
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(
+      () =>
+        window.__workflows.queue.operations.length === 0 &&
+        window.__runtime.queue.operations.length === 0,
+      null,
+      { timeout: 20000 },
+    );
+    const parent = calls.find((call) => call.kind === "idea-apply");
+    const child = calls.find((call) => call.kind === "update");
+    assert.equal(child.input.id, parent.input.operationId);
+    assert.equal(
+      workspace.days.flatMap((day) => day.items).find((item) => item.id === child.input.id).title,
+      "Edited before application ACK",
+    );
+    assert.equal(
+      await page
+        .locator("[data-test-item]")
+        .filter({ hasText: "Edited before application ACK" })
+        .count(),
+      1,
+    );
+  });
+  await scenario("incomplete raw draft survives pending Idea identity binding", async (page) => {
+    delay = 2500;
+    await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+    await page
+      .locator("[data-workflow-probe]")
+      .getByRole("button", { name: "Add to Plan", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("combobox", { name: "Plan day", exact: true }).click();
+    await page.getByRole("option").first().click();
+    await dialog.getByRole("button", { name: "Add to Plan", exact: true }).click();
+    await page.locator("[data-test-item]").filter({ hasText: "Idea 71" }).click();
+    await page.locator('input[id^="item-title-"]').fill("");
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => window.__workflows.queue.operations.length === 0);
+    await page.reload();
+    await page.locator("[data-test-item]").filter({ hasText: "Idea 71" }).click();
+    assert.equal(await page.locator('input[id^="item-title-"]').inputValue(), "");
+    await page.locator('input[id^="item-title-"]').fill("Recovered after binding");
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => window.__runtime.queue.operations.length === 0);
+    assert.equal(
+      workspace.days
+        .flatMap((day) => day.items)
+        .find((item) => item.title === "Recovered after binding").version,
+      2,
+    );
+  });
   await scenario("new Plan then Idea waits for durable parent receipt", async (page) => {
     await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
     await page
@@ -1771,6 +1852,116 @@ try {
     );
     assert.equal(planWorkspaces.size, 2);
   });
+  await scenario(
+    "Idea then booking continues through its predecessor receipt without a false conflict",
+    async (page) => {
+      delay = 1800;
+      await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+      await page
+        .locator("[data-workflow-probe]")
+        .getByRole("button", { name: "Add to Plan", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("combobox", { name: "Plan day", exact: true }).click();
+      await page.getByRole("option").first().click();
+      await dialog.getByRole("button", { name: "Add to Plan", exact: true }).click();
+      await dialog.waitFor({ state: "hidden", timeout: 750 });
+      await page
+        .locator("[data-test-item]")
+        .filter({ hasText: "Idea 71" })
+        .waitFor({ timeout: 750 });
+      await page
+        .locator("[data-workflow-probe]")
+        .getByRole("button", { name: "Apply to Plan", exact: true })
+        .click();
+      await page.waitForFunction(() => window.__workflows.queue.operations.length === 0, null, {
+        timeout: 16000,
+      });
+      assert.deepEqual(
+        calls
+          .filter((call) => ["idea-apply", "booking-apply"].includes(call.kind))
+          .map((call) => call.kind),
+        ["idea-apply", "booking-apply"],
+      );
+      assert.equal(
+        workspace.days.flatMap((day) => day.items).filter((item) => item.title === "Idea 71")
+          .length,
+        1,
+      );
+      assert.equal(
+        workspace.days.flatMap((day) => day.items).filter((item) => item.title === "Booked flight")
+          .length,
+        1,
+      );
+      assert.equal(await page.locator('[data-sync-status="Conflict"]').count(), 0);
+    },
+  );
+  await scenario("booking preview survives a lost ACK and binds once", async (page) => {
+    await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+    delay = 2500;
+    fault = "lost";
+    await page
+      .locator("[data-workflow-probe]")
+      .getByRole("button", { name: "Apply to Plan", exact: true })
+      .click();
+    await page.locator("[data-test-item]").filter({ hasText: "Idea 72" }).waitFor({ timeout: 750 });
+    await page.waitForFunction(
+      () => window.__workflows.queue.operations.some((op) => op.status === "failed"),
+      null,
+      { timeout: 12000 },
+    );
+    assert.equal(
+      workspace.days.flatMap((day) => day.items).filter((item) => item.title === "Booked flight")
+        .length,
+      1,
+    );
+    delay = 0;
+    await page.getByRole("button", { name: "Retry workflow", exact: true }).click();
+    await page.waitForFunction(() => window.__workflows.queue.operations.length === 0);
+    assert.equal(
+      await page.locator("[data-test-item]").filter({ hasText: "Booked flight" }).count(),
+      1,
+    );
+    assert.equal(await page.locator("[data-test-item]").filter({ hasText: "Idea 72" }).count(), 0);
+    assert.deepEqual(
+      calls.filter((call) => call.kind === "booking-apply").map((call) => call.input),
+      [
+        calls.find((call) => call.kind === "booking-apply").input,
+        calls.find((call) => call.kind === "booking-apply").input,
+      ],
+    );
+  });
+  await scenario(
+    "failed Idea application leaves another day independently editable",
+    async (page) => {
+      await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+      await page
+        .locator("[data-workflow-probe]")
+        .getByRole("button", { name: "Add to Plan", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("combobox", { name: "Plan day", exact: true }).click();
+      await page.getByRole("option").first().click();
+      fault = 500;
+      await dialog.getByRole("button", { name: "Add to Plan", exact: true }).click();
+      await page.waitForFunction(() =>
+        window.__workflows.queue.operations.some((op) => op.status === "failed"),
+      );
+      await page.getByRole("button", { name: "Edit other day", exact: true }).click();
+      await page.locator('input[id^="item-title-"]').fill("Unrelated day B after failure");
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => window.__runtime.queue.operations.length === 0);
+      assert.equal(workspace.days[1].items[0].title, "Unrelated day B after failure");
+      assert.equal(
+        await page.evaluate(() => window.__workflows.queue.operations[0].status),
+        "failed",
+      );
+      assert.equal(
+        await page.locator("[data-test-item]").filter({ hasText: "Idea 71" }).count(),
+        1,
+      );
+    },
+  );
   await scenario(
     "comparison accepted locally preserves new name through lost ACK retry",
     async (page) => {

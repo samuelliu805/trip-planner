@@ -23,6 +23,7 @@ const plans = ['Plan A','Plan B'].map((variantName,index)=>({variantId:'plan'+in
 window.fixturePlans=plans;
 const variants = plans.map((p,index)=>({id:p.variantId,name:p.variantName,color:index?'#2563eb':'#166534',version:1,days_version:1,items_version:1,content_version:1}));
 window.fixtureVariants=variants;
+plans.forEach((plan,index)=>plan.variant=variants[index]);
 const place = (id,latitude)=>({id,latitude,longitude:139,display_name:id,provider:'google',coordinate_system:'wgs84',provider_place_id:id});
 const items = ['A','B'].map((id,index)=>({id,trip_id:'trip',type:'activity',title:id,place_id:id,place:place(id,35+index),day_id:'day',variant_id:'plan0',sort_order:index,details:{},created_at:'2026-01-01T00:00:00Z'}));
 const day = {id:'day',day_number:1,items};
@@ -74,6 +75,13 @@ const bundle = await build({
     {
       name: "fixture-boundaries",
       setup(builder) {
+        builder.onResolve(
+          {
+            filter:
+              /(?:use-background-actions|use-variant-sync|use-research-sync|planner-runtime-owner|draft-scope)$/,
+          },
+          (args) => ({ path: args.path.split("/").at(-1), namespace: "fixture" }),
+        );
         builder.onResolve({ filter: /idea-page-metadata$/ }, (args) =>
           args.importer.endsWith("idea-capture-actions.ts")
             ? { path: "capture-metadata", namespace: "fixture" }
@@ -98,7 +106,12 @@ const bundle = await build({
               return { path: "capture-metadata", namespace: "fixture" };
             if (args.importer.endsWith("i18n-provider.tsx"))
               return { path: "locale", namespace: "fixture" };
-            if (args.importer.endsWith("planner-query.ts"))
+            if (path.includes("itinerary/actions"))
+              return { path: "planner-actions", namespace: "fixture" };
+            if (
+              args.importer.endsWith("planner-query.ts") ||
+              (args.importer.endsWith("add-idea-to-plan.tsx") && path.endsWith("/actions"))
+            )
               return { path: "planner-actions", namespace: "fixture" };
             if (args.importer.endsWith("trip-menu-account-actions.tsx"))
               return { path: "logout", namespace: "fixture" };
@@ -117,33 +130,43 @@ const bundle = await build({
           loader: "jsx",
           resolveDir: process.cwd(),
           contents:
-            args.path === "capture-storage"
-              ? "export async function createResearchItem(input){return {data:input}}"
-              : args.path === "capture-metadata"
-                ? "export async function fetchIdeaPageMetadata(){return null};export async function previewIdeaLink(){return {status:'unsupported',title:null}}"
-                : args.path === "quick-capture"
-                  ? "export {captureIdea} from './src/features/research/idea-capture-actions';export async function mergeIdeaSource(){return {error:'Unused fixture action'}}"
-                  : args.path === "next/navigation"
-                    ? "export function useRouter(){return {push:url=>window.lastNavigation=url,refresh:()=>{}}}"
-                    : args.path === "next/link"
-                      ? "import React from 'react';export default function Link(props){return <a {...props}/>}"
-                      : args.path === "locale"
-                        ? "export async function persistLocale(){}"
-                        : args.path === "logout"
-                          ? "export async function logout(){}"
-                          : args.path === "planner-actions"
-                            ? "export async function loadPlannerWorkspace(){return {data:null}}"
-                            : args.path === "variants-query"
-                              ? "const mutation={isPending:false,mutateAsync:async input=>{window.cloneInput=input;return {variantId:'clone'}}};export const useCreateRouteVariant=()=>mutation,useDuplicateRouteVariant=()=>mutation,useUpdateRouteVariant=()=>mutation;export const variantListQueryKey=()=>['variants'];"
-                              : args.path === "variants-actions"
-                                ? "export async function loadRouteVariants(){return {data:window.fixtureVariants}}"
-                                : args.path === "day-actions"
-                                  ? "export function useDayRouteActions(){return {pending:false,persistAndCalculate:async draft=>{window.dayComputed=draft;return true},clearRoute:async()=>{},reloadLatest:async()=>{}}}"
-                                  : args.path.endsWith("idea-variant-plan-actions")
-                                    ? "export async function loadIdeaVariantPlans(){return {data:window.fixturePlans}}"
-                                    : args.path.endsWith("idea-plan-variant-actions")
-                                      ? "export async function applySingleIdeaToBlankVariant(){return {data:{variantId:'new-plan'}}};export const applySingleIdeaToNewVariant=applySingleIdeaToBlankVariant;"
-                                      : "export async function applySingleIdea(input){window.appliedIdea=input;return {data:{status:'applied'}}};export const applySingleIdeaWithConfirmedCalendar=applySingleIdea;",
+            args.path === "use-background-actions"
+              ? "export function useBackgroundActions(tripId){return {scope:['global','fixture',tripId,'idea-workflows'],completed:[],queue:{operations:[]},accept(intent){window.appliedIdea=intent.input;return intent.input.operationId}}}"
+              : args.path === "use-variant-sync"
+                ? "export function useVariantSync(){return {project:()=>window.fixtureVariants,queue:{operations:[]},accept(intent){window.cloneInput=intent.input;return {variantId:intent.input.operationId}}}}"
+                : args.path === "use-research-sync"
+                  ? "export function useResearchSync(){return undefined}"
+                  : args.path === "planner-runtime-owner"
+                    ? "export function findPlannerRuntime(){};export function ownedPlannerRuntime(){}"
+                    : args.path === "draft-scope"
+                      ? "export function useDraftScope(trip,resource){return ['global','guest',trip,resource]}"
+                      : args.path === "capture-storage"
+                        ? "export async function createResearchItem(input){return {data:input}}"
+                        : args.path === "capture-metadata"
+                          ? "export async function fetchIdeaPageMetadata(){return null};export async function previewIdeaLink(){return {status:'unsupported',title:null}}"
+                          : args.path === "quick-capture"
+                            ? "export {captureIdea} from './src/features/research/idea-capture-actions';export async function mergeIdeaSource(){return {error:'Unused fixture action'}}"
+                            : args.path === "next/navigation"
+                              ? "export function useRouter(){return {push:url=>window.lastNavigation=url,refresh:()=>{}}}"
+                              : args.path === "next/link"
+                                ? "import React from 'react';export default function Link(props){return <a {...props}/>}"
+                                : args.path === "locale"
+                                  ? "export async function persistLocale(){}"
+                                  : args.path === "logout"
+                                    ? "export async function logout(){}"
+                                    : args.path === "planner-actions"
+                                      ? "export async function loadPlannerWorkspace(trip,id){const plan=window.fixturePlans.find(p=>p.variantId===id);return {data:plan?{variant:plan.variant,days:plan.days.map(d=>({...d,day_number:d.dayNumber,items:[]})),routePlans:[]}:null}}"
+                                      : args.path === "variants-query"
+                                        ? "const mutation={isPending:false,mutateAsync:async input=>{window.cloneInput=input;return {variantId:'clone'}}};export const useCreateRouteVariant=()=>mutation,useDuplicateRouteVariant=()=>mutation,useUpdateRouteVariant=()=>mutation;export const variantListQueryKey=()=>['variants'];"
+                                        : args.path === "variants-actions"
+                                          ? "export async function loadRouteVariants(){return {data:window.fixtureVariants}}"
+                                          : args.path === "day-actions"
+                                            ? "export function useDayRouteActions(){return {pending:false,persistAndCalculate:async draft=>{window.dayComputed=draft;return true},clearRoute:async()=>{},reloadLatest:async()=>{}}}"
+                                            : args.path.endsWith("idea-variant-plan-actions")
+                                              ? "export async function loadIdeaVariantPlans(){return {data:window.fixturePlans}}"
+                                              : args.path.endsWith("idea-plan-variant-actions")
+                                                ? "export async function applySingleIdeaToBlankVariant(){return {data:{variantId:'new-plan'}}};export const applySingleIdeaToNewVariant=applySingleIdeaToBlankVariant;"
+                                                : "export async function applySingleIdea(input){window.appliedIdea=input;return {data:{status:'applied'}}};export const applySingleIdeaWithConfirmedCalendar=applySingleIdea;",
         }));
       },
     },

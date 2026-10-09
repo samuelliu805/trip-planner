@@ -8,6 +8,7 @@ import type { UploadTask } from "./components/attachment-upload-task";
 import type { OwnerAttachment } from "./schema";
 import { registerAccountQueue } from "../editing/account-runtime";
 import { subscribeSync, tripSyncQueues, setLocalActivity } from "../editing/sync-registry";
+import { applicationEntityId } from "../research/application-receipt";
 
 export class UploadOwner {
   tasks: UploadTask[] = [];
@@ -87,6 +88,13 @@ export class UploadOwner {
     void this.pump();
   }
   async enqueue(files: File[], parentOperationId?: string) {
+    const applicationParent = tripSyncQueues(this.scope)
+      .flatMap(({ queue }) => queue.operations)
+      .find((op) => {
+        const intent = op.intent as { projection?: { items: Array<{ id: string }> } };
+        return intent.projection?.items.some((item) => item.id === this.entityId);
+      });
+    parentOperationId ??= applicationParent?.id;
     parentOperationId ??= tripSyncQueues(this.scope)
       .flatMap((entry) => entry.queue.operations)
       .find(
@@ -108,6 +116,7 @@ export class UploadOwner {
         target: this.target,
         file,
         ...(parentOperationId && { parentOperationId }),
+        ...(applicationParent && { applicationParent: true }),
       };
       // Retain the File in memory even if IndexedDB fails; never claim it is recoverable then.
       this.records.set(record.id, record);
@@ -172,6 +181,11 @@ export class UploadOwner {
   }
   private parentReady(record: StoredUpload) {
     if (!record.parentOperationId) return true;
+    if (
+      record.applicationParent &&
+      !applicationEntityId(localStorage, this.scope, record.parentOperationId, record.entityId)
+    )
+      return false;
     return (
       hasScopeReceipt(localStorage, this.scope, record.parentOperationId) ||
       tripSyncQueues(this.scope).some(
@@ -228,6 +242,11 @@ export class UploadOwner {
       return;
     }
     Object.assign(record, stored);
+    const entityId =
+      record.applicationParent && record.parentOperationId
+        ? applicationEntityId(localStorage, this.scope, record.parentOperationId, record.entityId)
+        : record.entityId;
+    if (!entityId) return;
     if (record.error) {
       task.error = record.error;
       this.emit();
@@ -235,7 +254,7 @@ export class UploadOwner {
     }
     if (!record.expectedVersion) {
       const latest = await loadLatestAttachments({
-        entityId: record.entityId,
+        entityId,
         target: record.target,
         tripId: this.scope[2],
       });
@@ -245,9 +264,7 @@ export class UploadOwner {
     }
     if (!this.enabled || task.controller.signal.aborted) return;
     const target =
-      record.target === "research"
-        ? { researchItemId: record.entityId }
-        : { itemId: record.entityId };
+      record.target === "research" ? { researchItemId: entityId } : { itemId: entityId };
     if (!record.uploaded) {
       await uploadFileAttachment({
         ...target,
@@ -293,7 +310,7 @@ export class UploadOwner {
             scope: this.scope,
             target: record.target,
             tripId: this.scope[2],
-            entityId: record.entityId,
+            entityId,
             attachments,
             attachmentsVersion: attachments.attachmentsVersion,
           },

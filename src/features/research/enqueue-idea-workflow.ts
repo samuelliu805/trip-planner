@@ -11,6 +11,7 @@ import { clonedVariantName, nextVariantName } from "../variants/default-name";
 import type { ResearchItem, ResearchPlanSnapshot } from "./types";
 import type { IdeaVariantPlacement } from "./idea-variant-placement";
 import { ideaJourneyDates } from "./idea-plan-dates";
+import { captureApplicationProjection } from "./application-projection";
 
 export function enqueueIdeaApplication(
   owner: BackgroundActionOwner,
@@ -30,6 +31,15 @@ export function enqueueIdeaApplication(
   return owner.accept(
     {
       kind: "idea.apply",
+      projection: workspace
+        ? captureApplicationProjection(workspace, items, {
+            dayId: placement.dayId,
+            beforeItemId: placement.beforeItemId,
+            anchor: items.some((item) => ideaJourneyDates(item).length)
+              ? placement.anchorDayNumber
+              : null,
+          })
+        : undefined,
       before: beforeOverride ?? (workspace ? sourceSnapshot(workspace) : ""),
       input: {
         tripId: owner.scope[2],
@@ -100,7 +110,7 @@ export function enqueueIdeaInNewPlan(
   };
   variants.accept(intent);
   const workspace = pendingVariantWorkspace(intent);
-  return enqueueIdeaApplication(
+  const applicationId = enqueueIdeaApplication(
     owner,
     client,
     items,
@@ -110,4 +120,5 @@ export function enqueueIdeaInNewPlan(
     [operationId],
     blank ? "" : sourceSnapshot(workspace),
   );
+  return { operationId: applicationId, variantId: operationId };
 }

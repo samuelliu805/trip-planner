@@ -64,7 +64,7 @@ const bundle = await build({
               "export async function invalidateVariantComparison(){};export async function invalidateVariantDecisionSummary(){};export async function refreshResearchWorkspace(){}",
             planner: "export function usePlannerOutbox(){return null}",
             attachments:
-              "export async function loadLatestAttachments(input){const r=await fetch('/latest');return r.ok?r.json():{error:'Target unavailable'};}",
+              "export async function loadLatestAttachments(input){const r=await fetch('/latest?entity='+input.entityId);return r.ok?r.json():{error:'Target unavailable'};}",
           }[args.path],
           loader: "js",
         }));
@@ -89,8 +89,10 @@ const server = createServer(async (req, res) => {
     );
     return;
   }
-  if (req.url === "/latest") {
-    res.statusCode = entities.has(initial.entityId) ? 200 : 404;
+  if (req.url.startsWith("/latest?")) {
+    res.statusCode = entities.has(new URL(req.url, "http://fixture").searchParams.get("entity"))
+      ? 200
+      : 404;
     res.setHeader("Content-Type", "application/json");
     res.end(JSON.stringify({ data: [], version: 1 }));
     return;
@@ -112,8 +114,26 @@ const server = createServer(async (req, res) => {
   res.setHeader("Content-Type", "application/json");
   if (req.url === "/parent") {
     await new Promise((resolve) => setTimeout(resolve, parentDelay));
-    entities.add(input.entityId);
-    res.end(JSON.stringify({ id: input.entityId }));
+    const id = initial.applicationParent ? initial.canonicalId : input.entityId;
+    entities.add(id);
+    res.end(
+      JSON.stringify({
+        id,
+        rows: [
+          {
+            id: initial.dayId,
+            date: null,
+            items: [
+              {
+                id,
+                day_id: initial.dayId,
+                details: { ideaResearchItemId: initial.sourceId, ideaJourneyIndex: 0 },
+              },
+            ],
+          },
+        ],
+      }),
+    );
     return;
   }
   if (req.url === "/prepare") {
@@ -178,10 +198,20 @@ const browser = await chromium.launch({
 const file = { name: "fixture.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7") };
 const errors = [],
   passed = [];
-async function scenario(name, run, newEntity = false) {
+async function scenario(name, run, newEntity = false, applicationParent = false) {
   let scenarioFailure;
   if (process.env.NONBLOCKING_CASE && !new RegExp(process.env.NONBLOCKING_CASE).test(name)) return;
-  initial = { tripId: randomUUID(), entityId: randomUUID(), sessionId: randomUUID(), newEntity };
+  initial = {
+    tripId: randomUUID(),
+    entityId: randomUUID(),
+    sessionId: randomUUID(),
+    newEntity,
+    applicationParent,
+    canonicalId: randomUUID(),
+    parentId: randomUUID(),
+    dayId: randomUUID(),
+    sourceId: randomUUID(),
+  };
   bytesDelay = 0;
   parentDelay = 0;
   bindFault = false;
@@ -280,6 +310,31 @@ try {
       assert.equal(entities.size, 1);
       assert.equal(bound.size, 1);
     },
+    true,
+  );
+  await scenario(
+    "pending Idea upload restores and binds only to its canonical receipt identity",
+    async (page) => {
+      parentDelay = 1200;
+      bytesDelay = 2000;
+      await page.getByRole("button", { name: "Create entity" }).click();
+      await choose(page);
+      await page.waitForFunction(() => window.__owner.tasks.length === 1);
+      assert.equal(prepared.size, 0);
+      await page.getByRole("button", { name: "Toggle editor" }).click();
+      await page.waitForFunction(() => window.__owner.tasks[0]?.progress.stage === "uploading");
+      const id = await page.evaluate(() => window.__owner.tasks[0].operationId);
+      await page.reload();
+      await page.getByRole("button", { name: "Inspect owner" }).click();
+      await ready(page);
+      assert.deepEqual([...prepared.keys()], [id]);
+      assert.equal(bound.size, 1);
+      assert.equal([...prepared.values()][0].itemId, initial.canonicalId);
+      assert.equal([...bound.values()][0].itemId, initial.canonicalId);
+      assert.notEqual(initial.canonicalId, initial.entityId);
+      assert.deepEqual(await (await page.request.get(origin + "/download")).body(), file.buffer);
+    },
+    true,
     true,
   );
   await scenario("IndexedDB failure keeps the File and never claims local save", async (page) => {

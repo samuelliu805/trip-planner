@@ -10,6 +10,7 @@ import { registerSyncQueue } from "../../../src/features/editing/sync-registry";
 import { PlannerSyncStatus } from "../../../src/features/itinerary/components/planner-sync-status";
 import { useDurableFields } from "../../../src/features/editing/use-durable-fields";
 import { editingStorageKey } from "../../../src/features/editing/draft-storage";
+import { saveApplicationReceipt } from "../../../src/features/research/application-receipt";
 const initial = window.__initial;
 const scope = ["global", "upload-account-A", initial.tripId, "attachments"];
 const parent = new DurableOutbox(
@@ -21,7 +22,15 @@ const parent = new DurableOutbox(
     if (!response.ok) throw new Error("Parent creation failed.");
     return response.json();
   },
-  () => {
+  (operation) => {
+    if (initial.applicationParent)
+      saveApplicationReceipt(
+        localStorage,
+        scope,
+        operation.id,
+        operation.intent.projection,
+        operation.ack.rows,
+      );
     queueMicrotask(() => parent.compactAcknowledged());
   },
 );
@@ -58,9 +67,31 @@ function App() {
           Switch account
         </button>
         <button
-          onClick={() =>
-            parent.enqueue(initial.entityId, [initial.entityId], { entityId: initial.entityId })
-          }
+          onClick={() => {
+            const preview = {
+              id: initial.entityId,
+              day_id: initial.dayId,
+              details: { ideaResearchItemId: initial.sourceId, ideaJourneyIndex: 0 },
+            };
+            parent.enqueue(
+              initial.applicationParent ? initial.parentId : initial.entityId,
+              [initial.entityId],
+              {
+                entityId: initial.entityId,
+                ...(initial.applicationParent && {
+                  kind: "idea.apply",
+                  projection: {
+                    days: [],
+                    items: [preview],
+                    removedIds: [],
+                    bindings: [
+                      { id: preview.id, sourceId: initial.sourceId, index: 0, date: null },
+                    ],
+                  },
+                }),
+              },
+            );
+          }}
         >
           Create entity
         </button>
@@ -79,7 +110,9 @@ function App() {
             tripId={initial.tripId}
             target="itinerary"
             sessionId={initial.sessionId}
-            parentOperationId={initial.newEntity ? initial.entityId : undefined}
+            parentOperationId={
+              initial.newEntity && !initial.applicationParent ? initial.entityId : undefined
+            }
           />
         ) : null}
         <button

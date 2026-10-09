@@ -26,7 +26,7 @@
     "prebuild": "npm run validate:public-templates",
     "prepare:cloudbase-run": "node scripts/prepare-cloudbase-run.mjs",
     "test": "npm run test:auth && npm run test:guest && npm run test:landing && npm run test:trips && node scripts/run-compact-command.mjs --label \"unit and contract tests\" -- npm run test:verbose && npm run test:editing",
-    "test:editing": "node scripts/run-compact-command.mjs --label \"durable editing behavior\" -- node --experimental-transform-types --test src/features/editing/*.test.ts src/features/guest/claim-continuation.test.ts src/features/itinerary/sync-operation.test.ts",
+    "test:editing": "node scripts/run-compact-command.mjs --label \"durable editing behavior\" -- node --experimental-transform-types --test src/features/editing/*.test.ts src/features/guest/claim-continuation.test.ts src/features/itinerary/sync-operation.test.ts src/features/research/application-projection.test.ts",
     "test:e2e:nonblocking": "node scripts/run-compact-command.mjs --label \"nonblocking editing browser E2E\" -- node scripts/nonblocking-editing-e2e.mjs && node scripts/run-compact-command.mjs --label \"background upload browser E2E\" -- node scripts/nonblocking-upload-e2e.mjs",
     "test:database:nonblocking": "node scripts/nonblocking-database-test.mjs",
     "test:e2e:guest-nonblocking": "node scripts/run-compact-command.mjs --label \"Guest actual route offline and recovery\" -- node scripts/nonblocking-guest-e2e.mjs",

@@ -7,7 +7,7 @@ export async function applyQueuedIdea(input: z.input<typeof ideaApplyInputSchema
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   const value = parsed.data,
     database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("apply_idea_request_v1", {
+  const { data, error } = await database.rpc("apply_idea_request_v2", {
     target_trip_id: value.tripId,
     target_variant_id: value.variantId,
     target_research_item_id: value.researchItemId as string,

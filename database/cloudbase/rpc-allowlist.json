@@ -132,6 +132,14 @@
     [
       "mutate_attachment_collection_v1(uuid,uuid,text,text,text,bigint,bigint,boolean,uuid)",
       "member_guard"
+    ],
+    [
+      "apply_research_item_to_variant_v5(uuid,uuid,uuid,bigint,uuid,text,bigint,bigint,bigint,bigint,uuid)",
+      "member_guard"
+    ],
+    [
+      "apply_idea_request_v2(uuid,uuid,uuid,uuid,uuid,uuid,uuid,integer,jsonb,bigint,bigint,bigint,bigint,uuid)",
+      "member_guard"
     ]
   ],
   "anonymous": [

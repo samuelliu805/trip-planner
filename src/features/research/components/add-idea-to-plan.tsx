@@ -3,6 +3,8 @@
 import { Check } from "lucide-react";
 import { useEffect, useRef, useState, type SetStateAction } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { tripSectionHref } from "../urls";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +41,7 @@ import { IdeaVariantTargetList, type IdeaApplyResult } from "./idea-variant-targ
 export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: ResearchPlanSnapshot }) {
   const { t, locale } = useI18n();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const owner = useBackgroundActions(item.trip_id, "idea-workflows");
   const variants = useVariantSync(item.trip_id, plan.variant ? [plan.variant] : []);
   const fields = useDurableFields(
@@ -146,6 +149,8 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
         );
       setOpen(false);
       setNotice(t("Saved locally"));
+      if (remainingPlans.length === 1)
+        router.push(tripSectionHref(item.trip_id, "plan", remainingPlans[0].variantId));
     } catch (error) {
       setError(String(error));
     }
@@ -153,7 +158,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
   function applyToNew() {
     if (!owner || !variants || !copyAnchor || fields.getError()) return;
     try {
-      enqueueIdeaInNewPlan(
+      const accepted = enqueueIdeaInNewPlan(
         owner,
         variants,
         queryClient,
@@ -165,6 +170,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
       );
       setOpen(false);
       setNotice(t("Saved locally"));
+      router.push(tripSectionHref(item.trip_id, "plan", accepted.variantId));
     } catch (error) {
       setError(String(error));
     }

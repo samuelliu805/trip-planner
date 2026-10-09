@@ -1006,7 +1006,8 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(data, /\.eq\("id", variantId\)/);
   assert.match(queries, /\["planner", tripId, variantId\]/);
   assert.match(routeQueries, /plannerQueryKey\(tripId, variantId\)/);
-  assert.match(workspace, /key=\{props\.initialWorkspace\.variant\.id\}/);
+  assert.match(workspace, /PlannerOutboxProvider key=\{workspace\.variant\.id\}/);
+  assert.match(workspace, /initialWorkspace=\{workspace\}/);
   assert.match(dayRoute, /useRouteTasks\(tripId, variantId\)/);
   assert.match(dayRoute, /const variantId = workspace\.variant\.id/);
   assert.match(mapHook, /overview:\$\{variantId\}/);

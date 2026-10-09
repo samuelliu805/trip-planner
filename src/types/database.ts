@@ -1913,6 +1913,12 @@ export type Database = {
           expected_variant_version: number;expected_content_version: number;expected_days_version: number;expected_items_version: number;target_operation_id: string};
         Returns: Json;
       };
+      apply_idea_request_v2: {
+        Args: {target_trip_id: string;target_variant_id: string;target_research_item_id: string;target_comparison_id: string;target_choice_id: string;
+          requested_day_id: string;requested_before_item_id: string;requested_anchor_day_number: number;expected_research_versions: Json;
+          expected_variant_version: number;expected_content_version: number;expected_days_version: number;expected_items_version: number;target_operation_id: string};
+        Returns: Json;
+      };
       apply_single_idea_v1: {
         Args: {
           target_trip_id: string;
@@ -2108,6 +2114,22 @@ export type Database = {
         Returns: Json;
       };
       apply_research_item_to_variant_v4: {
+        Args: {
+          expected_research_version: number;
+          schedule_choice: string;
+          target_item_id: string;
+          target_operation_id: string;
+          target_research_item_id: string;
+          target_trip_id: string;
+          target_variant_id: string;
+          expected_variant_version: number;
+          expected_content_version: number;
+          expected_days_version: number;
+          expected_items_version: number;
+        };
+        Returns: Json;
+      };
+      apply_research_item_to_variant_v5: {
         Args: {
           expected_research_version: number;
           schedule_choice: string;

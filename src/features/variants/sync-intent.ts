@@ -6,7 +6,6 @@ import {
   deleteRouteVariantSchema,
 } from "./schema";
 import type { PlannerWorkspace, PlannerVariant } from "../itinerary/types";
-import { itemEditableSnapshot } from "../itinerary/item-editable-snapshot";
 
 const sourceSchema = z.custom<PlannerWorkspace>((value) => {
   const source = value as PlannerWorkspace;
@@ -37,31 +36,7 @@ export const variantIntentSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("delete"), input: deleteRouteVariantSchema }),
 ]);
 export type VariantSyncIntent = z.infer<typeof variantIntentSchema>;
-export const variantFields = (variant: PlannerVariant) =>
-  JSON.stringify([variant.name, variant.color]);
-export const sourceSnapshot = (workspace: PlannerWorkspace) =>
-  JSON.stringify([
-    variantFields(workspace.variant),
-    [...workspace.days]
-      .sort((a, b) => a.day_number - b.day_number || a.id.localeCompare(b.id))
-      .map((day) => [
-        day.id,
-        day.day_number,
-        day.date,
-        day.title,
-        day.notes,
-        [...day.items]
-          .sort((a, b) => a.id.localeCompare(b.id))
-          .map((item) => [item.id, itemEditableSnapshot(item), item.sort_order]),
-      ]),
-    [...workspace.routePlans]
-      .sort((a, b) => a.day_id.localeCompare(b.day_id))
-      .map((plan) => [
-        plan.day_id,
-        plan.stops.map((stop) => stop.item_id),
-        plan.legs.map((leg) => leg.mode),
-      ]),
-  ]);
+export { sourceSnapshot, variantFields } from "./source-snapshot.ts";
 export function projectVariantList(confirmed: PlannerVariant[], intents: VariantSyncIntent[]) {
   return intents.reduce((variants, intent) => {
     if (intent.kind === "create")

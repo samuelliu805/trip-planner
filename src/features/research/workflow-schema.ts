@@ -1,5 +1,18 @@
 import { z } from "zod";
 import { researchApplySchema, researchApplicationSchema } from "./schema";
+import type { ApplicationProjection } from "./application-projection";
+const projection = z
+  .custom<ApplicationProjection>((value) => {
+    const data = value as ApplicationProjection;
+    return Boolean(
+      data &&
+      Array.isArray(data.days) &&
+      Array.isArray(data.items) &&
+      Array.isArray(data.removedIds) &&
+      Array.isArray(data.bindings),
+    );
+  })
+  .optional();
 const base = z.object({ tripId: z.uuid(), operationId: z.uuid() });
 export const ideaApplyInputSchema = base
   .extend({
@@ -20,7 +33,13 @@ export const ideaApplyInputSchema = base
     (input) => Boolean(input.researchItemId) !== Boolean(input.comparisonId && input.choiceId),
   );
 export const researchWorkflowSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("idea.apply"), input: ideaApplyInputSchema, before: z.string() }),
+  z.object({
+    kind: z.literal("idea.apply"),
+    input: ideaApplyInputSchema,
+    before: z.string(),
+    projection,
+    applicationParents: z.array(z.string()).optional(),
+  }),
   z.object({
     kind: z.literal("booking.apply"),
     input: researchApplySchema.extend({
@@ -31,6 +50,8 @@ export const researchWorkflowSchema = z.discriminatedUnion("kind", [
       expectedItemsVersion: z.number().int().positive(),
     }),
     before: z.string(),
+    projection,
+    applicationParents: z.array(z.string()).optional(),
   }),
   z.object({
     kind: z.literal("booking.revert"),

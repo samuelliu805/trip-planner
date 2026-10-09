@@ -20,19 +20,20 @@ BEGIN
  sources:=jsonb_build_object(a::text,(SELECT version FROM public.research_items WHERE id=a));
  SELECT count(*) INTO before_count FROM public.itinerary_items WHERE variant_id=target.id;
  BEGIN
-  PERFORM public.apply_idea_request_v1(trip,target.id,a,NULL,NULL,day,NULL,NULL,jsonb_build_object(a::text,999),target.version,target.content_version,target.days_version,target.items_version,gen_random_uuid());
+  PERFORM public.apply_idea_request_v2(trip,target.id,a,NULL,NULL,day,NULL,NULL,jsonb_build_object(a::text,999),target.version,target.content_version,target.days_version,target.items_version,gen_random_uuid());
   RAISE EXCEPTION 'stale Idea accepted';
  EXCEPTION WHEN serialization_failure THEN NULL; END;
  BEGIN
-  PERFORM public.apply_idea_request_v1(trip,target.id,a,NULL,NULL,day,NULL,NULL,sources,target.version,target.content_version+1,target.days_version,target.items_version,gen_random_uuid());
+  PERFORM public.apply_idea_request_v2(trip,target.id,a,NULL,NULL,day,NULL,NULL,sources,target.version,target.content_version+1,target.days_version,target.items_version,gen_random_uuid());
   RAISE EXCEPTION 'changed target accepted';
  EXCEPTION WHEN serialization_failure THEN NULL; END;
- applied:=public.apply_idea_request_v1(trip,target.id,a,NULL,NULL,day,NULL,NULL,sources,target.version,target.content_version,target.days_version,target.items_version,apply_op);
- IF public.apply_idea_request_v1(trip,target.id,a,NULL,NULL,day,NULL,NULL,sources,target.version,target.content_version,target.days_version,target.items_version,apply_op)<>applied
+ applied:=public.apply_idea_request_v2(trip,target.id,a,NULL,NULL,day,NULL,NULL,sources,target.version,target.content_version,target.days_version,target.items_version,apply_op);
+ IF jsonb_array_length(applied->'projectionRows')=0 THEN RAISE EXCEPTION 'Idea receipt has no atomic after-image'; END IF;
+ IF public.apply_idea_request_v2(trip,target.id,a,NULL,NULL,day,NULL,NULL,sources,target.version,target.content_version,target.days_version,target.items_version,apply_op)<>applied
   OR (SELECT count(*) FROM public.itinerary_items WHERE variant_id=target.id)<>before_count+1 THEN RAISE EXCEPTION 'Idea apply replay duplicated item'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.itinerary_items WHERE variant_id=target.id AND title='中文活动 A') THEN RAISE EXCEPTION 'applied Idea fields missing'; END IF;
  BEGIN
-  PERFORM public.apply_research_item_to_variant_v4(trip,target.id,a,1,NULL,'automatic',target.version,target.content_version,target.days_version,target.items_version,gen_random_uuid());
+  PERFORM public.apply_research_item_to_variant_v5(trip,target.id,a,1,NULL,'automatic',target.version,target.content_version,target.days_version,target.items_version,gen_random_uuid());
   RAISE EXCEPTION 'booking applied over changed target';
  EXCEPTION WHEN serialization_failure THEN NULL; END;
  IF (SELECT count(*) FROM public.itinerary_items WHERE variant_id=target.id)<>before_count+1 THEN RAISE EXCEPTION 'failed workflow mutated target'; END IF;
@@ -41,10 +42,11 @@ BEGIN
    gen_random_uuid(),NULL);
  SELECT version INTO booking_version FROM public.research_items WHERE id=booking;
  SELECT * INTO target FROM public.route_variants WHERE id=target.id;
- applied:=public.apply_research_item_to_variant_v4(trip,target.id,booking,booking_version,NULL,'automatic',target.version,target.content_version,target.days_version,target.items_version,booking_op);
+ applied:=public.apply_research_item_to_variant_v5(trip,target.id,booking,booking_version,NULL,'automatic',target.version,target.content_version,target.days_version,target.items_version,booking_op);
  application_id:=(applied->>'applicationId')::uuid;
  IF application_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.research_plan_applications WHERE id=application_id AND status='applied') THEN RAISE EXCEPTION 'booking happy path failed'; END IF;
- IF public.apply_research_item_to_variant_v4(trip,target.id,booking,booking_version,NULL,'automatic',target.version,target.content_version,target.days_version,target.items_version,booking_op)<>applied
+ IF jsonb_array_length(applied->'projectionRows')=0 THEN RAISE EXCEPTION 'booking receipt has no atomic after-image'; END IF;
+ IF public.apply_research_item_to_variant_v5(trip,target.id,booking,booking_version,NULL,'automatic',target.version,target.content_version,target.days_version,target.items_version,booking_op)<>applied
    OR (SELECT count(*) FROM public.research_plan_applications WHERE trip_id=trip AND source_research_item_id=booking)<>1 THEN RAISE EXCEPTION 'booking replay duplicated application'; END IF;
  reverted:=public.revert_research_plan_application_v2(trip,application_id,1,undo_op);
  IF reverted->>'status'<>'reverted' OR public.revert_research_plan_application_v2(trip,application_id,1,undo_op)<>reverted THEN RAISE EXCEPTION 'booking revert/replay failed'; END IF;
@@ -53,13 +55,13 @@ BEGIN
   WHERE choice.comparison_id=(comparison->>'id')::uuid AND entry.research_item_id=b;
  sources:=jsonb_build_object(b::text,(SELECT version FROM public.research_items WHERE id=b));
  SELECT count(*) INTO before_count FROM public.itinerary_items WHERE variant_id=target.id;
- applied:=public.apply_idea_request_v1(trip,target.id,NULL,(comparison->>'id')::uuid,choice_id,day,NULL,NULL,sources,target.version,target.content_version,target.days_version,target.items_version,choice_op);
- IF public.apply_idea_request_v1(trip,target.id,NULL,(comparison->>'id')::uuid,choice_id,day,NULL,NULL,sources,target.version,target.content_version,target.days_version,target.items_version,choice_op)<>applied
+ applied:=public.apply_idea_request_v2(trip,target.id,NULL,(comparison->>'id')::uuid,choice_id,day,NULL,NULL,sources,target.version,target.content_version,target.days_version,target.items_version,choice_op);
+ IF public.apply_idea_request_v2(trip,target.id,NULL,(comparison->>'id')::uuid,choice_id,day,NULL,NULL,sources,target.version,target.content_version,target.days_version,target.items_version,choice_op)<>applied
   OR (SELECT count(*) FROM public.itinerary_items WHERE variant_id=target.id)<>before_count+1 THEN RAISE EXCEPTION 'choice adoption replay duplicated item'; END IF;
 END $test$;
 RESET ROLE;
 DO $test$ BEGIN
- IF has_function_privilege('anon','public.apply_idea_request_v1(uuid,uuid,uuid,uuid,uuid,uuid,uuid,integer,jsonb,bigint,bigint,bigint,bigint,uuid)','EXECUTE')
- OR has_function_privilege('anon','public.apply_research_item_to_variant_v4(uuid,uuid,uuid,bigint,uuid,text,bigint,bigint,bigint,bigint,uuid)','EXECUTE') THEN RAISE EXCEPTION 'anonymous workflow exposed'; END IF;
+ IF has_function_privilege('anon','public.apply_idea_request_v2(uuid,uuid,uuid,uuid,uuid,uuid,uuid,integer,jsonb,bigint,bigint,bigint,bigint,uuid)','EXECUTE')
+ OR has_function_privilege('anon','public.apply_research_item_to_variant_v5(uuid,uuid,uuid,bigint,uuid,text,bigint,bigint,bigint,bigint,uuid)','EXECUTE') THEN RAISE EXCEPTION 'anonymous workflow exposed'; END IF;
 END $test$;
 ROLLBACK;

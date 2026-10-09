@@ -20,6 +20,7 @@ import { sourceSnapshot } from "@/features/variants/sync-intent";
 import { archiveSyncBranch } from "@/features/editing/archive-sync-branch";
 import { tripSyncQueues } from "@/features/editing/sync-registry";
 import { deriveOptionImpact } from "../option-impact";
+import { captureApplicationProjection } from "../application-projection";
 import type {
   ResearchItem,
   ResearchPlanApplication,
@@ -164,6 +165,17 @@ export function ResearchPlanActions({
       }
       owner.accept({
         kind: "booking.apply",
+        projection: workspace
+          ? captureApplicationProjection(workspace, [item], {
+              booking: true,
+              targetId: resolvedTargetId,
+              keepExtraDays:
+                impact.planAction === "remove_days_first" &&
+                plan.days
+                  .slice(Math.max(1, plan.days.length + impact.dayDelta))
+                  .some((day) => day.items.length > 0),
+            })
+          : undefined,
         before: workspace ? sourceSnapshot(workspace) : "",
         input: {
           category: item.category as "flight" | "rental" | "stay" | "train",
