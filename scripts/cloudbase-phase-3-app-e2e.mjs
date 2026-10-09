@@ -3653,7 +3653,7 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
   return title;
 }
 
-async function calculateAmapRouteThroughUi(browser, tripId) {
+async function calculateAmapRouteThroughUi(browser, tripId, variantId) {
   const selectedPlaceOpen = await evaluate(
     browser,
     `Boolean(document.querySelector('button[aria-label="Close place details"]'))`,
@@ -3711,6 +3711,12 @@ async function calculateAmapRouteThroughUi(browser, tripId) {
     "computed route replaces Compute with Edit",
     60_000,
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: [variantId],
+    label: "initial real AMap route confirmed",
+  });
   const initialRoute = await loadPersistedAmapEvidence(tripId);
   assert.ok(
     initialRoute.items.every((item) => initialRoute.stops.some((stop) => stop.item_id === item.id)),
@@ -3793,9 +3799,15 @@ async function calculateAmapRouteThroughUi(browser, tripId) {
       )}`,
     );
   }
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: [variantId],
+    label: "edited real AMap driving route confirmed",
+  });
 }
 
-async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEvidence) {
+async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEvidence, variantId) {
   await addAmapActivityThroughUi(browser, "上海人民广场", 4);
   const selectedPlaceOpen = await evaluate(
     browser,
@@ -3817,6 +3829,12 @@ async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEv
     "route refresh control after adding an activity",
     45_000,
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: [variantId],
+    label: "new route activity confirmed",
+  });
   const pendingEvidence = await loadPersistedAmapEvidence(tripId);
   assert.equal(pendingEvidence.items.length, 4);
   assert.equal(
@@ -3875,6 +3893,12 @@ async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEv
       )}`,
     );
   }
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: [variantId],
+    label: "updated AMap route with added activity confirmed",
+  });
   const refreshed = await loadPersistedAmapEvidence(tripId);
   assert.equal(refreshed.stops.length, previousEvidence.stops.length + 1);
   assert.ok(
@@ -3888,7 +3912,7 @@ async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEv
   );
 }
 
-async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId) {
+async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId, variantId) {
   const before = await evaluate(
     browser,
     `({
@@ -3986,6 +4010,12 @@ async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId) {
     throw new Error(
       `Timed out waiting for route recalculated after activity delete; bounded route-recalculation diagnostic: ${JSON.stringify({ ...diagnostic, observedAlerts: [...observedAlerts].slice(-3) })}`,
     );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: [variantId],
+    label: "deleted activity and AMap recalculation confirmed",
+  });
   const persisted = await loadPersistedAmapEvidence(tripId);
   assert.equal(persisted.items.length, before.itemCount - 1);
   assert.equal(persisted.calculations.length, 1);
@@ -5571,6 +5601,7 @@ function assertPersistedAmapRoute(evidence) {
         source: leg.geometry?.source,
       },
       { coordinateSystem: "wgs84", provider: "amap", source: "encoded" },
+      `Real AMap leg: ${JSON.stringify({ position: leg.position, mode: leg.mode, fallbackReason: leg.fallbackReason })}`,
     );
     assert.ok(leg.geometry?.encodedPolyline, "The persisted AMap route has no encoded geometry.");
   }
@@ -5810,12 +5841,17 @@ async function run() {
         `The refreshed AMap marker did not retain WGS-84 place ${place.id}.`,
       );
     }
-    await calculateAmapRouteThroughUi(browser, tripId);
+    await calculateAmapRouteThroughUi(browser, tripId, createdVariant.priorVariantId);
     const routeEvidence = await loadPersistedAmapEvidence(tripId);
     assertPersistedAmapRoute(routeEvidence);
     await assertRealAmapBrowserAdapter(browser);
-    await verifyAddedActivityRefreshesAmapRoute(browser, tripId, routeEvidence);
-    await verifyDeletedActivityLeavesMapAndRoute(browser, tripId);
+    await verifyAddedActivityRefreshesAmapRoute(
+      browser,
+      tripId,
+      routeEvidence,
+      createdVariant.priorVariantId,
+    );
+    await verifyDeletedActivityLeavesMapAndRoute(browser, tripId, createdVariant.priorVariantId);
     const publicToken = await publishThroughUi(browser, tripId);
     const publishedTitle = updatedTitle;
     updatedTitle = `${runLabel}-saved-right-after-share`;
