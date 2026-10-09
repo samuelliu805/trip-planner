@@ -1416,6 +1416,132 @@ try {
     await page.getByRole("button", { name: "Trip settings", exact: true }).click();
     assert.equal(await field.inputValue(), "Settings B");
   });
+  for (const restore of ["reload", "pageshow"])
+    await scenario(
+      `pagehide during settings preparation resumes the same accepted edit on ${restore}`,
+      async (page) => {
+        const initialRead = page.waitForResponse((response) =>
+          response.url().endsWith("/settings"),
+        );
+        await page.getByRole("button", { name: "Trip settings", exact: true }).click();
+        await initialRead;
+        let interrupted;
+        await page.route("**/api/trips/*/settings", async (route) => {
+          interrupted = route;
+          await page.evaluate(() => {
+            window.__heldPreparation = true;
+          });
+        });
+        await page.getByRole("textbox", { name: "Trip name" }).fill("Prepared after refresh");
+        await page.locator("#trip-day-count").fill("12");
+        await page.getByRole("button", { name: "Save", exact: true }).click();
+        await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
+        const saved = () =>
+          page.evaluate(() =>
+            Object.keys(localStorage)
+              .filter((key) => /^trip-planner:settings-outbox:v1:.*\]:[^:]+$/.test(key))
+              .map((key) => JSON.parse(localStorage.getItem(key))),
+          );
+        const [accepted] = await saved();
+        assert.equal(accepted.status, "queued");
+        assert.equal(accepted.wire, undefined);
+        assert.equal(calls.filter((call) => call.kind === "settings").length, 0);
+        await page.waitForFunction(() => window.__heldPreparation);
+        await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+        await interrupted.abort("aborted");
+        await page.waitForTimeout(300);
+        const [recoverable] = await saved();
+        assert.equal(
+          recoverable.status,
+          "queued",
+          "navigation interruption must not become a failure",
+        );
+        assert.equal(recoverable.error, undefined);
+        assert.deepEqual(recoverable.intent, accepted.intent);
+        await page.unroute("**/api/trips/*/settings");
+        if (restore === "reload") await page.reload();
+        else
+          await page.evaluate(() =>
+            window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })),
+          );
+        await page.locator('[data-sync-status="Synced"]').waitFor({ timeout: 15000 });
+        const writes = calls.filter((call) => call.kind === "settings");
+        assert.equal(writes.length, 1);
+        assert.equal(writes[0].input.operationId, accepted.id);
+        assert.equal(tripSettings.title, "Prepared after refresh");
+        assert.equal(tripSettings.day_count, 12);
+        assert.equal((await saved()).length, 0);
+      },
+    );
+  await scenario(
+    "pagehide during application ACK recovery preserves its receipt without resend",
+    async (page) => {
+      let interrupted;
+      await page.route("**/mock", async (route) => {
+        const call = route.request().postDataJSON();
+        if (call.kind === "load" && calls.some((entry) => entry.kind === "idea-apply")) {
+          interrupted = route;
+          await page.evaluate(() => {
+            window.__heldRecovery = true;
+          });
+          return;
+        }
+        return route.continue();
+      });
+      await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+      await page
+        .locator("[data-workflow-probe]")
+        .getByRole("button", { name: "Add to Plan", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("combobox", { name: "Plan day", exact: true }).click();
+      await page.getByRole("option").first().click();
+      await dialog.getByRole("button", { name: "Add to Plan", exact: true }).click();
+      await dialog.waitFor({ state: "hidden", timeout: 750 });
+      await page.waitForFunction(() => window.__heldRecovery);
+      const accepted = await page.evaluate(() => window.__workflows.queue.operations[0]);
+      assert.equal(accepted.status, "acknowledged");
+      assert.ok(accepted.ack);
+      await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+      await interrupted.abort("aborted");
+      await page.waitForTimeout(300);
+      const recoverable = await page.evaluate(() => window.__workflows.queue.operations[0]);
+      assert.equal(recoverable.status, "acknowledged");
+      assert.equal(recoverable.error, undefined);
+      assert.deepEqual(recoverable.ack, accepted.ack);
+      await page.unroute("**/mock");
+      await page.reload();
+      await page.waitForFunction(
+        () =>
+          Object.keys(localStorage).filter((key) =>
+            /^trip-planner:actions-outbox:v1:.*\]:[^:]+$/.test(key),
+          ).length === 0 &&
+          window.__client
+            .getQueryData([
+              "planner",
+              window.__initial.variant.trip_id,
+              window.__initial.variant.id,
+            ])
+            ?.days[0].items.some((item) => item.details?.ideaResearchItemId),
+        null,
+        { timeout: 15000 },
+      );
+      assert.equal(calls.filter((call) => call.kind === "idea-apply").length, 1);
+      assert.equal(
+        workspace.days[0].items.filter((item) => item.details?.ideaResearchItemId).length,
+        1,
+      );
+      assert.equal(
+        await page.evaluate(
+          () =>
+            Object.keys(localStorage).filter((key) =>
+              /^trip-planner:actions-outbox:v1:.*\]:[^:]+$/.test(key),
+            ).length,
+        ),
+        0,
+      );
+    },
+  );
   await scenario(
     "structural trip settings wait for their pending planner predecessor",
     async (page) => {

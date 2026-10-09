@@ -182,7 +182,7 @@ export class DurableOutbox {
       await this.lock(
         this.prefix,
         async () => {
-          if (!this.enabled || !this.online()) return;
+          if (!this.enabled || !this.online() || isPageLeaving()) return;
           const raw = this.storage.getItem(`${this.prefix}:${operation.id}`);
           if (
             !raw &&
@@ -222,7 +222,7 @@ export class DurableOutbox {
           }
           // A replay always uses the stored wire bytes; version rebasing only precedes the first send.
           operation.wire = stored.wire ?? (await this.prepare(operation));
-          if (!this.enabled || !this.online()) return;
+          if (!this.enabled || !this.online() || isPageLeaving()) return;
           operation.status = "sending";
           operation.attempts = stored.attempts + 1;
           this.save(operation);
@@ -238,9 +238,9 @@ export class DurableOutbox {
         operation.resources,
       );
     } catch (error) {
-      // Document navigation interrupts transport without proving whether the server committed.
-      // Leave the frozen sending record recoverable for idempotent replay by the next document.
-      if (isPageLeaving() && operation.status === "sending") return;
+      // Navigation can interrupt preparation, transport, or local ACK recovery. Each stage has
+      // already persisted its recoverable state; the next document resumes it without a new ID.
+      if (isPageLeaving()) return;
       operation.status = error instanceof SyncFailure ? error.kind : "failed";
       operation.error = error instanceof Error ? error.message : String(error);
       try {

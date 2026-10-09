@@ -22,6 +22,7 @@ import { measureMatrixContentAlignment } from "./lib/public-sharing-table-conten
 import { stopChild } from "./lib/child-process.mjs";
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { googleFlightsBookingSample } from "./lib/idea-provider-samples.mjs";
+import { waitForTripOutbox } from "./lib/browser-outbox-confirmation.mjs";
 import { startLoopbackTlsProxy } from "./lib/loopback-tls-proxy.mjs";
 import {
   chromiumProxyArguments,
@@ -4786,6 +4787,12 @@ async function updateTripTitle(browser, nextTitle) {
     );
   }
   const detailPath = await evaluate(browser, "location.pathname");
+  await waitForTripOutbox(browser, detailPath.split("/")[2], {
+    evaluate,
+    waitFor,
+    domains: ["settings"],
+    label: "Trip settings confirmed before cold navigation",
+  });
   await navigate(browser, detailPath);
   try {
     await waitFor(

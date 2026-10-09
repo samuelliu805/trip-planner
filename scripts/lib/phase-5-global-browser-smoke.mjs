@@ -15,6 +15,7 @@ import { stopChild } from "./child-process.mjs";
 import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
 import { startLoopbackTlsProxy } from "./loopback-tls-proxy.mjs";
 import { resolveGlobalBrowserOrigin } from "./phase-5-global-browser-origin.mjs";
+import { waitForTripOutbox } from "./browser-outbox-confirmation.mjs";
 
 function chromeExecutable() {
   const candidates = [
@@ -1395,6 +1396,12 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     "rebased flight Plan navigation",
     60_000,
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: ["variants", "idea-workflows"],
+    label: "new flight Plan and application confirmed before cold navigation",
+  });
   await navigate(browser, baseUrl, `/trips/${tripId}?variant=${rebasedVariantId}`);
   await waitFor(
     browser,
@@ -1614,6 +1621,12 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     })()`,
     "outbound departure and arrival appear in Order",
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: ["idea-workflows"],
+    label: "both flight Plan applications confirmed before leaving",
+  });
   await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
   await waitFor(browser, `Boolean(document.querySelector('textarea'))`, "Ideas capture input");
   const hiltonUrl =

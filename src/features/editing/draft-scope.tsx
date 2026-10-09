@@ -45,11 +45,13 @@ export function DraftScopeProvider({
     };
     resume();
     window.addEventListener("online", resume);
+    window.addEventListener("pageshow", resume);
     window.addEventListener("storage", resume);
     return () => {
       current = false;
       stopAttachments();
       window.removeEventListener("online", resume);
+      window.removeEventListener("pageshow", resume);
       window.removeEventListener("storage", resume);
       suspendAccountQueues(actorId);
     };
