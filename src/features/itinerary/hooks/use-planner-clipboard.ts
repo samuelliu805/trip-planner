@@ -17,6 +17,8 @@ import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { isItineraryConflict, requireData } from "@/features/itinerary/query-cache";
 import { loadPlannerWorkspace } from "../actions";
 import { plannerClipboardOperations } from "../planner-clipboard-paste";
+import { usePlannerOutbox } from "../planner-outbox-provider";
+import { findPlannerRuntime } from "../planner-runtime-owner";
 import { usePlannerCellReplacement } from "./use-planner-cell-replacement";
 import { usePlannerClipboardStorage } from "./use-planner-clipboard-storage";
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
@@ -37,6 +39,7 @@ export function usePlannerClipboard({
   workspace: PlannerWorkspace;
 }) {
   const queryClient = useQueryClient();
+  const outbox = usePlannerOutbox();
   const variantId = workspace.variant.id;
   const [copyDaysOpen, setCopyDaysOpen] = useState(false);
   const [targetDays, setTargetDays] = useState<Set<string>>(new Set());
@@ -150,14 +153,19 @@ export function usePlannerClipboard({
         if (payload.source && payload.source.tripId !== tripId)
           throw new Error("Paste blocked: copied items belong to another trip.");
         const sourceVariantId = payload.source?.variantId ?? variantId;
+        const sourceRuntime = outbox
+          ? findPlannerRuntime([...outbox.scope.slice(0, 3), sourceVariantId])
+          : undefined;
         const sourceWorkspace =
           sourceVariantId === variantId
             ? (queryClient.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId)) ??
               workspace)
             : await queryClient.fetchQuery({
                 queryKey: plannerQueryKey(tripId, sourceVariantId),
-                queryFn: async () =>
-                  requireData(await loadPlannerWorkspace(tripId, sourceVariantId)),
+                queryFn: async () => {
+                  const loaded = requireData(await loadPlannerWorkspace(tripId, sourceVariantId));
+                  return sourceRuntime ? sourceRuntime.reconcile(loaded) : loaded;
+                },
                 staleTime: 0,
               });
         const operations = plannerClipboardOperations(

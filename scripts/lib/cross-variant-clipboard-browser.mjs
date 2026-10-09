@@ -121,12 +121,6 @@ export async function verifyCrossVariantClipboard({
       );
   }
   async function settled() {
-    await waitForTripOutbox(browser, tripId, {
-      evaluate,
-      waitFor,
-      domains: [targetVariantId],
-      label: "cross-variant clipboard target confirmed",
-    });
     await waitFor(
       browser,
       `![...document.querySelectorAll('[role="status"]')]
@@ -134,6 +128,12 @@ export async function verifyCrossVariantClipboard({
       "clipboard mutation settled",
       60_000,
     );
+    await waitForTripOutbox(browser, tripId, {
+      evaluate,
+      waitFor,
+      domains: [targetVariantId],
+      label: "cross-variant clipboard target confirmed",
+    });
     const alerts = await evaluate(
       browser,
       `[...document.querySelectorAll('[role="alert"]')]

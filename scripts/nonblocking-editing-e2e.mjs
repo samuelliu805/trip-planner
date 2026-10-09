@@ -2342,6 +2342,58 @@ try {
     },
   );
   await scenario(
+    "cross-Plan clipboard preserves a pending source edit across a fresh server read",
+    async (page) => {
+      delay = 4000;
+      await page.getByRole("button", { name: "Edit first", exact: true }).click();
+      await title(page).fill("Copied newer source");
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
+      await page.getByRole("button", { name: "Paste edited source to another Plan" }).click();
+      await page.waitForFunction(() => window.__crossCopy?.queue.operations.length === 1);
+      const child = await page.evaluate(() => window.__crossCopy.queue.operations[0]);
+      assert.equal(child.intent.sources[0].title, "Copied newer source");
+      assert.equal(child.intent.copiedItems[0].title, "Copied newer source");
+      assert.equal(
+        await page.evaluate(() => window.__crossCopy.project().days[0].items[0].title),
+        "Copied newer source",
+      );
+      assert.ok(
+        child.dependsOn.includes(
+          await page.evaluate(() => window.__runtime.queue.operations[0].id),
+        ),
+      );
+      assert.equal(calls.filter((call) => call.kind === "copy").length, 0);
+      await page.waitForFunction(
+        () =>
+          window.__runtime.queue.operations.length === 0 &&
+          window.__crossCopy.queue.operations.length === 0,
+        null,
+        { timeout: 16000 },
+      );
+      const request = calls.find((call) => call.kind === "copy");
+      assert.equal(request.input.sourceVersions[0], workspace.days[0].items[0].version);
+      assert.equal(workspace.days[0].items[0].title, "Copied newer source");
+      const target = planWorkspaces.get(request.input.variantId);
+      assert.equal(target.days[0].items.length, 1);
+      assert.equal(target.days[0].items[0].title, "Copied newer source");
+      assert.notEqual(target.days[0].items[0].id, workspace.days[0].items[0].id);
+    },
+    () => {
+      const target = structuredClone(workspace),
+        id = randomUUID();
+      target.variant = { ...target.variant, id, name: "Other Plan", is_primary: false };
+      target.days = target.days.map((day) => ({
+        ...day,
+        id: randomUUID(),
+        variant_id: id,
+        items: [],
+      }));
+      target.routePlans = [];
+      planWorkspaces.set(id, target);
+    },
+  );
+  await scenario(
     "pending Idea is a copy source before its formal identity exists",
     async (page) => {
       delay = 1800;
