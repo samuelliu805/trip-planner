@@ -898,6 +898,30 @@ async function verifyTripSectionNavigation(browser, tripId) {
       browser.sessionId,
     );
     await waitFor(browser, `innerWidth === ${width}`, `${width}px Idea apply viewport`);
+    try {
+      await waitFor(
+        browser,
+        `(() => {
+          const rect = document.querySelector('[role="dialog"][data-state="open"]')?.getBoundingClientRect();
+          return Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
+            rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5;
+        })()`,
+        `${width}px Idea apply dialog layout`,
+        10_000,
+      );
+    } catch (error) {
+      const bounds = await evaluate(
+        browser,
+        `(() => {
+          const dialog = document.querySelector('[role="dialog"][data-state="open"]');
+          const rect = dialog?.getBoundingClientRect();
+          return { innerWidth, innerHeight, visualHeight: visualViewport?.height,
+            constraint: dialog?.style.getPropertyValue('--dialog-viewport-height'),
+            left: rect?.left, right: rect?.right, top: rect?.top, bottom: rect?.bottom };
+        })()`,
+      );
+      throw new Error(`${error.message}; ${JSON.stringify(bounds)}`, { cause: error });
+    }
     const actions = await evaluate(
       browser,
       `(() => {
