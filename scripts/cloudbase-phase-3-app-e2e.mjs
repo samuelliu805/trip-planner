@@ -22,6 +22,7 @@ import { measureMatrixContentAlignment } from "./lib/public-sharing-table-conten
 import { stopChild } from "./lib/child-process.mjs";
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { googleFlightsBookingSample } from "./lib/idea-provider-samples.mjs";
+import { clickCloudbaseElement } from "./lib/cloudbase-ui-click.mjs";
 import { waitForTripOutbox } from "./lib/browser-outbox-confirmation.mjs";
 import { startLoopbackTlsProxy } from "./lib/loopback-tls-proxy.mjs";
 import {
@@ -3108,57 +3109,12 @@ async function clickElement(
   movePointer = false,
 ) {
   await waitForClickableElement(browser, elementExpression, label);
-  const point = await evaluate(
-    browser,
-    `(async () => {
-      const element = (${elementExpression});
-      if (!element) return { available: false, reason: "missing" };
-      if (!element.getClientRects().length) return { available: false, reason: "hidden" };
-      if (element.disabled) return { available: false, reason: "disabled" };
-      element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const rect = element.getBoundingClientRect();
-      const x = rect.left + rect.width / 2;
-      const y = rect.top + rect.height / 2;
-      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) {
-        return { available: false, reason: "outside-viewport", rect: rect.toJSON(), viewport: { height: innerHeight, width: innerWidth } };
-      }
-      const hit = document.elementFromPoint(x, y);
-      if (!hit || (hit !== element && !element.contains(hit))) {
-        return {
-          available: false,
-          reason: "covered",
-          rect: rect.toJSON(),
-          hit: hit ? { className: String(hit.className).slice(0, 160), tagName: hit.tagName } : null,
-        };
-      }
-      window.__phase3LastClick = {};
-      for (const type of ['pointerdown', 'pointerup', 'click'])
-        document.addEventListener(type, (event) => {
-          window.__phase3LastClick[type] = { trusted: event.isTrusted,
-            expectedTarget: event.composedPath().includes(element) };
-        }, { once: true, capture: true });
-      return { available: true, x, y };
-    })()`,
-  );
-  assert(point?.available, `${label} was not available: ${JSON.stringify(point)}`);
-  if (movePointer) {
-    await browser.cdp.send(
-      "Input.dispatchMouseEvent",
-      { type: "mouseMoved", x: point.x, y: point.y },
-      browser.sessionId,
-    );
-  }
-  await browser.cdp.send(
-    "Input.dispatchMouseEvent",
-    { button, clickCount: 1, type: "mousePressed", x: point.x, y: point.y },
-    browser.sessionId,
-  );
-  await browser.cdp.send(
-    "Input.dispatchMouseEvent",
-    { button, clickCount: 1, type: "mouseReleased", x: point.x, y: point.y },
-    browser.sessionId,
-  );
+  return clickCloudbaseElement(browser, elementExpression, label, {
+    evaluate,
+    waitFor,
+    button,
+    movePointer,
+  });
 }
 
 async function verifyMatrixContextMenus(browser) {
