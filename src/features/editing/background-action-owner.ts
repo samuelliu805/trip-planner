@@ -235,6 +235,7 @@ export class BackgroundActionOwner {
         [this.scope[0], this.scope[1], this.scope[2], variantId],
         this.client,
         loaded.data,
+        { confirmedRead: true },
       ).confirmWorkspace(loaded.data);
       void this.client.invalidateQueries({ queryKey: ["research-workspace", this.scope[2]] });
       void this.client.invalidateQueries({ queryKey: ["variant-comparison", this.scope[2]] });

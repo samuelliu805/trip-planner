@@ -233,6 +233,24 @@ function EditorFixture() {
     </div>
   );
 }
+function OwnedEditorFixture() {
+  const [generation, setGeneration] = React.useState(0);
+  return (
+    <>
+      <button onClick={() => setGeneration((value) => value + 1)}>
+        Reopen source workspace fixture
+      </button>
+      <PlannerOutboxProvider
+        key={generation}
+        workspace={client.getQueryData(
+          plannerQueryKey(initial.variant.trip_id, initial.variant.id),
+        )}
+      >
+        <EditorFixture />
+      </PlannerOutboxProvider>
+    </>
+  );
+}
 createRoot(document.getElementById("fixture")).render(
   <QueryClientProvider client={client}>
     <I18nProvider initialLocale="en">
@@ -243,9 +261,7 @@ createRoot(document.getElementById("fixture")).render(
             <PlannerSyncStatus tripId={initial.variant.trip_id} mutating={false} />
           </>
         ) : (
-          <PlannerOutboxProvider workspace={initial}>
-            <EditorFixture />
-          </PlannerOutboxProvider>
+          <OwnedEditorFixture />
         )}
       </DraftScopeProvider>
     </I18nProvider>

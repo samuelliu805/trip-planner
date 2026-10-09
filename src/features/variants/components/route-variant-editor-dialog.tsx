@@ -23,7 +23,7 @@ import { variantListQueryKey } from "../variant-list-reload";
 import { loadRouteVariants } from "../actions";
 import { clonedVariantName, nextVariantName } from "../default-name";
 import { variantColorPalette } from "../schema";
-import { enqueueVariantCreation } from "../enqueue-variant-creation";
+import { enqueueVariantCreation, reconcileOwnedVariantSource } from "../enqueue-variant-creation";
 import { VariantEditorFields } from "./variant-editor-fields";
 
 export type VariantEditorMode = "blank" | "duplicate" | "metadata";
@@ -65,10 +65,11 @@ export function RouteVariantEditorDialog({
               : nextVariantName(variants, locale),
         },
   );
-  const local = useDurableFields(
-    editingStorageKey(useDraftScope(tripId, "variants"), `${mode}:${activeVariant.id}`),
-    { ...initialValues, sourceVariantId: activeVariant.id },
-  );
+  const scope = useDraftScope(tripId, "variants");
+  const local = useDurableFields(editingStorageKey(scope, `${mode}:${activeVariant.id}`), {
+    ...initialValues,
+    sourceVariantId: activeVariant.id,
+  });
   const { name, color, sourceVariantId } = local.values;
   const setName = (value: string) => local.set("name", value);
   const setColor = (value: string) => local.set("color", value);
@@ -87,7 +88,12 @@ export function RouteVariantEditorDialog({
       open &&
       mode !== "metadata" &&
       !runtime?.queue.operations.some((op) => op.id === sourceVariantId),
-    queryFn: async () => requireData(await loadPlannerWorkspace(tripId, sourceVariantId)),
+    queryFn: async () =>
+      reconcileOwnedVariantSource(
+        scope,
+        queryClient,
+        requireData(await loadPlannerWorkspace(tripId, sourceVariantId)),
+      ),
     staleTime: 30000,
     retry: false,
   });

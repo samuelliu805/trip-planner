@@ -10,6 +10,7 @@ export function ownedPlannerRuntime(
   scope: string[],
   client: QueryClient,
   workspace: PlannerWorkspace,
+  options: { confirmedRead?: boolean } = {},
 ) {
   const key = JSON.stringify(scope);
   let runtime = runtimes.get(key);
@@ -25,6 +26,7 @@ export function ownedPlannerRuntime(
       owner.queue.setEnabled(enabled);
     });
   }
-  runtime.attach(client, workspace);
+  // Cached workspaces may include pending projections. Only verified reads are baselines.
+  runtime.attach(client, options.confirmedRead ? workspace : undefined);
   return runtime;
 }

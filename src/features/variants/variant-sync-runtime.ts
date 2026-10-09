@@ -241,6 +241,7 @@ export class VariantSyncRuntime {
         [this.scope[0], this.scope[1], this.scope[2], result.variantId],
         this.client,
         workspace.data,
+        { confirmedRead: true },
       );
     }
     const write = async () => {

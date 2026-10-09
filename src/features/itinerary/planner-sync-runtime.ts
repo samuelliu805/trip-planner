@@ -79,9 +79,9 @@ export class PlannerSyncRuntime {
     });
   }
 
-  attach(client: QueryClient, workspace: PlannerWorkspace) {
+  attach(client: QueryClient, workspace?: PlannerWorkspace) {
     this.client = client;
-    this.confirmed = mergeConfirmedWorkspace(this.confirmed, workspace);
+    if (workspace) this.confirmed = mergeConfirmedWorkspace(this.confirmed, workspace);
     this.publish();
     void this.queue.pump();
   }

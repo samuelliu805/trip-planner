@@ -12,7 +12,19 @@ export function captureOwnedVariantSource(
 ) {
   if (snapshot.variant.id !== sourceVariantId)
     throw new Error("Load the selected source Plan before creating it. Your draft is kept.");
+  // Query data can already be this owner's projection, never a confirmed baseline.
   return ownedPlannerRuntime([...scope.slice(0, 3), sourceVariantId], client, snapshot).project();
+}
+
+/** Only a completed server read may reconcile a source owner's confirmed state. */
+export function reconcileOwnedVariantSource(
+  scope: string[],
+  client: QueryClient,
+  snapshot: PlannerWorkspace,
+) {
+  return ownedPlannerRuntime([...scope.slice(0, 3), snapshot.variant.id], client, snapshot, {
+    confirmedRead: true,
+  }).project();
 }
 
 export function enqueueVariantCreation(

@@ -35,7 +35,11 @@ export function PlannerWorkspace(props: PlannerWorkspaceProps) {
     ? cloneElement(props.shareControls, { activeVariantId: workspace.variant.id })
     : props.shareControls;
   return (
-    <PlannerOutboxProvider key={workspace.variant.id} workspace={workspace}>
+    <PlannerOutboxProvider
+      key={workspace.variant.id}
+      workspace={workspace}
+      confirmedRead={workspace === props.initialWorkspace}
+    >
       <PlannerWorkspaceVariant
         {...props}
         initialWorkspace={workspace}

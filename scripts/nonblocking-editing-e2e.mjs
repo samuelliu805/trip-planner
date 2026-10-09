@@ -1129,6 +1129,151 @@ try {
       assert.equal(calls.filter((call) => call.kind === "create-plan").length, 1);
     },
   );
+  await scenario(
+    "source owner remount retains confirmed baselines across pending edits",
+    async (page) => {
+      delay = 3000;
+      await page.getByRole("button", { name: "Edit first", exact: true }).click();
+      await title(page).fill("Remounted A");
+      await page.waitForFunction(() =>
+        window.__runtime.queue.operations.some((op) => op.status === "sending"),
+      );
+      await title(page).fill("Remounted B");
+      await close(page).click();
+      await page.waitForFunction(() => window.__runtime.queue.operations.length === 2);
+      await page
+        .getByRole("button", { name: "Reopen source workspace fixture", exact: true })
+        .click();
+      await page.waitForFunction(
+        () =>
+          window.__runtime.queue.operations.some((op) => /^(failed|conflict)$/.test(op.status)) ||
+          window.__runtime.queue.operations.length === 0,
+        null,
+        { timeout: 16000 },
+      );
+      assert.deepEqual(
+        await page.evaluate(() =>
+          window.__runtime.queue.operations
+            .filter((op) => /^(failed|conflict)$/.test(op.status))
+            .map((op) => ({ status: op.status, error: op.error })),
+        ),
+        [],
+      );
+      assert.equal(workspace.days[0].items[0].title, "Remounted B");
+      assert.equal(calls.filter((call) => call.kind === "update").length, 2);
+      await page.reload();
+      await page.waitForFunction(() => window.__runtime);
+      await page.getByRole("button", { name: "Edit first", exact: true }).click();
+      assert.equal(await title(page).inputValue(), "Remounted B");
+      assert.equal(calls.filter((call) => call.kind === "update").length, 2);
+    },
+  );
+  for (const duplicate of [false, true]) {
+    await scenario(
+      `${duplicate ? "duplicate" : "blank"} Plan retains source baselines from a projected cache`,
+      async (page) => {
+        delay = 3000;
+        await plansReady(page);
+        await page.getByRole("button", { name: "Edit first", exact: true }).click();
+        await title(page).fill("Source A");
+        await page.waitForFunction(() =>
+          window.__runtime.queue.operations.some((op) => op.status === "sending"),
+        );
+        await title(page).fill("Source B");
+        await close(page).click();
+        await page.waitForFunction(() => window.__runtime.queue.operations.length === 2);
+        const reads = calls.filter((call) => call.kind === "load").length;
+        await page
+          .getByRole("button", {
+            name: duplicate ? "Copy Plan fixture" : "New Plan fixture",
+            exact: true,
+          })
+          .click();
+        await page
+          .getByRole("textbox", { name: "Plan name", exact: true })
+          .fill("Warm source target");
+        await page
+          .getByRole("button", { name: duplicate ? "Duplicate Plan" : "Create Plan", exact: true })
+          .click();
+        assert.equal(calls.filter((call) => call.kind === "load").length, reads);
+        const child = await page.evaluate(() =>
+          window.__variants.queue.operations.find((op) => op.intent.kind === "create"),
+        );
+        assert.equal(child.intent.source.days[0].items[0].title, "Source B");
+        assert.equal(child.dependsOn.length, 2);
+        assert.equal(calls.filter((call) => /^(create|duplicate)-plan$/.test(call.kind)).length, 0);
+        await page.waitForFunction(
+          () =>
+            window.__runtime.queue.operations.some((op) => /^(failed|conflict)$/.test(op.status)) ||
+            window.__runtime.queue.operations.length === 0,
+          null,
+          { timeout: 16000 },
+        );
+        assert.deepEqual(
+          await page.evaluate(() =>
+            window.__runtime.queue.operations
+              .filter((op) => /^(failed|conflict)$/.test(op.status))
+              .map((op) => ({ status: op.status, error: op.error })),
+          ),
+          [],
+        );
+        await plansSynced(page);
+        assert.equal(workspace.days[0].items[0].title, "Source B");
+        assert.equal(calls.filter((call) => call.kind === "update").length, 2);
+        const requests = calls.filter((call) => /^(create|duplicate)-plan$/.test(call.kind));
+        assert.equal(requests.length, 1);
+        const target = planWorkspaces.get(requests[0].input.operationId);
+        assert.equal(target.days[0].items.length, duplicate ? workspace.days[0].items.length : 0);
+        if (duplicate) {
+          assert.equal(target.days[0].items[0].title, "Source B");
+          assert.notEqual(target.days[0].items[0].id, workspace.days[0].items[0].id);
+        }
+      },
+    );
+  }
+  await scenario(
+    "duplicate Plan reconciles a verified newer source read before acceptance",
+    async (page) => {
+      await plansReady(page);
+      workspace.days[0].items[0].title = "Verified server source";
+      workspace.days[0].items[0].version++;
+      workspace.days[0].items_version++;
+      workspace.variant.items_version++;
+      workspace.variant.content_version++;
+      delay = 1500;
+      await page.evaluate(() => {
+        const source = window.__runtime.project();
+        window.__variantClient.setQueryData(
+          ["planner", source.variant.trip_id, source.variant.id],
+          source,
+          { updatedAt: 0 },
+        );
+      });
+      await page.getByRole("button", { name: "Copy Plan fixture", exact: true }).click();
+      await page.waitForFunction(
+        () => window.__runtime.project().days[0].items[0].title === "Verified server source",
+      );
+      await page
+        .getByRole("textbox", { name: "Plan name", exact: true })
+        .fill("Verified source target");
+      await page.getByRole("button", { name: "Duplicate Plan", exact: true }).click();
+      const child = await page.evaluate(() =>
+        window.__variants.queue.operations.find((op) => op.intent.kind === "create"),
+      );
+      assert.equal(child.intent.source.days[0].items[0].title, "Verified server source");
+      assert.equal(
+        child.intent.input.expectedSourceContentVersion,
+        workspace.variant.content_version,
+      );
+      await plansSynced(page);
+      const request = calls.find((call) => call.kind === "duplicate-plan").input;
+      assert.equal(
+        planWorkspaces.get(request.operationId).days[0].items[0].title,
+        "Verified server source",
+      );
+      assert.equal(calls.filter((call) => call.kind === "duplicate-plan").length, 1);
+    },
+  );
   for (const sourceCase of [
     { duplicate: false },
     { duplicate: true },

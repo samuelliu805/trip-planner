@@ -241,7 +241,7 @@ export class RouteTaskRuntime {
       const loaded = await loadPlannerWorkspace(this.scope[2], this.scope[3]);
       if (!isAccountActive(this.scope[1])) return;
       if (!loaded.data) throw new Error(loaded.error ?? "The saved route could not be recovered.");
-      ownedPlannerRuntime(this.scope, this.client, loaded.data).reconcile(loaded.data);
+      ownedPlannerRuntime(this.scope, this.client, loaded.data, { confirmedRead: true });
     }
     await this.checkpoint((checkpoint) => {
       if (ack.kind === "overview" && ack.result)

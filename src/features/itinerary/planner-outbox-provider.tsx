@@ -13,9 +13,11 @@ const OutboxContext = createContext<PlannerSyncRuntime | null>(null);
 export function PlannerOutboxProvider({
   children,
   workspace,
+  confirmedRead = false,
 }: {
   children: ReactNode;
   workspace: PlannerWorkspace;
+  confirmedRead?: boolean;
 }) {
   const client = useQueryClient();
   const scope = useDraftScope(workspace.variant.trip_id, workspace.variant.id);
@@ -25,7 +27,7 @@ export function PlannerOutboxProvider({
     if (scope[1] === "guest") return;
     let next: PlannerSyncRuntime;
     try {
-      next = ownedPlannerRuntime(scope, client, workspace);
+      next = ownedPlannerRuntime(scope, client, workspace, { confirmedRead });
       setLocalActivity(`planner-runtime:${key}`);
     } catch (error) {
       setLocalActivity(`planner-runtime:${key}`, {

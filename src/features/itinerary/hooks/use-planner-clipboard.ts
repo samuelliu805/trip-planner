@@ -166,6 +166,7 @@ export function usePlannerClipboard({
                         [...outbox.scope.slice(0, 3), sourceVariantId],
                         queryClient,
                         loaded,
+                        { confirmedRead: true },
                       )
                     : undefined;
                   return sourceRuntime ? sourceRuntime.project() : loaded;
