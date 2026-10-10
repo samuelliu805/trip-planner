@@ -24,6 +24,7 @@ import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { googleFlightsBookingSample } from "./lib/idea-provider-samples.mjs";
 import { clickCloudbaseElement, pressCloudbaseElement } from "./lib/cloudbase-ui-click.mjs";
 import { waitForTripOutbox } from "./lib/browser-outbox-confirmation.mjs";
+import { readTripSettingsBrowserFields } from "./lib/trip-settings-browser-fields.mjs";
 import { startLoopbackTlsProxy } from "./lib/loopback-tls-proxy.mjs";
 import {
   chromiumProxyArguments,
@@ -5222,7 +5223,7 @@ async function verifyPublicTabletViewportMatrix(browser, publicToken) {
   );
 }
 
-async function captureMutationForms(browser) {
+async function captureMutationForms(browser, tripId) {
   await openTripMenu(browser);
   await clickButtonText(browser, "Trip settings");
   await waitFor(
@@ -5230,12 +5231,22 @@ async function captureMutationForms(browser) {
     'Boolean(document.querySelector("#trip-title")) && !document.querySelector("#trip-title").matches(":disabled")',
     "fresh Trip settings editor",
   );
-  const updateEntries = await evaluate(
-    browser,
-    `(() => [...new FormData(document.querySelector("#trip-title").form).entries()].map(
-      ([name, value]) => [name, String(value)],
-    ))()`,
+  const fields = await readTripSettingsBrowserFields(browser, { evaluate });
+  const config = loadLiveConfig();
+  const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+  const trips = await controlledData(
+    () => db.from("trips").select("id,timezone,version,content_version").eq("id", tripId),
+    "owned settings authorization baseline",
   );
+  assert.equal(trips.length, 1, "The owned authorization baseline must exist.");
+  const updateInput = {
+    ...fields,
+    dayCount: Number(fields.dayCount),
+    tripId,
+    timezone: trips[0].timezone,
+    expectedVersion: Number(trips[0].version),
+    expectedContentVersion: Number(trips[0].content_version),
+  };
   const cancelDispatched = await evaluate(
     browser,
     `(() => {
@@ -5279,11 +5290,14 @@ async function captureMutationForms(browser) {
     `!document.querySelector('[role="alertdialog"]') && !document.querySelector('input[name="trip_id"]')`,
     "delete confirmation close",
   );
-  return { deleteEntries, updateEntries };
+  return { deleteEntries, updateInput };
 }
 
 async function forgeForm(browser, path, entries, replacements = {}) {
-  const fields = { ...Object.fromEntries(entries), ...replacements };
+  const fields = {
+    ...(Array.isArray(entries) ? Object.fromEntries(entries) : entries),
+    ...replacements,
+  };
   const settings = "title" in fields;
   const exportedName = settings ? "saveTripSettings" : "runTripBackgroundAction";
   const manifest = JSON.parse(
@@ -5298,9 +5312,11 @@ async function forgeForm(browser, path, entries, replacements = {}) {
     `${exportedName} must resolve in the exact compiled application.`,
   );
   const input = {
-    tripId: fields.trip_id,
-    expectedVersion: Number(fields.expected_version),
-    expectedContentVersion: Number(fields.expected_content_version),
+    tripId: settings ? fields.tripId : fields.trip_id,
+    expectedVersion: Number(settings ? fields.expectedVersion : fields.expected_version),
+    expectedContentVersion: Number(
+      settings ? fields.expectedContentVersion : fields.expected_content_version,
+    ),
     operationId: randomUUID(),
   };
   const args = settings
@@ -5310,9 +5326,9 @@ async function forgeForm(browser, path, entries, replacements = {}) {
           title: fields.title,
           timezone: fields.timezone,
           currency: fields.currency,
-          startDate: fields.start_date,
-          endDate: fields.end_date,
-          dayCount: Number(fields.day_count),
+          startDate: fields.startDate,
+          endDate: fields.endDate,
+          dayCount: fields.dayCount,
         },
       ]
     : [{ kind: "trip.delete", input }];
@@ -5936,7 +5952,7 @@ async function run() {
     updatedTitle = `${runLabel}-saved-right-after-share`;
     await updateTripTitle(browser, updatedTitle);
     await verifyTabletFrozenLayers(browser);
-    const forms = await captureMutationForms(browser);
+    const forms = await captureMutationForms(browser, tripId);
 
     await evaluate(browser, "window.__phase3BackNavigationSentinel = true");
     await clickElement(
@@ -6000,7 +6016,7 @@ async function run() {
     assert.equal(deniedTripBody.includes(updatedTitle), false);
 
     const forgedTitle = `${runLabel}-forged-by-b`;
-    await forgeForm(browser, `/trips/${tripId}`, forms.updateEntries, { title: forgedTitle });
+    await forgeForm(browser, `/trips/${tripId}`, forms.updateInput, { title: forgedTitle });
     await forgeForm(browser, `/trips/${tripId}`, forms.deleteEntries);
 
     await clearCookies(browser);
