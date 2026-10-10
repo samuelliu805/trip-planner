@@ -5996,6 +5996,12 @@ async function run() {
       "document.querySelector('[role=\"alert\"]')?.textContent.trim() ?? null",
     );
     if (statusError) throw new Error(`Status update failed: ${statusError}`);
+    await waitForTripOutbox(browser, tripId, {
+      evaluate,
+      waitFor,
+      domains: ["trip-card"],
+      label: "Trip status confirmed before cold navigation",
+    });
     await navigate(browser, "/trips?status=done");
     await waitFor(
       browser,
