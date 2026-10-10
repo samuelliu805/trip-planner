@@ -19,10 +19,12 @@ import {
   useReorderItineraryItems,
   useInsertTripDay,
   useCopyItineraryItems,
+  useRemoveTripDay,
 } from "../../../src/features/itinerary/day-mutations";
 import { PlannerInlineFields } from "../../../src/features/itinerary/components/planner-inline-fields";
 import { useResearchSync } from "../../../src/features/research/use-research-sync";
 import { TripForm } from "../../../src/features/trips/components/trip-form";
+import { updateTripSchema } from "../../../src/features/trips/schema";
 import { TripSettingsEditor } from "../../../src/features/trips/components/trip-settings-editor";
 import { RouteProbe } from "./route-probe";
 import { BackgroundProbe } from "./background-probe";
@@ -37,6 +39,7 @@ const client = new QueryClient({
   defaultOptions: { queries: { retry: false, staleTime: Infinity } },
 });
 const initial = window.__initial;
+window.__settingsInputValid = (input) => updateTripSchema.safeParse(input).success;
 client.setQueryData(plannerQueryKey(initial.variant.trip_id, initial.variant.id), initial);
 window.__client = client;
 function EditorFixture() {
@@ -52,6 +55,7 @@ function EditorFixture() {
   const reorder = useReorderItineraryItems(initial.variant.trip_id, initial.variant.id);
   const insert = useInsertTripDay(initial.variant.trip_id, initial.variant.id);
   const copy = useCopyItineraryItems(initial.variant.trip_id, initial.variant.id);
+  const removeDay = useRemoveTripDay(initial.variant.trip_id, initial.variant.id);
   const [inline, setInline] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [routes, setRoutes] = React.useState(false);
@@ -103,6 +107,22 @@ function EditorFixture() {
         }
       >
         Insert day
+      </button>
+      <button
+        onClick={() => {
+          const day = workspace.days[1];
+          removeDay.mutate({
+            tripId: initial.variant.trip_id,
+            variantId: initial.variant.id,
+            dayId: day.id,
+            expectedDaysVersion: workspace.variant.days_version,
+            expectedVersion: day.version,
+            expectedContentVersion: day.content_version,
+            operationId: crypto.randomUUID(),
+          });
+        }}
+      >
+        Delete second day
       </button>
       <button
         onClick={() =>

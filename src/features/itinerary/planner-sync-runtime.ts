@@ -5,13 +5,18 @@ import { type QueryClient } from "@tanstack/react-query";
 import { DurableOutbox, type OutboxOperation } from "../editing/outbox";
 import { loadPlannerWorkspace } from "./actions";
 import { prepareSyncIntent } from "./prepare-sync-intent";
+import { prepareCopySourceParents } from "./prepare-copy-source-parents";
 import { sendSyncIntent } from "./send-sync-intent";
 import { plannerQueryKey } from "./planner-query";
 import { projectSyncIntent, type PlannerSyncIntent } from "./sync-operation";
 import type { PlannerSyncDelta, PlannerWorkspace } from "./types";
 import { hasScopeReceipt } from "../editing/dependency-receipts";
 import { browserResourceLock } from "../editing/browser-resource-lock";
-import { applyConfirmedDelta, mergeConfirmedWorkspace } from "./confirmed-workspace";
+import {
+  applyConfirmedDelta,
+  mergeConfirmedWorkspace,
+  confirmVariantMetadata,
+} from "./confirmed-workspace";
 import { registerSyncQueue, subscribeSync, tripSyncQueues } from "../editing/sync-registry";
 import { projectVariantList, type VariantSyncIntent } from "../variants/sync-intent";
 import { validatePlannerIntent } from "./sync-validation";
@@ -189,7 +194,7 @@ export class PlannerSyncRuntime {
     this.publish();
   }
   confirmVariant(variant: PlannerWorkspace["variant"]) {
-    this.confirmed = mergeConfirmedWorkspace(this.confirmed, { ...this.confirmed, variant });
+    this.confirmed = confirmVariantMetadata(this.confirmed, variant);
     this.storage.setItem(this.checkpointKey, JSON.stringify(this.confirmed));
     this.publish();
   }
@@ -249,11 +254,15 @@ export class PlannerSyncRuntime {
     this.client.setQueryData(plannerQueryKey(this.tripId, this.variantId), this.project());
   }
 
-  private prepare(operation: OutboxOperation) {
+  private async prepare(operation: OutboxOperation) {
     this.reloadCheckpoint();
     return json(
       prepareSyncIntent(
-        resolveApplicationParents(operation, this.scope, this.storage),
+        await prepareCopySourceParents(
+          resolveApplicationParents(operation, this.scope, this.storage),
+          this.scope,
+          this.storage,
+        ),
         this.confirmed,
       ),
     );

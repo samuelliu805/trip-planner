@@ -8,6 +8,7 @@ import { registerSyncQueue, subscribeSync, tripSyncQueues } from "../editing/syn
 import { loadPlannerWorkspace } from "../itinerary/actions";
 import { findPlannerRuntime, ownedPlannerRuntime } from "../itinerary/planner-runtime-owner";
 import { plannerQueryKey } from "../itinerary/planner-query";
+import { prepareVariantIntent } from "./prepare-variant-intent";
 import type { PlannerVariant, PlannerWorkspace } from "../itinerary/types";
 import {
   createRouteVariant,
@@ -20,7 +21,6 @@ import { variantListQueryKey } from "./variant-list-reload";
 import {
   variantIntentSchema,
   variantFields,
-  sourceSnapshot,
   projectVariantList,
   pendingVariantWorkspace,
   type VariantSyncIntent,
@@ -189,30 +189,23 @@ export class VariantSyncRuntime {
       variants: this.project(),
     };
   }
+  hasConfirmed(id: string) {
+    if (this.queue.operations.some((op) => op.id === id && op.status === "acknowledged"))
+      return true;
+    try {
+      return this.storage.getItem(`${this.queue.prefix}-receipt:${id}`) === "1";
+    } catch {
+      return false;
+    }
+  }
   private async prepare(op: OutboxOperation) {
     this.reload();
-    const intent = structuredClone(op.intent) as unknown as VariantSyncIntent;
-    if (intent.kind === "create") {
-      const loaded = await loadPlannerWorkspace(this.scope[2], intent.input.sourceVariantId);
-      if (!loaded.data || sourceSnapshot(loaded.data) !== sourceSnapshot(intent.source))
-        throw new SyncFailure(
-          "The source Plan changed. Your copy request is kept for review.",
-          "conflict",
-        );
-      const source = loaded.data.variant;
-      Object.assign(intent.input, {
-        expectedSourceVersion: source.version,
-        expectedSourceContentVersion: source.content_version,
-        expectedSourceDaysVersion: source.days_version,
-        expectedSourceItemsVersion: source.items_version,
-      });
-    } else if ((intent.kind === "update" || intent.kind === "primary") && intent.before) {
-      const current = this.confirmed.find((row) => row.id === intent.input.variantId);
-      if (!current || variantFields(current) !== intent.before)
-        throw new SyncFailure("The Plan changed elsewhere. Your edit is kept.", "conflict");
-      intent.input.expectedVersion = current.version;
+    const prepared = await prepareVariantIntent(op, this.scope[2], this.confirmed);
+    if (prepared.variants) {
+      this.merge(prepared.variants);
+      this.save();
     }
-    return json(intent);
+    return json(prepared.intent);
   }
   private async send(intent: VariantSyncIntent) {
     const result = await (intent.kind === "create"

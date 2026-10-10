@@ -15,7 +15,12 @@ import { stopChild } from "./child-process.mjs";
 import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
 import { startLoopbackTlsProxy } from "./loopback-tls-proxy.mjs";
 import { resolveGlobalBrowserOrigin } from "./phase-5-global-browser-origin.mjs";
-import { readTripOutbox, waitForTripOutbox } from "./browser-outbox-confirmation.mjs";
+import {
+  readTripOutbox,
+  waitForTripOutbox,
+  readTripAcceptedOperations,
+  summarizeNewTripOperations,
+} from "./browser-outbox-confirmation.mjs";
 
 function chromeExecutable() {
   const candidates = [
@@ -264,7 +269,7 @@ async function waitFor(browser, expression, label, timeoutMs = 45_000) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
-async function clickElement(browser, elementExpression, label, button = "left") {
+export async function clickElement(browser, elementExpression, label, button = "left") {
   await waitFor(
     browser,
     `(() => {
@@ -1380,6 +1385,22 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     `document.querySelector('[role="dialog"]')?.innerText.includes('Day 1: 2026-11-${anchorDayNumber === 2 ? "19" : "20"}')`,
     "new Plan date preview follows selected Day",
   );
+  const acceptanceOptions = { evaluate, domains: ["variants", "idea-workflows"] };
+  const beforeCreation = await readTripAcceptedOperations(browser, tripId, acceptanceOptions);
+  await evaluate(
+    browser,
+    `(() => {
+    const expected = [...document.querySelectorAll('[role="dialog"] button')]
+      .find((button) => button.textContent.includes('Create Plan') && !button.disabled);
+    window.__phase5CreationPointer = [];
+    for (const type of ['pointerdown', 'pointerup', 'click'])
+      document.addEventListener(type, (event) => {
+        if (window.__phase5CreationPointer.length >= 12) return;
+        window.__phase5CreationPointer.push({ type, trusted: event.isTrusted,
+          expectedTarget: event.composedPath().includes(expected) });
+      }, { capture: true });
+  })()`,
+  );
   await clickElementUntil(
     browser,
     `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
@@ -1391,6 +1412,14 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   let rebasedVariantId;
   try {
+    const acceptance = summarizeNewTripOperations(
+      beforeCreation,
+      await readTripAcceptedOperations(browser, tripId, acceptanceOptions),
+    );
+    assert.ok(
+      acceptance.variants?.accepted && acceptance["idea-workflows"]?.accepted,
+      "Create Plan closed without accepting both durable operations.",
+    );
     rebasedVariantId = await waitFor(
       browser,
       `(() => {
@@ -1412,8 +1441,13 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       `[...document.querySelectorAll('[role="alert"]')]
       .filter((node) => node.getClientRects().length).map((node) => node.textContent.trim().slice(0, 240))`,
     ).catch(() => []);
+    const acceptance = summarizeNewTripOperations(
+      beforeCreation,
+      await readTripAcceptedOperations(browser, tripId, acceptanceOptions).catch(() => []),
+    );
+    const pointer = await evaluate(browser, "window.__phase5CreationPointer ?? []").catch(() => []);
     throw new Error(
-      `${error.message}; creation diagnostic: ${JSON.stringify({ page, outbox, alerts })}`,
+      `${error.message}; creation diagnostic: ${JSON.stringify({ page, outbox, alerts, acceptance, pointer })}`,
       { cause: error },
     );
   }

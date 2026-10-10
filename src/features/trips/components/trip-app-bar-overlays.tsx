@@ -81,7 +81,7 @@ export function TripAppBarOverlays({
       {deletePending ? (
         <div
           aria-live="assertive"
-          className="fixed inset-0 z-[125] flex items-center justify-center bg-background/70 backdrop-blur-[1px]"
+          className="pointer-events-none fixed bottom-20 right-4 z-[80] max-w-[calc(100vw-2rem)] sm:bottom-4"
           role="status"
         >
           <div className="flex items-center gap-2 rounded-full border bg-background px-4 py-2.5 text-sm font-semibold shadow-lg">

@@ -4,7 +4,11 @@ import { projectSyncIntent } from "./sync-operation.ts";
 import { prepareSyncIntent } from "./prepare-sync-intent.ts";
 import { dayIds, dayEditSnapshot, createLocalCopies } from "./structure-sync.ts";
 import { itemEditableSnapshot } from "./item-editable-snapshot.ts";
-import { mergeConfirmedWorkspace } from "./confirmed-workspace.ts";
+import {
+  mergeConfirmedWorkspace,
+  confirmVariantMetadata,
+  applyConfirmedDelta,
+} from "./confirmed-workspace.ts";
 import type { PlannerWorkspace, ItineraryItem } from "./types.ts";
 import type { PlannerSyncIntent } from "./sync-operation.ts";
 import type { OutboxOperation } from "../editing/outbox.ts";
@@ -30,6 +34,62 @@ const attachment: OwnerAttachment = {
   status: "ready",
   version: 1,
 };
+
+for (const full of [true, false]) {
+  test(`${full ? "complete read" : "day-only ACK"} merges newer day content without restoring older structure fields`, () => {
+    const original = workspace();
+    original.days[1].date = "2027-02-03";
+    const current = structuredClone(original);
+    current.variant.days_version++;
+    current.days[1].day_number = 3;
+    current.days[1].date = "2027-02-04";
+    current.days.splice(1, 0, {
+      ...current.days[0],
+      id: id(99),
+      day_number: 2,
+      date: "2027-02-03",
+      items: [],
+    });
+    const incoming = structuredClone(original);
+    incoming.days[1].content_version++;
+    incoming.days[1].items_version++;
+    incoming.days[1].title = "New day content";
+    if (!full) incoming.days = [incoming.days[1]];
+    const merged = applyConfirmedDelta(current, { full, operationId: id(88), workspace: incoming });
+    assert.deepEqual(dayIds(merged), dayIds(current));
+    assert.deepEqual(
+      merged.days.map((day) => [day.day_number, day.date]),
+      current.days.map((day) => [day.day_number, day.date]),
+    );
+    assert.equal(merged.days[2].title, "New day content");
+    assert.equal(merged.days[2].content_version, incoming.days.at(-1)!.content_version);
+    assert.equal(merged.variant.days_version, current.variant.days_version);
+  });
+}
+
+test("Plan metadata cannot certify unseen structure or suppress a later complete ACK", () => {
+  const confirmed = workspace();
+  const metadata = confirmVariantMetadata(confirmed, {
+    ...confirmed.variant,
+    version: confirmed.variant.version + 1,
+    name: "Latest metadata",
+    content_version: 50,
+    days_version: 50,
+    items_version: 50,
+  });
+  assert.equal(metadata.variant.name, "Latest metadata");
+  assert.equal(metadata.variant.version, confirmed.variant.version + 1);
+  for (const key of ["content_version", "days_version", "items_version"] as const)
+    assert.equal(metadata.variant[key], confirmed.variant[key]);
+  const updated = structuredClone(confirmed);
+  updated.variant.days_version++;
+  updated.variant.content_version++;
+  updated.days.push({ ...updated.days[0], id: id(42), day_number: 3, items: [] });
+  const persisted = mergeConfirmedWorkspace(mergeConfirmedWorkspace(metadata, updated), metadata);
+  assert.equal(persisted.days.length, 3);
+  assert.equal(persisted.variant.days_version, updated.variant.days_version);
+  assert.equal(persisted.variant.name, "Latest metadata");
+});
 
 test("late text ACK and stale refetch cannot resurrect a deleted attachment", () => {
   const confirmed = workspace();
@@ -339,4 +399,79 @@ test("day deletion rebases only the exact confirmed local content", () => {
   if (wire.kind === "removeDay") assert.equal(wire.input.expectedContentVersion, 3);
   latest.days[0].items.push(item(21));
   assert.throws(() => prepareSyncIntent(operation(intent), latest), /edited elsewhere/);
+});
+
+test("stale day reads preserve collection positions while newer item text may still merge", () => {
+  const current = workspace(),
+    incoming = workspace();
+  current.days[0].items_version = 5;
+  incoming.days[0].items_version = 3;
+  current.days[0].items[0].sort_order = 0;
+  incoming.days[0].items[0].sort_order = 7;
+  incoming.days[0].items[0].version = 2;
+  incoming.days[0].items[0].title = "newer text";
+  const result = mergeConfirmedWorkspace(current, incoming).days[0].items[0];
+  assert.equal(result.title, "newer text");
+  assert.equal(result.version, 2);
+  assert.equal(result.sort_order, 0, "position follows the highest collection version");
+  current.days[0].items[0] = result;
+  incoming.days[0].items_version = 6;
+  incoming.days[0].items[0].version = 1;
+  incoming.days[0].items[0].title = "older text";
+  const reordered = mergeConfirmedWorkspace(current, incoming).days[0].items[0];
+  assert.equal(reordered.title, "newer text");
+  assert.equal(reordered.version, 2);
+  assert.equal(reordered.sort_order, 7, "a newer collection still advances position");
+});
+
+test("accepted item updates project the same canonical positions as their frozen RPC", () => {
+  const initial = workspace();
+  initial.days[0].items.push({ ...item(22), type: "hotel", sort_order: 1 });
+  const intent = {
+    kind: "update",
+    input: {
+      tripId: trip,
+      variantId: variant,
+      dayId: initial.days[0].id,
+      id: initial.days[0].items[0].id,
+      type: "activity",
+      title: "updated",
+      operationId: id(99),
+      expectedVersion: 1,
+      expectedItemsVersion: 1,
+    },
+  } as PlannerSyncIntent;
+  const wire = prepareSyncIntent(operation(intent), initial);
+  assert.equal(wire.kind, "update");
+  if (wire.kind !== "update") return;
+  const projected = projectSyncIntent(initial, intent);
+  assert.deepEqual(
+    projected.days[0].items.map((row) => [row.id, row.sort_order]),
+    wire.input.orderedItemIds?.map((id, position) => [id, position]),
+  );
+  assert.deepEqual(
+    initial.days[0].items.map((row) => row.sort_order),
+    [20, 1],
+  );
+});
+
+test("a no-op update keeps the existing collection positions", () => {
+  const initial = workspace();
+  const existing = initial.days[0].items[0];
+  const next = projectSyncIntent(initial, {
+    kind: "update",
+    input: {
+      tripId: trip,
+      variantId: variant,
+      dayId: existing.day_id,
+      id: existing.id,
+      type: existing.type,
+      title: existing.title,
+      expectedVersion: 1,
+      expectedItemsVersion: 1,
+      operationId: id(99),
+    },
+  });
+  assert.equal(next.days[0].items[0].sort_order, 20);
+  assert.equal(itemEditableSnapshot(next.days[0].items[0]), itemEditableSnapshot(existing));
 });

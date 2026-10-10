@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
 import { finishNonblockingCheck } from "./lib/nonblocking-cleanup.mjs";
+import { clickElement as clickGlobalElement } from "./lib/phase-5-global-browser-smoke.mjs";
+import { clickCloudbaseElement, pressCloudbaseElement } from "./lib/cloudbase-ui-click.mjs";
+import { readTripSettingsBrowserFields } from "./lib/trip-settings-browser-fields.mjs";
+import {
+  readTripAcceptedOperations,
+  summarizeNewTripOperations,
+} from "./lib/browser-outbox-confirmation.mjs";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
@@ -194,6 +201,8 @@ let workspace = fixture(),
   operations = new Map(),
   ideaDelay = 0,
   sourceVersionIncrement = 1,
+  itemVersionIncrement = 1,
+  itemReplyTitle,
   sourceReplyTitle;
 const tripFixture = () => ({
   id: workspace.variant.trip_id,
@@ -249,6 +258,11 @@ const publicSnapshot = () => ({
   variant: { name: "Main plan", color: "#166534" },
 });
 const server = createServer(async (request, response) => {
+  if (request.url === "/trips") {
+    response.setHeader("Content-Type", "text/html");
+    response.end("<h1>Trips</h1>");
+    return;
+  }
   if (request.url === "/" || request.url === "/background") {
     response.setHeader("Content-Type", "text/html");
     response.end(
@@ -292,7 +306,11 @@ const server = createServer(async (request, response) => {
       kind === "comparison-load"
         ? comparisons
         : kind === "trip-snapshot"
-          ? tripSettings
+          ? {
+              ...tripSettings,
+              activeSharePageCount: 0,
+              contentVersion: tripSettings.content_version,
+            }
           : [...requestPlans.values()].map((row) => ({
               variantId: row.variant.id,
               variantName: row.variant.name,
@@ -484,7 +502,7 @@ const server = createServer(async (request, response) => {
       data:
         kind === "trip.status"
           ? { status: tripSettings.status, version: tripSettings.version }
-          : { id: input.tripId },
+          : { deletedId: input.tripId },
     };
   } else if (["invite", "remove-member"].includes(kind)) {
     if (kind === "invite") members.push({ ...memberFixture(), displayLabel: input.identifier });
@@ -823,7 +841,7 @@ const server = createServer(async (request, response) => {
         day.id === (input.targetDayId ?? input.dayId) ||
         day.items.some((item) => item.id === input.id),
     );
-    if (target && input.expectedItemsVersion !== target.items_version) {
+    if (target && !structural && input.expectedItemsVersion !== target.items_version) {
       response.statusCode = 409;
       response.end("Version conflict");
       return;
@@ -844,6 +862,25 @@ const server = createServer(async (request, response) => {
       }));
       currentWorkspace.variant.days_version++;
       result = { data: { id: key } };
+    } else if (kind === "remove-day") {
+      if (
+        !target ||
+        currentWorkspace.days.length <= 1 ||
+        input.expectedVersion !== target.version ||
+        input.expectedContentVersion !== target.content_version
+      ) {
+        response.statusCode = 409;
+        response.end("Day content conflict");
+        return;
+      }
+      currentWorkspace.days = currentWorkspace.days
+        .filter((day) => day.id !== target.id)
+        .map((day, index) => ({ ...day, day_number: index + 1 }));
+      currentWorkspace.routePlans = currentWorkspace.routePlans.filter(
+        (plan) => plan.day_id !== target.id,
+      );
+      currentWorkspace.variant.days_version++;
+      result = { data: { id: target.id } };
     } else if (kind === "copy") {
       const sourceWorkspace = planWorkspaces.get(input.sourceVariantId ?? input.variantId);
       const sources = input.sourceItemIds.map((id) =>
@@ -881,12 +918,12 @@ const server = createServer(async (request, response) => {
         id: input.id || key,
         day_id: target.id,
         type: input.type,
-        title: input.title,
+        title: itemReplyTitle ?? input.title,
         notes: input.notes || null,
         start_time: input.startTime || null,
         end_time: input.endTime || null,
         details: input.details || {},
-        version: (previous?.version || 0) + 1,
+        version: (previous?.version || 0) + itemVersionIncrement,
       };
       target.items = [...target.items.filter((item) => item.id !== saved.id), saved];
       if (input.orderedItemIds)
@@ -963,6 +1000,8 @@ async function scenario(name, run, setup) {
   sourceReadDelay = 0;
   ideaDelay = 0;
   sourceVersionIncrement = 1;
+  itemVersionIncrement = 1;
+  itemReplyTitle = undefined;
   sourceReplyTitle = undefined;
   operations = new Map();
   tripSettings = tripFixture();
@@ -1228,6 +1267,68 @@ try {
           assert.equal(target.days[0].items[0].title, "Source B");
           assert.notEqual(target.days[0].items[0].id, workspace.days[0].items[0].id);
         }
+      },
+    );
+  }
+  for (const duplicate of [false, true]) {
+    await scenario(
+      `${duplicate ? "duplicate" : "blank"} Plan captures canonical positions from pending source updates`,
+      async (page) => {
+        await plansReady(page);
+        delay = 2000;
+        await page.getByRole("button", { name: "Edit first", exact: true }).click();
+        await title(page).fill("Updated canonical source");
+        await page.getByRole("button", { name: "Save", exact: true }).click();
+        await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
+        await page
+          .getByRole("button", {
+            name: duplicate ? "Copy Plan fixture" : "New Plan fixture",
+            exact: true,
+          })
+          .click();
+        await page
+          .getByRole("textbox", { name: "Plan name", exact: true })
+          .fill("Canonical position target");
+        await page
+          .getByRole("button", { name: duplicate ? "Duplicate Plan" : "Create Plan", exact: true })
+          .click();
+        const child = await page.evaluate(() =>
+          window.__variants.queue.operations.find((op) => op.intent.kind === "create"),
+        );
+        assert.equal(child.dependsOn.length, 1);
+        assert.equal(calls.filter((row) => /^(create|duplicate)-plan$/.test(row.kind)).length, 0);
+        await plansSynced(page);
+        assert.equal(calls.filter((row) => row.kind === "update").length, 1);
+        const request = calls.find((row) => /^(create|duplicate)-plan$/.test(row.kind)).input;
+        const target = planWorkspaces.get(request.operationId);
+        assert.equal(target.days[0].items.length, duplicate ? 3 : 0);
+        if (duplicate) {
+          assert.deepEqual(
+            target.days[0].items.map((row) => [row.title, row.sort_order]),
+            [
+              ["Updated canonical source", 0],
+              ["Second walk", 1],
+              ["Final hotel", 2],
+            ],
+          );
+          assert.ok(
+            target.days[0].items.every(
+              (row) => !workspace.days[0].items.some((source) => source.id === row.id),
+            ),
+          );
+        }
+      },
+      () => {
+        const first = workspace.days[0];
+        first.items[0].sort_order = 4;
+        first.items[1].sort_order = 9;
+        first.items.push({
+          ...first.items[0],
+          id: randomUUID(),
+          type: "hotel",
+          title: "Final hotel",
+          sort_order: 2,
+        });
       },
     );
   }
@@ -1759,6 +1860,29 @@ try {
     delay = 3000;
     await page.getByRole("button", { name: "Trip settings", exact: true }).click();
     const field = page.getByRole("textbox", { name: "Trip name" });
+    await field.waitFor({ state: "visible" });
+    const capturedFields = await readTripSettingsBrowserFields(page, {
+      evaluate: (_browser, expression) => page.evaluate(expression),
+    });
+    assert.deepEqual(capturedFields, {
+      title: tripSettings.title,
+      dayCount: String(tripSettings.day_count),
+      startDate: tripSettings.start_date ?? "",
+      endDate: tripSettings.end_date ?? "",
+      currency: tripSettings.currency,
+    });
+    assert.equal(
+      await page.evaluate((input) => window.__settingsInputValid(input), {
+        ...capturedFields,
+        tripId: tripSettings.id,
+        timezone: tripSettings.timezone,
+        expectedVersion: tripSettings.version,
+        expectedContentVersion: tripSettings.content_version,
+        operationId: randomUUID(),
+      }),
+      true,
+      "Captured current fields and owned metadata must reach the typed authorization boundary.",
+    );
     await field.fill("Settings A");
     await page.waitForFunction(
       () =>
@@ -2102,6 +2226,158 @@ try {
     },
   );
   await scenario(
+    "newer day content from an older structure read keeps confirmed insertion order and dates",
+    async (page) => {
+      const old = structuredClone(workspace);
+      await page.getByRole("button", { name: "Insert day", exact: true }).click();
+      await synced(page);
+      const expected = workspace.days.map((day) => [day.id, day.day_number, day.date]);
+      const newerContent = structuredClone(old);
+      newerContent.days[1].content_version++;
+      newerContent.days[1].items_version++;
+      newerContent.days[1].title = "Later day content";
+      await page.evaluate((incoming) => window.__runtime.reconcile(incoming), newerContent);
+      assert.deepEqual(
+        await page.evaluate(() =>
+          window.__runtime.project().days.map((day) => [day.id, day.day_number, day.date]),
+        ),
+        expected,
+      );
+      assert.equal(
+        await page.evaluate(() => window.__runtime.project().days[2].title),
+        "Later day content",
+      );
+      await page.getByRole("button", { name: "Delete second day", exact: true }).click();
+      await synced(page);
+      assert.equal(workspace.days.length, 2);
+      assert.equal(calls.filter((row) => row.kind === "remove-day").length, 1);
+    },
+  );
+  await scenario(
+    "Plan metadata reads cannot replace confirmed inserted days before ACK persistence",
+    async (page) => {
+      delay = 1000;
+      await page.route("**/mock", async (route) => {
+        if (route.request().postDataJSON().kind !== "insert") return route.continue();
+        const response = await route.fetch();
+        assert.equal(response.status(), 200);
+        workspace.variant.version++;
+        workspace.variant.name = "Fresh Plan metadata";
+        await page.evaluate(
+          (variant) => window.__runtime.confirmVariant(variant),
+          workspace.variant,
+        );
+        await route.fulfill({ response });
+      });
+      await page.getByRole("button", { name: "Insert day", exact: true }).click();
+      await page.waitForFunction(() => window.__workspace.days.length === 3);
+      await synced(page);
+      const confirmed = await page.evaluate(() => ({
+        project: window.__runtime.project(),
+        checkpoint: JSON.parse(
+          localStorage.getItem(
+            `trip-planner:sync-baseline:v1:${JSON.stringify(window.__runtime.scope)}`,
+          ),
+        ),
+      }));
+      assert.equal(
+        confirmed.project.days.length,
+        3,
+        "metadata-only read must not replace structural ACK rows",
+      );
+      assert.equal(confirmed.checkpoint.days.length, 3);
+      assert.equal(confirmed.checkpoint.variant.days_version, workspace.variant.days_version);
+      assert.equal(confirmed.project.variant.name, "Fresh Plan metadata");
+      await page.getByRole("button", { name: "Delete second day", exact: true }).click();
+      await synced(page);
+      assert.equal(workspace.days.length, 2);
+      assert.equal(calls.filter((row) => row.kind === "remove-day").length, 1);
+    },
+  );
+  await scenario(
+    "insert copy edit and delete day preserve owned guards through refresh",
+    async (page) => {
+      delay = 2000;
+      await page.getByRole("button", { name: "Insert day", exact: true }).click();
+      await page.waitForFunction(() => window.__workspace.days.length === 3);
+      await page.evaluate(() => {
+        const workspace = window.__runtime.project(),
+          source = workspace.days[0].items[0],
+          day = workspace.days[1],
+          copiedId = crypto.randomUUID();
+        window.__runtime.accept({
+          kind: "copy",
+          input: {
+            tripId: workspace.variant.trip_id,
+            variantId: workspace.variant.id,
+            targetDayId: day.id,
+            sourceItemIds: [source.id],
+            sourceVersions: [source.version],
+            copiedItemIds: [copiedId],
+            expectedItemsVersion: day.items_version,
+            operationId: crypto.randomUUID(),
+          },
+          sources: [source],
+          replacements: [],
+          copiedItems: [
+            { ...source, id: copiedId, day_id: day.id, attachments: [], version: 1, sort_order: 0 },
+          ],
+        });
+        window.__dayToDelete = day.id;
+      });
+      await page.getByRole("button", { name: "Edit other day", exact: true }).click();
+      await title(page).fill("Temporary copied activity");
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
+      await page.getByRole("button", { name: "Delete second day", exact: true }).click();
+      await page.waitForFunction(() => window.__workspace.days.length === 2);
+      const operation = await page.evaluate(() =>
+        window.__runtime.queue.operations.find((op) => op.intent.kind === "removeDay"),
+      );
+      assert.ok(operation.dependsOn.length >= 2);
+      assert.equal(calls.filter((row) => row.kind === "remove-day").length, 0);
+      await page.reload();
+      await synced(page);
+      assert.equal(workspace.days.length, 2);
+      assert.equal(workspace.days.flatMap((day) => day.items).length, 3);
+      assert.ok(!workspace.days.some((day) => day.id === operation.intent.input.dayId));
+      const request = calls.find((row) => row.kind === "remove-day").input;
+      assert.equal(request.operationId, operation.id);
+      assert.equal(request.expectedContentVersion, 3);
+      assert.equal(calls.filter((row) => row.kind === "remove-day").length, 1);
+    },
+  );
+  await scenario(
+    "day deletion retains its snapshot when the owned item ACK changes fields",
+    async (page) => {
+      delay = 2000;
+      await page.getByRole("button", { name: "Edit other day", exact: true }).click();
+      await title(page).fill("Requested day activity");
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
+      await page.getByRole("button", { name: "Delete second day", exact: true }).click();
+      await page.waitForFunction(() => window.__workspace.days.length === 1);
+      await page.waitForFunction(() =>
+        window.__runtime.queue.operations.some(
+          (op) => op.intent.kind === "removeDay" && op.status === "conflict",
+        ),
+      );
+      const operation = await page.evaluate(() =>
+        window.__runtime.queue.operations.find((op) => op.intent.kind === "removeDay"),
+      );
+      assert.equal(operation.wire, undefined);
+      assert.equal(operation.attempts, 0);
+      assert.match(operation.error, /day was edited elsewhere/);
+      assert.match(operation.intent.beforeDay, /Requested day activity/);
+      assert.equal(calls.filter((row) => row.kind === "remove-day").length, 0);
+      assert.equal(workspace.days.length, 2);
+      assert.equal(workspace.days[1].items[0].title, "External day activity");
+    },
+    () => {
+      itemReplyTitle = "External day activity";
+    },
+  );
+  await scenario(
     "copy then edit uses stable copied identity while copy is pending",
     async (page) => {
       delay = 3000;
@@ -2214,11 +2490,38 @@ try {
       await page.getByText("Advanced settings", { exact: true }).click();
       const title = page.locator("#share-title");
       await title.fill("Publish A");
+      let release;
+      const held = new Promise((resolve) => {
+        release = resolve;
+      });
+      let markSending;
+      const sending = new Promise((resolve) => {
+        markSending = resolve;
+      });
+      await page.route("**/mock", async (route) => {
+        if (route.request().postDataJSON().kind === "share-create") {
+          markSending();
+          await held;
+        }
+        await route.continue();
+      });
       delay = 1700;
       await page.getByRole("button", { name: "Create and publish", exact: true }).click();
+      await sending;
+      assert.equal(await page.locator('[aria-label="Published shareable page"]').count(), 0);
+      assert.equal(
+        await page
+          .locator('[role="dialog"] [aria-live]')
+          .evaluateAll((elements) =>
+            elements.some((element) => element.textContent?.includes("Saved locally")),
+          ),
+        true,
+      );
       await title.fill("发布 B");
       await page.getByRole("button", { name: "Create and publish", exact: true }).click();
+      release();
       await page.waitForFunction(() => window.__sharing?.queue.operations.length === 0);
+      await page.locator('[aria-label="Published shareable page"]').waitFor();
       assert.equal(await title.inputValue(), "发布 B");
       assert.equal(shareLinks.length, 1);
       assert.equal(shareLinks[0].shareTitle, "发布 B");
@@ -2669,6 +2972,156 @@ try {
       },
     );
   }
+  await scenario(
+    "CN CDP pointer reacquires a replaced node at mobile and desktop widths",
+    async (page) => {
+      const session = await page.context().newCDPSession(page);
+      const driver = { cdp: { send: (method, parameters) => session.send(method, parameters) } };
+      const evaluate = async (_driver, expression) => page.evaluate(expression);
+      const waitFor = async (_driver, expression) => {
+        const deadline = Date.now() + 3000;
+        while (Date.now() < deadline) {
+          const point = await page.evaluate(expression);
+          if (point) return point;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        throw new Error("Pointer target unavailable");
+      };
+      for (const width of [390, 430, 1280]) {
+        await session.send("Emulation.setDeviceMetricsOverride", {
+          width,
+          height: 900,
+          deviceScaleFactor: 1,
+          mobile: false,
+        });
+        await page.evaluate(() => {
+          window.__pointerClicks = [];
+          const original = document.createElement("button");
+          original.dataset.pointerTarget = "yes";
+          original.textContent = "Current activity";
+          original.style.cssText =
+            "position:fixed;left:120px;top:160px;width:150px;height:44px;z-index:300";
+          original.addEventListener("click", (event) =>
+            window.__pointerClicks.push({ old: true, trusted: event.isTrusted }),
+          );
+          original.scrollIntoView = () => {
+            requestAnimationFrame(() => {
+              const replacement = original.cloneNode(true);
+              replacement.addEventListener("click", (event) =>
+                window.__pointerClicks.push({ old: false, trusted: event.isTrusted }),
+              );
+              original.replaceWith(replacement);
+            });
+          };
+          document.body.append(original);
+        });
+        await clickCloudbaseElement(
+          driver,
+          'document.querySelector("[data-pointer-target]")',
+          "current activity",
+          { evaluate, waitFor },
+        );
+        assert.deepEqual(await page.evaluate(() => window.__pointerClicks), [
+          { old: false, trusted: true },
+        ]);
+        assert.deepEqual(await page.evaluate(() => window.__phase3LastClick), {
+          pointerdown: { trusted: true, expectedTarget: true },
+          pointerup: { trusted: true, expectedTarget: true },
+          click: { trusted: true, expectedTarget: true },
+        });
+        await page.evaluate(() => document.querySelector("[data-pointer-target]").remove());
+      }
+      await session.detach();
+    },
+  );
+  await scenario(
+    "flight Plan CDP click accepts and navigates after mobile viewport and day changes",
+    async (page) => {
+      await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
+      await page
+        .locator("[data-workflow-probe]")
+        .getByRole("button", { name: "Add to Plan", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("button", { name: "Create empty Plan + idea", exact: true }).click();
+      const session = await page.context().newCDPSession(page);
+      const driver = { cdp: { send: (method, parameters) => session.send(method, parameters) } };
+      const evaluate = async (_driver, expression) => page.evaluate(expression);
+      const options = { evaluate, domains: ["variants", "idea-workflows"] };
+      const before = await readTripAcceptedOperations(driver, workspace.variant.trip_id, options);
+      for (const width of [390, 430]) {
+        await session.send("Emulation.setDeviceMetricsOverride", {
+          width,
+          height: 844,
+          deviceScaleFactor: 1,
+          mobile: false,
+        });
+        await page.waitForFunction(() => {
+          const rect = document.querySelector('[role="dialog"]')?.getBoundingClientRect();
+          return (
+            rect &&
+            rect.left >= -0.5 &&
+            rect.right <= innerWidth + 0.5 &&
+            rect.top >= -0.5 &&
+            rect.bottom <= innerHeight + 0.5
+          );
+        });
+      }
+      await session.send("Emulation.setDeviceMetricsOverride", {
+        width: 1280,
+        height: 900,
+        deviceScaleFactor: 1,
+        mobile: false,
+      });
+      await clickGlobalElement(
+        driver,
+        `document.querySelector('[role="dialog"] [role="combobox"]')`,
+        "flight Plan day",
+      );
+      await clickGlobalElement(
+        driver,
+        `[...document.querySelectorAll('[role="option"]')].find((option) => option.getClientRects().length && option.textContent.startsWith('Day 2'))`,
+        "second flight Plan day",
+      );
+      delay = 2500;
+      await clickGlobalElement(
+        driver,
+        `[...document.querySelectorAll('[role="dialog"] button')].find((button) => button.textContent.includes('Create Plan') && !button.disabled)`,
+        "flight Plan creation",
+      );
+      await dialog.waitFor({ state: "hidden", timeout: 750 });
+      const acceptance = summarizeNewTripOperations(
+        before,
+        await readTripAcceptedOperations(driver, workspace.variant.trip_id, options),
+      );
+      assert.equal(acceptance.variants?.accepted, 1);
+      assert.equal(acceptance["idea-workflows"]?.accepted, 1);
+      const child = await page.evaluate(() => window.__workflows.queue.operations[0]);
+      assert.equal(child.intent.projection.days[1].date, "2026-11-20");
+      assert.equal(child.intent.input.anchorDayNumber, 2);
+      assert.equal(
+        await page.evaluate(() => window.__navigation.at(-1)),
+        `/trips/${workspace.variant.trip_id}?variant=${child.intent.input.variantId}`,
+      );
+      await page.waitForFunction(() => window.__workflows.queue.operations.length === 0, null, {
+        timeout: 20000,
+      });
+      const target = planWorkspaces.get(child.intent.input.variantId);
+      assert.equal(target.days.flatMap((day) => day.items).length, 1);
+      assert.equal(calls.filter((row) => row.kind === "create-plan").length, 1);
+      assert.equal(calls.filter((row) => row.kind === "idea-apply").length, 1);
+      assert.equal(
+        summarizeNewTripOperations(
+          before,
+          await readTripAcceptedOperations(driver, workspace.variant.trip_id, options),
+        ).variants.completed,
+        1,
+      );
+    },
+    () => {
+      workflowIdea = { category: "flight", start_date: "2026-11-20", end_date: "2026-11-25" };
+    },
+  );
   await scenario("new Plan then Idea waits for durable parent receipt", async (page) => {
     await page.getByRole("button", { name: "Toggle workflows", exact: true }).click();
     await page
@@ -2867,6 +3320,231 @@ try {
       target.routePlans = [];
       planWorkspaces.set(id, target);
     },
+  );
+  await scenario(
+    "cross-Plan clipboard binds a no-op source ACK before freezing its version",
+    async (page) => {
+      delay = 2000;
+      await page.evaluate(() => {
+        const current = window.__runtime.project(),
+          item = current.days[0].items[0];
+        window.__runtime.accept({
+          kind: "update",
+          input: {
+            tripId: item.trip_id,
+            variantId: item.variant_id,
+            dayId: item.day_id,
+            id: item.id,
+            type: item.type,
+            title: item.title,
+            operationId: crypto.randomUUID(),
+            expectedVersion: item.version,
+            expectedItemsVersion: current.days[0].items_version,
+          },
+        });
+      });
+      await page.getByRole("button", { name: "Paste edited source to another Plan" }).click();
+      await page.waitForFunction(() => window.__crossCopy?.queue.operations.length === 1);
+      const accepted = await page.evaluate(() => window.__crossCopy.queue.operations[0]);
+      assert.equal(accepted.intent.input.sourceVersions[0], 2);
+      assert.equal(calls.filter((row) => row.kind === "copy").length, 0);
+      await page.waitForFunction(
+        () =>
+          window.__runtime.queue.operations.length === 0 &&
+          window.__crossCopy.queue.operations.length === 0,
+        null,
+        { timeout: 16000 },
+      );
+      const request = calls.find((row) => row.kind === "copy").input;
+      assert.equal(workspace.days[0].items[0].version, 1);
+      assert.equal(request.sourceVersions[0], 1);
+      assert.equal(request.operationId, accepted.id);
+      assert.equal(
+        planWorkspaces.get(request.variantId).days[0].items[0].title,
+        workspace.days[0].items[0].title,
+      );
+      assert.equal(calls.filter((row) => row.kind === "copy").length, 1);
+    },
+    () => {
+      secondPlan();
+      itemVersionIncrement = 0;
+    },
+  );
+  await scenario(
+    "cross-Plan clipboard keeps changed source fields after an owned ACK for review",
+    async (page) => {
+      delay = 2000;
+      await page.evaluate(() => {
+        const current = window.__runtime.project(),
+          item = current.days[0].items[0];
+        window.__runtime.accept({
+          kind: "update",
+          input: {
+            tripId: item.trip_id,
+            variantId: item.variant_id,
+            dayId: item.day_id,
+            id: item.id,
+            type: item.type,
+            title: item.title,
+            operationId: crypto.randomUUID(),
+            expectedVersion: item.version,
+            expectedItemsVersion: current.days[0].items_version,
+          },
+        });
+      });
+      await page.getByRole("button", { name: "Paste edited source to another Plan" }).click();
+      await page.waitForFunction(() => window.__crossCopy?.queue.operations.length === 1);
+      const accepted = await page.evaluate(() => window.__crossCopy.queue.operations[0]);
+      await page.waitForFunction(
+        () => window.__crossCopy.queue.operations[0]?.status === "conflict",
+      );
+      const kept = await page.evaluate(() => window.__crossCopy.queue.operations[0]);
+      assert.equal(kept.id, accepted.id);
+      assert.equal(kept.wire, undefined);
+      assert.equal(kept.attempts, 0);
+      assert.match(kept.error, /source item changed/);
+      assert.equal(kept.intent.sources[0].title, accepted.intent.sources[0].title);
+      assert.equal(calls.filter((row) => row.kind === "copy").length, 0);
+      assert.equal(workspace.days[0].items[0].title, "External source edit");
+    },
+    () => {
+      secondPlan();
+      itemReplyTitle = "External source edit";
+    },
+  );
+  await scenario(
+    "cross-Plan clipboard pins an unrelated source beside an owned no-op ACK",
+    async (page) => {
+      delay = 2000;
+      await page.evaluate(() => {
+        const current = window.__runtime.project(),
+          item = current.days[0].items[0];
+        window.__runtime.accept({
+          kind: "update",
+          input: {
+            tripId: item.trip_id,
+            variantId: item.variant_id,
+            dayId: item.day_id,
+            id: item.id,
+            type: item.type,
+            title: item.title,
+            operationId: crypto.randomUUID(),
+            expectedVersion: item.version,
+            expectedItemsVersion: current.days[0].items_version,
+          },
+        });
+      });
+      await page.getByRole("button", { name: "Paste edited source to another Plan" }).click();
+      await page.waitForFunction(() => window.__crossCopy?.queue.operations.length === 1);
+      const accepted = await page.evaluate(async () => {
+        const source = window.__runtime.project();
+        await window.__crossClipboard.pastePayload({
+          kind: "trip-planner/items",
+          version: 2,
+          source: { tripId: source.variant.trip_id, variantId: source.variant.id },
+          sourceColumn: 1,
+          cells: [
+            { rowOffset: 0, columnOffset: 0, items: source.days[0].items.map((item) => item.id) },
+          ],
+        });
+        return window.__crossCopy.queue.operations.find(
+          (op) => op.intent.input.sourceItemIds.length === 2,
+        );
+      });
+      workspace.days[0].items[1].version++;
+      await page.waitForFunction(
+        (id) =>
+          window.__crossCopy.queue.operations.find((op) => op.id === id)?.status === "conflict",
+        accepted.id,
+      );
+      const kept = await page.evaluate(
+        (id) => window.__crossCopy.queue.operations.find((op) => op.id === id),
+        accepted.id,
+      );
+      assert.equal(kept.wire.input.sourceVersions[0], 1);
+      assert.equal(
+        kept.wire.input.sourceVersions[1],
+        1,
+        "unrelated row stays pinned despite matching fields",
+      );
+      assert.equal(kept.wire.input.operationId, accepted.id);
+      assert.equal(workspace.days[0].items[1].version, 2);
+      assert.equal(
+        calls.filter((row) => row.kind === "copy" && row.input.operationId === accepted.id).length,
+        1,
+      );
+    },
+    () => {
+      secondPlan();
+      itemVersionIncrement = 0;
+    },
+  );
+  await scenario(
+    "cross-Plan clipboard keeps a read-only predecessor source version pinned",
+    async (page) => {
+      delay = 2000;
+      let parentId;
+      await page.route("**/mock", async (route) => {
+        const input = route.request().postDataJSON();
+        if (input.kind !== "copy" || input.input.operationId !== parentId) return route.continue();
+        const response = await route.fetch();
+        assert.equal(response.status(), 200);
+        workspace.days[0].items[0].version++;
+        await route.fulfill({ response });
+      });
+      parentId = await page.evaluate(() => {
+        const current = window.__runtime.project(),
+          source = current.days[0].items[0],
+          destination = current.days[1],
+          copiedId = crypto.randomUUID(),
+          operationId = crypto.randomUUID();
+        window.__runtime.accept({
+          kind: "copy",
+          input: {
+            tripId: source.trip_id,
+            variantId: source.variant_id,
+            sourceVariantId: source.variant_id,
+            targetDayId: destination.id,
+            sourceItemIds: [source.id],
+            sourceVersions: [source.version],
+            copiedItemIds: [copiedId],
+            expectedItemsVersion: destination.items_version,
+            operationId,
+          },
+          sources: [source],
+          replacements: [],
+          copiedItems: [
+            {
+              ...source,
+              id: copiedId,
+              day_id: destination.id,
+              attachments: [],
+              version: 1,
+              sort_order: destination.items.length,
+            },
+          ],
+        });
+        return operationId;
+      });
+      await page.getByRole("button", { name: "Paste edited source to another Plan" }).click();
+      await page.waitForFunction(() => window.__crossCopy?.queue.operations.length === 1);
+      const accepted = await page.evaluate(() => window.__crossCopy.queue.operations[0]);
+      assert.ok(accepted.dependsOn.includes(parentId));
+      assert.equal(accepted.intent.sourceParents?.[accepted.intent.sources[0].id], undefined);
+      await page.waitForFunction(
+        () => window.__crossCopy.queue.operations[0]?.status === "conflict",
+      );
+      const kept = await page.evaluate(() => window.__crossCopy.queue.operations[0]);
+      assert.equal(kept.wire.input.sourceVersions[0], 1);
+      assert.equal(workspace.days[0].items[0].version, 2);
+      assert.equal(calls.filter((row) => row.kind === "copy").length, 2);
+      assert.equal(
+        calls.find((row) => row.kind === "copy" && row.input.operationId === kept.id).input
+          .sourceVersions[0],
+        1,
+      );
+    },
+    secondPlan,
   );
   await scenario(
     "cross-Plan clipboard restores an unopened source queue before capturing its fields",
@@ -3163,6 +3841,206 @@ try {
       assert.equal(await dialog.getByRole("textbox").inputValue(), "中文草稿 B");
     },
   );
+  await scenario(
+    "trip deletion keeps its conflict after closing and requires reviewed fresh tokens",
+    async (page) => {
+      await page.getByRole("button", { name: "Toggle trip list", exact: true }).click();
+      const list = page.locator("[data-trip-list-probe]");
+      async function openDelete() {
+        await list.getByRole("button", { name: "Actions for Initial trip", exact: true }).click();
+        await page.getByRole("menuitem", { name: "Delete trip", exact: true }).click();
+        await page.getByRole("alertdialog").waitFor();
+      }
+      await openDelete();
+      tripSettings.version++;
+      tripSettings.content_version++;
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Delete trip", exact: true })
+        .click();
+      await page.getByRole("alertdialog").waitFor({ state: "hidden", timeout: 750 });
+      await page.waitForFunction(() =>
+        window.__tripActions.queue.operations.some((op) => op.status === "conflict"),
+      );
+      const captured = await page.evaluate(() => window.__tripActions.queue.operations[0]);
+      assert.equal(captured.wire.input.expectedVersion, 1);
+      await list.locator("[data-independent]").click();
+      await openDelete();
+      const dialog = page.getByRole("alertdialog");
+      await dialog.getByRole("button", { name: "Reload latest", exact: true }).click();
+      await dialog
+        .getByText("Latest trip loaded. You can retry deletion.", { exact: true })
+        .waitFor();
+      assert.equal(await dialog.getByRole("alert").count(), 0);
+      assert.equal(await dialog.locator('input[name="expected_version"]').inputValue(), "2");
+      await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+      await dialog.waitFor({ state: "hidden" });
+      await openDelete();
+      assert.equal(await dialog.locator('input[name="expected_version"]').inputValue(), "1");
+      assert.equal(await dialog.getByRole("alert").count(), 1);
+      assert.equal(calls.filter((row) => row.kind === "trip.delete").length, 1);
+      await dialog.getByRole("button", { name: "Reload latest", exact: true }).click();
+      await dialog
+        .getByText("Latest trip loaded. You can retry deletion.", { exact: true })
+        .waitFor();
+      await dialog.getByRole("button", { name: "Delete trip", exact: true }).click();
+      await page.waitForFunction(() => window.__tripActions.queue.operations.length === 0);
+      const requests = calls.filter((row) => row.kind === "trip.delete");
+      assert.deepEqual(
+        requests.map((row) => row.input.expectedVersion),
+        [1, 2],
+      );
+      assert.deepEqual(
+        requests.map((row) => row.input.expectedContentVersion),
+        [1, 2],
+      );
+      assert.notEqual(requests[1].input.operationId, captured.id);
+      assert.equal(await list.locator("[data-independent]").textContent(), "Independent edited");
+    },
+  );
+  for (const changedView of [false, true]) {
+    await scenario(
+      `confirmed Trip deletion ${changedView ? "keeps a newer trip view" : "leaves the deleted trip after its durable receipt"}`,
+      async (page) => {
+        await page.getByRole("button", { name: "Toggle trip list", exact: true }).click();
+        const list = page.locator("[data-trip-list-probe]");
+        await page.evaluate(() =>
+          window.history.replaceState({}, "", `/trips/${window.__trip.id}`),
+        );
+        await list.getByRole("button", { name: "Actions for Initial trip", exact: true }).click();
+        await page.getByRole("menuitem", { name: "Delete trip", exact: true }).click();
+        delay = 1800;
+        await page
+          .getByRole("alertdialog")
+          .getByRole("button", { name: "Delete trip", exact: true })
+          .click();
+        await page.getByRole("alertdialog").waitFor({ state: "hidden", timeout: 750 });
+        const captured = await page.evaluate(() => ({
+          prefix: window.__tripActions.queue.prefix,
+          id: window.__tripActions.queue.operations[0].id,
+        }));
+        const otherTripId = randomUUID();
+        if (changedView)
+          await page.evaluate(
+            (id) => window.history.replaceState({}, "", `/trips/${id}`),
+            otherTripId,
+          );
+        await list.locator("[data-independent]").click();
+        if (changedView) {
+          await page.waitForFunction(() => window.__tripActions.queue.operations.length === 0);
+          assert.equal(new URL(page.url()).pathname, `/trips/${otherTripId}`);
+        } else {
+          await page.waitForURL("**/trips");
+          await page.getByRole("heading", { name: "Trips", exact: true }).waitFor();
+        }
+        assert.equal(
+          await page.evaluate(
+            ({ prefix, id }) => localStorage.getItem(`${prefix}-receipt:${id}`),
+            captured,
+          ),
+          "1",
+        );
+        assert.equal(calls.filter((row) => row.kind === "trip.delete").length, 1);
+      },
+    );
+  }
+  await scenario(
+    "Trip actions keyboard activation waits for the current hydrated button",
+    async (page) => {
+      await page.getByRole("button", { name: "Toggle trip list", exact: true }).click();
+      const session = await page.context().newCDPSession(page);
+      const driver = { cdp: { send: (method, parameters) => session.send(method, parameters) } };
+      const waitFor = async (_driver, expression) => {
+        const deadline = Date.now() + 3000;
+        while (Date.now() < deadline) {
+          const result = await page.evaluate(expression);
+          if (result) return result;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        throw new Error("Current keyboard target unavailable");
+      };
+      for (const [index, width] of [390, 430, 1280].entries()) {
+        await page.setViewportSize({ width, height: 900 });
+        const target =
+          'document.querySelector("[data-trip-list-probe] button[aria-label=\\\"Actions for Initial trip\\\"]")';
+        await page.evaluate(() => {
+          const original = document.querySelector(
+            '[data-trip-list-probe] button[aria-label="Actions for Initial trip"]',
+          );
+          const unhydrated = original.cloneNode(true);
+          original.replaceWith(unhydrated);
+          setTimeout(() => unhydrated.replaceWith(original), 700);
+        });
+        await pressCloudbaseElement(driver, target, "Trip actions after navigation", { waitFor });
+        const action = page.getByRole("menuitem", {
+          name: index === 1 ? "Move to Active" : "Mark complete",
+          exact: true,
+        });
+        await action.waitFor({ state: "visible", timeout: 3000 });
+        await action.click();
+        await page.waitForFunction(
+          (count) => window.__tripActions?.completed.length === count,
+          index + 1,
+        );
+      }
+      assert.deepEqual(
+        calls.filter((row) => row.kind === "trip.status").map((row) => row.input.status),
+        ["done", "open", "done"],
+      );
+      await session.detach();
+    },
+  );
+  await scenario(
+    "Trip status lost ACK survives refresh and exact replay before guarded deletion",
+    async (page) => {
+      await page.getByRole("button", { name: "Toggle trip list", exact: true }).click();
+      fault = "lost";
+      await page.getByRole("button", { name: "Actions for Initial trip", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Mark complete", exact: true }).click();
+      await page.locator("[data-trip-list-probe] [data-independent]").click();
+      await page.waitForFunction(() =>
+        window.__tripActions?.queue.operations.some((op) => op.status === "failed"),
+      );
+      const wire = await page.evaluate(() => window.__tripActions.queue.operations[0].wire);
+      await page.reload();
+      await page.waitForFunction(() => window.__runtime);
+      await page.getByRole("button", { name: "Toggle trip list", exact: true }).click();
+      await page.waitForFunction(() =>
+        window.__tripActions?.queue.operations.some((op) => op.status === "failed"),
+      );
+      assert.deepEqual(
+        await page.evaluate(() => window.__tripActions.queue.operations[0].wire),
+        wire,
+      );
+      await page.locator("[data-trip-list-probe] [data-sync-trigger]").click();
+      await page.getByRole("button", { name: "Retry", exact: true }).click();
+      await page.waitForFunction(
+        () =>
+          window.__tripActions?.completed.length === 1 &&
+          window.__tripActions.queue.operations.length === 0,
+      );
+      await page.keyboard.press("Escape");
+      await page.getByRole("button", { name: "Actions for Initial trip", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Delete trip", exact: true }).click();
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Delete trip", exact: true })
+        .click();
+      await page.getByRole("alertdialog").waitFor({ state: "hidden", timeout: 750 });
+      await page.waitForFunction(
+        () =>
+          window.__tripActions?.completed.length === 2 &&
+          window.__tripActions.queue.operations.length === 0,
+      );
+      const statusCalls = calls.filter((row) => row.kind === "trip.status");
+      assert.equal(statusCalls.length, 2);
+      assert.deepEqual(statusCalls[0].input, statusCalls[1].input);
+      assert.equal(tripSettings.version, 2);
+      const deletions = calls.filter((row) => row.kind === "trip.delete");
+      assert.equal(deletions.length, 1);
+      assert.equal(deletions[0].input.expectedVersion, 2);
+    },
+  );
   await scenario("trip list status and create keep cards and filters interactive", async (page) => {
     await page.getByRole("button", { name: "Toggle trip list", exact: true }).click();
     const list = page.locator("[data-trip-list-probe]");
@@ -3311,6 +4189,109 @@ try {
           };
       },
     );
+  await scenario(
+    "Manage Plans confirms primary only after a fresh background read and ACK",
+    async (page) => {
+      await plansReady(page);
+      await page.getByRole("button", { name: /^Open Plans for/ }).click();
+      await page.getByRole("menuitem", { name: "Manage Plans", exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      let release;
+      const held = new Promise((resolve) => {
+        release = resolve;
+      });
+      let markRead;
+      const started = new Promise((resolve) => {
+        markRead = resolve;
+      });
+      await page.route("**/mock", async (route) => {
+        if (route.request().postDataJSON().kind === "load-plans") {
+          markRead();
+          await held;
+        }
+        await route.continue();
+      });
+      await dialog.getByRole("button", { name: "Set as primary", exact: true }).click();
+      await started;
+      await dialog.getByText("Saved locally", { exact: true }).waitFor({ timeout: 750 });
+      assert.equal(
+        await dialog.getByRole("button", { name: "Done", exact: true }).isEnabled(),
+        true,
+      );
+      assert.equal(calls.filter((row) => row.kind === "primary-plan").length, 0);
+      const original = await page.evaluate(() =>
+        window.__variants.queue.operations.find((op) => op.intent.kind === "primary"),
+      );
+      assert.equal(original.intent.input.expectedVersion, 1);
+      const target = [...planWorkspaces.values()].find((row) => row.variant.name === "Other Plan");
+      target.variant.name = "Renamed primary";
+      target.variant.version++;
+      release();
+      await dialog.getByText("Renamed primary is now the primary Plan.", { exact: true }).waitFor();
+      await plansSynced(page);
+      assert.equal(target.variant.is_primary, true);
+      const request = calls.find((row) => row.kind === "primary-plan").input;
+      assert.equal(request.expectedVersion, 2);
+      assert.equal(request.operationId, original.id);
+      assert.equal(calls.filter((row) => row.kind === "primary-plan").length, 1);
+      await page.waitForFunction(
+        () => !document.querySelector('[role="dialog"] [role="status"]'),
+        null,
+        { timeout: 15000 },
+      );
+    },
+    secondPlan,
+  );
+  for (const changed of [false, true]) {
+    await scenario(
+      `Plan deletion refreshes metadata before freezing while ${changed ? "rejecting changed" : "preserving unchanged"} content`,
+      async (page) => {
+        await plansReady(page);
+        await page.getByRole("button", { name: /^Open Plans for/ }).click();
+        await page.getByRole("menuitem", { name: "Manage Plans", exact: true }).click();
+        await page.getByRole("button", { name: "Delete Other Plan", exact: true }).click();
+        const target = [...planWorkspaces.values()].find(
+          (row) => row.variant.name === "Other Plan",
+        );
+        target.variant.name = "Renamed deletion target";
+        target.variant.version++;
+        if (changed) target.variant.content_version++;
+        delay = 2000;
+        await page
+          .getByRole("alertdialog")
+          .getByRole("button", { name: "Delete Plan", exact: true })
+          .click();
+        await page.getByRole("alertdialog").waitFor({ state: "hidden", timeout: 750 });
+        const original = await page.evaluate(() =>
+          window.__variants.queue.operations.find((op) => op.intent.kind === "delete"),
+        );
+        assert.equal(original.intent.input.expectedVersion, 1);
+        assert.equal(original.intent.input.expectedContentVersion, 1);
+        if (changed) {
+          await page.waitForFunction(() =>
+            window.__variants.queue.operations.some((op) => op.status === "conflict"),
+          );
+          const retained = await page.evaluate(() =>
+            window.__variants.queue.operations.find((op) => op.intent.kind === "delete"),
+          );
+          assert.equal(retained.wire, undefined);
+          assert.equal(retained.attempts, 0);
+          assert.match(retained.error, /content changed/);
+          assert.equal(calls.filter((row) => row.kind === "delete-plan").length, 0);
+          assert.equal(planWorkspaces.size, 2);
+        } else {
+          await plansSynced(page);
+          const request = calls.find((row) => row.kind === "delete-plan").input;
+          assert.equal(request.expectedVersion, 2);
+          assert.equal(request.expectedContentVersion, 1);
+          assert.equal(request.operationId, original.id);
+          assert.equal(planWorkspaces.has(target.variant.id), false);
+          assert.equal(planWorkspaces.size, 1);
+        }
+      },
+      secondPlan,
+    );
+  }
   await scenario(
     "primary Plan accepts locally and final Plan deletion stays guarded",
     async (page) => {

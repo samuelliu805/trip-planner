@@ -1024,7 +1024,10 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.doesNotMatch(variantUi, /window\.confirm/);
   assert.match(variantUi, /min-h-11|h-11/);
   assert.doesNotMatch(variantUi, /z-\[90\]/);
-  assert.match(variantUi, /kind: "primary"[\s\S]*Saved locally/);
+  assert.match(variantManagement, /kind: "primary"/);
+  assert.match(variantManagement, /Saved locally/);
+  assert.match(variantManagement, /hasConfirmed/);
+  assert.match(variantManagement, /is now the primary Plan/);
   assert.match(variantUi, /useVariantSync/);
   assert.match(variantEditor, /<PlannerEditorScreen/);
   assert.match(variantEditor, /<PlannerEditorForm/);

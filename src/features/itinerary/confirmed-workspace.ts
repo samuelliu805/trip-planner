@@ -1,5 +1,18 @@
 import { mergeAttachmentCollection } from "../attachments/merge-attachment-collection.ts";
-import type { PlannerSyncDelta, PlannerWorkspace } from "./types.ts";
+import type { PlannerSyncDelta, PlannerVariant, PlannerWorkspace } from "./types.ts";
+
+/** List metadata cannot certify day/item/route data that was not returned. */
+export function confirmVariantMetadata(current: PlannerWorkspace, variant: PlannerVariant) {
+  return mergeConfirmedWorkspace(current, {
+    ...current,
+    variant: {
+      ...variant,
+      content_version: current.variant.content_version,
+      days_version: current.variant.days_version,
+      items_version: current.variant.items_version,
+    },
+  });
+}
 
 export function mergeConfirmedWorkspace(
   current: PlannerWorkspace,
@@ -38,6 +51,8 @@ export function mergeConfirmedWorkspace(
       const items = next.items_version >= before.items_version ? next.items : before.items;
       return {
         ...row,
+        day_number: day.day_number,
+        date: day.date,
         items: items.map((item) => {
           const previous = before.items.find((old) => old.id === item.id),
             latest = next.items.find((incoming) => incoming.id === item.id);
@@ -45,6 +60,8 @@ export function mergeConfirmedWorkspace(
           const text = latest.version >= previous.version ? latest : previous;
           return mergeAttachmentCollection(previous, {
             ...text,
+            // Ordering changes may leave item text versions unchanged.
+            sort_order: item.sort_order,
             attachments: latest.attachments,
             attachments_version: latest.attachments_version,
           });
@@ -66,7 +83,10 @@ export function applyConfirmedDelta(
     ...incoming,
     // A day delta cannot restore/delete structure or unrelated days.
     variant: { ...incoming.variant, days_version: current.variant.days_version },
-    days: current.days.map((day) => incoming.days.find(({ id }) => id === day.id) ?? day),
+    days: current.days.map((day) => {
+      const updated = incoming.days.find(({ id }) => id === day.id);
+      return updated ? { ...updated, day_number: day.day_number, date: day.date } : day;
+    }),
     routePlans: [
       ...current.routePlans.filter(({ day_id }) => !ids.has(day_id)),
       ...incoming.routePlans,

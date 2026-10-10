@@ -90,8 +90,26 @@ export function acceptPlannerIntent(context: AcceptedPlannerContext, intent: Pla
         intentItemIds(op.intent as unknown as PlannerSyncIntent).some((id) =>
           intent.input.sourceItemIds.includes(id),
         )
-      )
+      ) {
         dependencies.push(op.id);
+        if (intent.kind === "copy") {
+          const predecessor = op.intent as unknown as PlannerSyncIntent;
+          // A copy reads its source rows; only its destination rows are owned writes.
+          const ids =
+            predecessor.kind === "copy"
+              ? [
+                  ...(predecessor.input.copiedItemIds ?? []),
+                  ...(predecessor.input.replaceTargetItemIds ?? []),
+                ]
+              : intentItemIds(predecessor);
+          for (const source of intent.sources.filter(
+            (source) => source.variant_id === entry.scope[3] && ids.includes(source.id),
+          )) {
+            intent.sourceParents ??= {};
+            (intent.sourceParents[source.id] ??= []).push(op.id);
+          }
+        }
+      }
       const action = op.intent as {
         kind: string;
         input: { variantId?: string };
