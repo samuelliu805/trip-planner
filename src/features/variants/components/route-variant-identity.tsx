@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 function PrimaryBadge() {
   return (
-    <span className="rounded-full border bg-background px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground">
+    <span className="shrink-0 whitespace-nowrap rounded-full border bg-background px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground">
       <T message={" Primary "} />
     </span>
   );
@@ -18,7 +18,7 @@ export function VariantIdentity({
   variant: PlannerVariant;
 }) {
   return (
-    <span className="flex min-w-0 items-center gap-2">
+    <span className="flex min-w-0 flex-1 items-center gap-2">
       <span
         aria-hidden="true"
         className="size-2.5 shrink-0 rounded-full border border-black/10"

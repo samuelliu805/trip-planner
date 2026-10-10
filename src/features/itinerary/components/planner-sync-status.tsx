@@ -52,9 +52,7 @@ export function PlannerSyncStatus({ mutating, tripId }: { mutating: boolean; tri
             ? "Syncing"
             : waiting
               ? "Pending sync"
-              : activities.some((entry) => entry.state === "draft")
-                ? "Draft"
-                : "Synced";
+              : "Synced";
   return (
     <Popover.Root>
       <div className="relative min-w-0 max-w-36 text-xs" data-sync-status={label}>
@@ -116,7 +114,7 @@ export function PlannerSyncStatus({ mutating, tripId }: { mutating: boolean; tri
                       }
                     }}
                   >
-                    <T message="Reapply my draft" />
+                    <T message="Reapply my changes" />
                   </Button>
                 ) : null}
                 <Button
@@ -129,12 +127,12 @@ export function PlannerSyncStatus({ mutating, tripId }: { mutating: boolean; tri
                     );
                     const link = document.createElement("a");
                     link.href = url;
-                    link.download = "therewego-sync-draft.json";
+                    link.download = "therewego-sync-changes.json";
                     link.click();
                     window.setTimeout(() => URL.revokeObjectURL(url), 0);
                   }}
                 >
-                  <T message="Download draft" />
+                  <T message="Download changes" />
                 </Button>
                 <Button
                   className="min-h-11"
@@ -159,7 +157,7 @@ export function PlannerSyncStatus({ mutating, tripId }: { mutating: boolean; tri
                     }
                   }}
                 >
-                  <T message="Discard draft" />
+                  <T message="Discard changes" />
                 </Button>
               </div>
             ))}

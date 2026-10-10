@@ -12,6 +12,8 @@ import {
   plannerItemFormError,
   plannerItemFormSteps,
   plannerItemNeedsOrderStep,
+  plannerItemSaveAction,
+  plannerItemStepError,
   type ItemFormStep,
 } from "@/features/itinerary/components/planner-item-form-steps";
 import { PlannerItemFormDialogs } from "@/features/itinerary/components/planner-item-form-dialogs";
@@ -31,7 +33,6 @@ import {
 import { itemOrderSlots } from "@/features/itinerary/activity-order";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 import type { ItemEditorCloseReason } from "@/lib/telemetry/events";
-import { usePlannerItemAutosave } from "./use-planner-item-autosave";
 import { PlannerItemConflictFeedback } from "./planner-item-conflict-feedback";
 import { LocalDraftStatus } from "@/features/editing/local-draft-status";
 
@@ -160,6 +161,11 @@ function PlannerItemFormInner({
   const [exitOpen, setExitOpen] = useState(false);
   const activeStep = steps.find(({ id }) => id === stepId) ?? steps[0];
   const stepIndex = steps.indexOf(activeStep);
+  const saveAction = plannerItemSaveAction({
+    activeStepId: activeStep.id,
+    creating: !item,
+    includeOrder,
+  });
   const formError = plannerItemFormError({
     creating: !item,
     place: state.place,
@@ -185,23 +191,16 @@ function PlannerItemFormInner({
     title: state.title,
     type,
   });
-  const autosave = usePlannerItemAutosave({
-    item,
-    state,
-    steps,
-    tripId,
-    type,
-    variantId,
-    save: saveFlow.saveInBackground,
-  });
-  const flushAutosave = autosave.flush;
   const requestExit = useCallback(
     (reason: ItemEditorCloseReason = "cancel") => {
       setCloseReason(reason);
-      flushAutosave();
+      if (state.localDraft.hasChanges()) {
+        setExitOpen(true);
+        return;
+      }
       requestCancel();
     },
-    [flushAutosave, requestCancel, setCloseReason],
+    [requestCancel, setCloseReason, state.localDraft],
   );
   useEffect(() => {
     onCloseRequestRegistration?.(requestExit);
@@ -209,6 +208,17 @@ function PlannerItemFormInner({
   }, [onCloseRequestRegistration, requestExit]);
   function goToStep(nextStepId: ItemFormStep["id"]) {
     if (nextStepId === activeStep.id) return true;
+    const blocking = plannerItemStepError({
+      creating: !item,
+      place: state.place,
+      step: activeStep,
+      title: state.title,
+      type,
+    });
+    if (blocking) {
+      setStepError(blocking);
+      return false;
+    }
     setStepError(undefined);
     setStepId(nextStepId);
     return true;
@@ -237,6 +247,10 @@ function PlannerItemFormInner({
       return;
     }
     setStepError(undefined);
+    if (saveAction === "confirm-order") {
+      setStepId("order");
+      return;
+    }
     let values;
     try {
       values = plannerItemSaveValues({ item, state, tripId, type, variantId });
@@ -263,7 +277,11 @@ function PlannerItemFormInner({
           onExitOpenChange={setExitOpen}
         />
       }
-      alternateSaveLabel={canCreateAnother && onCreateAnother ? "Save & create new" : undefined}
+      alternateSaveLabel={
+        canCreateAnother && onCreateAnother && (!includeOrder || activeStep.id === "order")
+          ? "Save & create new"
+          : undefined
+      }
       backDisabled={stepIndex === 0}
       fieldsRef={motionSurfaceRef}
       footer={
@@ -283,7 +301,7 @@ function PlannerItemFormInner({
             total: steps.length,
           })} ${t(
             !item && includeOrder
-              ? "The item can be saved from any step."
+              ? "Confirm the Order step before saving."
               : "The item can be saved from any step.",
           )}`}
           error={state.localDraft.error ?? reloadError ?? stepError ?? mutationError?.message}
@@ -299,12 +317,11 @@ function PlannerItemFormInner({
       onClose={() => requestExit("escape")}
       onNext={() => moveStep(1)}
       onSave={save}
-      onCompositionChange={autosave.composition}
       onScrollNode={setGestureSurfaceNode}
       pending={pending}
       pendingLabel={pendingLabel}
       saveDisabled={Boolean(formError)}
-      saveLabel="Save"
+      saveLabel={saveAction === "confirm-order" ? "Confirm order" : "Save"}
     >
       <LocalDraftStatus draft={state.localDraft} onDiscard={() => setExitOpen(true)} />
       <PlannerItemStepFields

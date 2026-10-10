@@ -46,7 +46,7 @@ export function PlannerCellContextMenu({
   return (
     <ContextMenuContent>
       <ContextMenuItem disabled={!canReorder} onSelect={onReorder}>
-        <ListOrdered className="size-4" /> <T message="Reorder" />
+        <ListOrdered className="size-4" /> <T message="Reorder day events" />
       </ContextMenuItem>
       <ContextMenuSeparator />
       {item ? (

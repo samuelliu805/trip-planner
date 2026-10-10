@@ -9,7 +9,7 @@ import type { PlannerItemSaveFeedback } from "@/features/itinerary/components/pl
 import type { ItineraryItem, TransportMode } from "@/features/itinerary/types";
 import type { ItemEditorCloseReason } from "@/lib/telemetry/events";
 
-/** Mobile focus view; desktop editing keeps the workspace interactive. */
+/** Mobile focus view; desktop editing reuses the existing map pane. */
 export function PlannerItemEditorDialog({
   defaultCurrency,
   dayDate,

@@ -1,8 +1,6 @@
 "use client";
 
 import { T, useI18n } from "@/features/i18n/i18n-provider";
-import { useState } from "react";
-import { PlannerInlineFields } from "./planner-inline-fields";
 import { Copy, MoreHorizontal, NotebookText, Paperclip, Pencil, Trash2 } from "lucide-react";
 
 import {
@@ -39,7 +37,6 @@ export function PlannerItemRow({
   selected: boolean;
 }) {
   const { t } = useI18n();
-  const [inline, setInline] = useState(false);
   const details = item.details as Record<string, string | undefined>;
   const start = (item.start_time ?? details.departureTime)?.slice(0, 5) ?? null;
   const mode =
@@ -169,19 +166,6 @@ export function PlannerItemRow({
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
-      {interactive && ["activity", "meal", "hotel", "note"].includes(item.type) ? (
-        <button
-          type="button"
-          className="col-span-full hidden min-h-11 rounded text-left text-xs text-primary min-[1200px]:block"
-          onClick={(event) => {
-            event.stopPropagation();
-            setInline((value) => !value);
-          }}
-        >
-          <T message="Quick edit" />
-        </button>
-      ) : null}
-      {inline ? <PlannerInlineFields item={item} onClose={() => setInline(false)} /> : null}
     </div>
   );
 }

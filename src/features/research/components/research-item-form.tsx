@@ -7,7 +7,6 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { useDraftScope } from "@/features/editing/draft-scope";
 import { editingStorageKey } from "@/features/editing/draft-storage";
 import { useDurableFields } from "@/features/editing/use-durable-fields";
-import { useDraftAutosave } from "@/features/editing/use-draft-autosave";
 import { PersistentEditorFields } from "@/features/editing/persistent-editor-fields";
 import { Button } from "@/components/ui/button";
 import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
@@ -110,17 +109,13 @@ export function ResearchItemForm({
   } = attachmentSession;
   const pending = mutationPending;
   const attachmentOnlySave = Boolean(item && !formDirty && draftCount > 0);
-  const autosave = useDraftAutosave(
-    Boolean(item && (formDirty || Object.keys(draft.values.fields).length > 0)),
-    JSON.stringify(draft.values.fields),
-    () => save(true),
-  );
-  const flushAutosave = autosave.flush;
-
   const requestExit = useCallback(() => {
-    flushAutosave();
+    if (formDirty || draft.hasChanges() || draftCount > 0) {
+      setExitOpen(true);
+      return;
+    }
     onCancel();
-  }, [flushAutosave, onCancel]);
+  }, [draft, draftCount, formDirty, onCancel]);
 
   const handleDraftCountChange = useCallback(
     (count: number) => {
@@ -156,11 +151,9 @@ export function ResearchItemForm({
     });
   }
 
-  async function save(background = false) {
-    if (background && !item) return;
-    if (background && !draft.hasChanges()) return;
+  async function save() {
     if (!localSave && actorScope[1] !== "guest" && !sync) {
-      setError("Ideas sync is unavailable. Your local draft is kept.");
+      setError("Ideas sync is unavailable. Your changes are kept.");
       return;
     }
     if (!formRef.current || pending) return;
@@ -229,7 +222,7 @@ export function ResearchItemForm({
       setMutationPending(false);
       onSaved(result.data);
       setBaseVersion(result.data.version);
-      if (!background && JSON.stringify(draft.getValues()) === snapshot) onCancel();
+      if (JSON.stringify(draft.getValues()) === snapshot) onCancel();
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
     } finally {
@@ -292,7 +285,6 @@ export function ResearchItemForm({
       onFormChange={refreshDraftState}
       onNext={() => selectStep(steps[Math.min(steps.length - 1, activeIndex + 1)].id)}
       onSave={() => save()}
-      onCompositionChange={autosave.composition}
       onScrollNode={(node) => {
         scrollNodeRef.current = node;
       }}
@@ -311,7 +303,7 @@ export function ResearchItemForm({
       ) : null}
       {latestItem ? (
         <div className="rounded-md border bg-muted/40 p-3 text-sm" role="status">
-          <p>{t("Latest loaded. Your draft is still here and can be saved again.")}</p>
+          <p>{t("Latest loaded. Your changes are still here and can be saved again.")}</p>
           <button
             className="mt-2 min-h-11 rounded-md border px-3 font-medium"
             onClick={() => onSaved(latestItem)}
@@ -321,17 +313,14 @@ export function ResearchItemForm({
           </button>
         </div>
       ) : null}
-      <div className="flex min-w-0 flex-wrap gap-2" role="status">
-        <T message={draft.error ? "Local save failed" : draft.saved ? "Saved locally" : "Draft"} />
-        {draft.error ? (
+      {draft.error ? (
+        <div role="alert">
+          <T message="Local save failed" />
           <Button type="button" onClick={draft.download}>
-            <T message="Download draft" />
+            <T message="Download changes" />
           </Button>
-        ) : null}
-        <Button type="button" variant="ghost" onClick={() => setExitOpen(true)}>
-          <T message="Discard draft" />
-        </Button>
-      </div>
+        </div>
+      ) : null}
       <PersistentEditorFields draft={draft}>
         <ResearchItemFields
           activeStepId={stepId}

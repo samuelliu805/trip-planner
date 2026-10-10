@@ -1,4 +1,4 @@
-import { orderFlightStopSlots } from "../itinerary/flight-stop-order.ts";
+import { orderFlightStopSlots, orderFlightJourneySlots } from "../itinerary/flight-stop-order.ts";
 import type { PublicItineraryDay, PublicItineraryItem } from "./types";
 import { transportModeLabels } from "../itinerary/types.ts";
 import { publicTransportMode } from "./public-transport-mode.ts";
@@ -6,14 +6,20 @@ import { compareCanonicalItemOrder } from "../itinerary/canonical-item-order.ts"
 
 export function orderedPublicItems(day: PublicItineraryDay) {
   return orderFlightStopSlots(
-    day.items
-      .slice()
-      .sort((left, right) =>
-        compareCanonicalItemOrder(
-          { id: left.ref, type: left.type, order: left.sortOrder },
-          { id: right.ref, type: right.type, order: right.sortOrder },
+    orderFlightJourneySlots(
+      day.items
+        .slice()
+        .sort((left, right) =>
+          compareCanonicalItemOrder(
+            { id: left.ref, type: left.type, order: left.sortOrder },
+            { id: right.ref, type: right.type, order: right.sortOrder },
+          ),
         ),
-      ),
+      (item) =>
+        item.type === "flight" || (item.type === "transport" && item.transport?.mode === "flight")
+          ? { time: item.startTime?.slice(0, 5) }
+          : null,
+    ),
     (item) =>
       item.flightEndpoint ? { ...item.flightEndpoint, time: item.startTime?.slice(0, 5) } : null,
   );

@@ -147,9 +147,7 @@ export function QuickIdeaInput({
 
   async function save(forceSeparate = false) {
     if (scope[1] !== "guest" && !sync) {
-      setError(
-        "Ideas sync is unavailable. Your local draft is kept; download it before reloading.",
-      );
+      setError("Ideas sync is unavailable. Your changes are kept; download it before reloading.");
       return;
     }
     if (!input.trim() || classification.kind === "unknown" || classification.error || pending)
@@ -210,9 +208,7 @@ export function QuickIdeaInput({
 
   async function merge() {
     if (scope[1] !== "guest" && !sync) {
-      setError(
-        "Ideas sync is unavailable. Your local draft is kept; download it before reloading.",
-      );
+      setError("Ideas sync is unavailable. Your changes are kept; download it before reloading.");
       return;
     }
     if (!duplicate || !classification.sourceUrl || pending) return;
@@ -257,7 +253,7 @@ export function QuickIdeaInput({
         <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
           <T message="Local save failed" />
           <Button type="button" onClick={draft.download}>
-            <T message="Download draft" />
+            <T message="Download changes" />
           </Button>
           <Button type="button" onClick={draft.retry}>
             <T message="Retry" />

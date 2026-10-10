@@ -1,5 +1,6 @@
 "use client";
 
+import { PlannerEditorDockTarget } from "./planner-editor-dock";
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import { Button } from "@/components/ui/button";
@@ -190,8 +191,10 @@ export function PlannerMapPane({
   );
   return (
     <div className="planner-map-pane min-w-0">
-      <div className="planner-map-landscape h-full">{map()}</div>
-      <div className="planner-map-peek h-full">{map(true)}</div>
+      <PlannerEditorDockTarget>
+        <div className="planner-map-landscape h-full">{map()}</div>
+        <div className="planner-map-peek h-full">{map(true)}</div>
+      </PlannerEditorDockTarget>
     </div>
   );
 }

@@ -2,20 +2,20 @@
 
 ## Itinerary item editor
 
-- Common fields may be edited inline. Complex editing uses a nonmodal desktop panel at 1200px and above, keeping the Matrix and map interactive. Smaller viewports retain the focused full-height sheet. All surfaces share durable drafts and the existing field primitives.
+- Keep the existing progressive editing flow. On desktop reuse the existing right map pane and divider, switching that pane between Map and Edit while keeping the Plan visible. Preserve fields across view switches; never add a third column, overlap the Plan, or crop the map. Smaller screens retain the focused modal. Do not add quick editing. Non-blocking means Save accepts durable work locally and syncing continues in the background; it does not change the editing flow or expose drafts as a product concept.
 - The step navigator is numbered circles joined by dotted rules with each label above its own number. Every number is a button; steps must stay reachable directly, not only through Next and Back.
 - The first step carries only what the item needs to exist, so it can be saved without opening the rest. Every step stays at three controls or fewer, and Add and Edit use the same steps.
 - Only Hotels, Meals, and Activities may have a manual Order position. Hotels currently stay at the end of a day, so they need no Order step. Flights, trains, rental cars, and every other transport save directly without an Order step. For untimed Meals and Activities, show Order only when at least two legal positions exist. Entering a time or leaving only one position removes that step immediately; the default is after the day's last orderable activity and before a hotel.
 - New Activities and Meals may offer Save and add another. Editing an existing item and every other category keep only the normal Save action.
-- Order is optional. Save and Save & create new accept valid local edits from every step, using the existing canonical default position.
+- When an Order step exists for creation, earlier Save actions remain Confirm order and navigate to that final step. Save and optional Save & create new remain together there.
 - Save, Confirm order, and Save & create new remain disabled while any required field is missing. Keep the click-time validation as a fallback, but do not make an invalid form look actionable.
 - Freeze the Order preview to the items present when the editor opens. An optimistic create must never appear as both the moving item and another row with a misleading Move here action before the editor closes.
 - Creating an Activity, Meal, Car rental, Hotel, or Transport saves directly without a second confirmation dialog. Report creation success or failure prominently; success must offer a link that closes the editor, selects the new item, scrolls it into view, and focuses it in the Matrix.
 - Do not auto-focus a field when an itinerary editor first opens. Focus may move only after the user acts, such as choosing a place or following a newly-created-item link.
 - New Activity creation begins with one intent-first `Activity or place` search. Keep the blank Activity name hidden until the user chooses a Google Maps result or commits the query as a custom activity; then reveal the shared name field. A place may update a blank or still-system-generated name, but must never overwrite a user-edited name.
-- Steps are freely selectable without exit validation. Saving a formal entity validates every required field; incomplete forms remain persistent drafts.
+- Steps remain directly selectable, with the existing required-field validation before leaving a step. Saving validates all required fields.
 - The modal keeps one fixed height and Next/Back stay mounted and in place on the first and last step, so repeated clicks never chase a moving button. No step may add explanatory chrome — no shortcut legend, no restated step label, no preview card.
-- Closing an editor preserves its local draft and background operations. Only explicit Discard abandons a draft, with confirmation. Never abort an accepted sync operation on ordinary close.
+- Closing an editor with unsaved edits keeps the original Exit without saving confirmation. Confirmed discard clears only unaccepted fields; accepted background work survives closing. Preserve local recovery internally without adding draft badges or a separate discard action to normal editing.
 - Field grouping and per-step validation live in `planner-item-form-steps.ts`. Cover changes with the step-grouping unit test instead of new source-text assertions.
 
 ## Reusable editor forms

@@ -1,5 +1,7 @@
 # Nonblocking editing: implementation and verification
 
+> Historical implementation checkpoints for PR #134. The subsequent [original editing UX follow-up](nonblocking-original-ux-verification.md) supersedes the autosave, quick-edit and visible-draft UX described here. PR #134 merged; use its checks for final release evidence.
+
 Base: `5355cdd69f6d448f498663643761038dc0d06dc3`; branch: `feat/nonblocking-editing`.
 Evidence below is for the mutable local working tree on 2026-10-09 and 2026-10-10, Node 24.19.0 and Chromium. It is not exact-SHA CI or deployment evidence.
 

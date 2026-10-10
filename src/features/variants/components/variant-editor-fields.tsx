@@ -38,7 +38,7 @@ export function VariantEditorFields({
   onNameChange: (value: string) => void;
   onColorChange: (value: string) => void;
   onSourceChange: (value: string) => void;
-  onCompositionChange: (value: boolean) => void;
+  onCompositionChange?: (value: boolean) => void;
   onUseLatest: () => void;
 }) {
   const { t } = useI18n();
@@ -47,7 +47,7 @@ export function VariantEditorFields({
       {latestVariant ? (
         <div className="rounded-md border border-border bg-muted/40 p-3 text-sm" role="status">
           <p>
-            <Localized value="Latest loaded. Your draft is still here and can be saved again." />
+            <Localized value="Latest loaded. Your changes are still here and can be saved again." />
           </p>
           <button
             className="mt-2 min-h-11 rounded-md border px-3 font-medium"
@@ -95,8 +95,8 @@ export function VariantEditorFields({
         label="Plan name"
         maxLength={80}
         onChange={(event) => onNameChange(event.target.value)}
-        onCompositionStart={() => onCompositionChange(true)}
-        onCompositionEnd={() => onCompositionChange(false)}
+        onCompositionStart={() => onCompositionChange?.(true)}
+        onCompositionEnd={() => onCompositionChange?.(false)}
         required
         value={name}
       />

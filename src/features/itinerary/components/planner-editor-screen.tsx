@@ -1,13 +1,13 @@
 "use client";
 
-import { useSyncExternalStore, type ReactNode, type Ref } from "react";
+import { useEffect, useSyncExternalStore, type ReactNode, type Ref } from "react";
+import { usePlannerEditorDock } from "./planner-editor-dock";
 
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { usePlannerEditorViewportLock } from "@/features/itinerary/components/use-planner-editor-viewport-lock";
 
-const desktopQuery = "(min-width: 1200px)";
 const subscribeDesktop = (listener: () => void) => {
-  const media = window.matchMedia(desktopQuery);
+  const media = window.matchMedia("(min-width: 1200px)");
   media.addEventListener("change", listener);
   return () => media.removeEventListener("change", listener);
 };
@@ -30,22 +30,30 @@ export function PlannerEditorScreen({
   open: boolean;
   nonBlocking?: boolean;
 }) {
+  const context = usePlannerEditorDock();
+  const dock = context?.dock;
+  const setView = context?.setView;
   const desktop = useSyncExternalStore(
     subscribeDesktop,
-    () => window.matchMedia(desktopQuery).matches,
+    () => window.matchMedia("(min-width: 1200px)").matches,
     () => false,
   );
-  const floating = nonBlocking && desktop;
-  usePlannerEditorViewportLock(open && !floating);
+  const docked = Boolean(nonBlocking && desktop && dock);
+  usePlannerEditorViewportLock(open && !docked);
+  useEffect(() => {
+    if (!docked || !open) return;
+    setView?.("editor");
+  }, [docked, open, setView]);
 
   return (
-    <Sheet modal={!floating} onOpenChange={onOpenChange} open={open}>
+    <Sheet modal={!docked} onOpenChange={onOpenChange} open={open}>
       <SheetContent
         className="planner-item-dialog p-0"
         data-editor-kind={editorKind}
-        data-nonblocking={floating ? "" : undefined}
+        data-nonblocking={docked ? "" : undefined}
+        portalContainer={docked ? dock : undefined}
         onInteractOutside={(event) => {
-          if (floating) event.preventDefault();
+          if (docked) event.preventDefault();
         }}
         onEscapeKeyDown={() => onDismissReason?.("escape")}
         onOpenAutoFocus={

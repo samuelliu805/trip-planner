@@ -1067,6 +1067,14 @@ async function scenario(name, run, setup) {
 }
 const title = (page) => page.locator('input[id^="item-title-"]');
 const close = (page) => page.getByRole("button", { name: "Close editor", exact: true });
+async function saveItem(page, reopen = false) {
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /^(Save|Save changes)$/, exact: true })
+    .click();
+  await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
+  if (reopen) await page.getByRole("button", { name: "Edit first", exact: true }).click();
+}
 const synced = (page) =>
   page.waitForFunction(() => window.__runtime.queue.operations.length === 0, null, {
     timeout: 15000,
@@ -1174,11 +1182,12 @@ try {
       delay = 3000;
       await page.getByRole("button", { name: "Edit first", exact: true }).click();
       await title(page).fill("Remounted A");
+      await saveItem(page, true);
       await page.waitForFunction(() =>
         window.__runtime.queue.operations.some((op) => op.status === "sending"),
       );
       await title(page).fill("Remounted B");
-      await close(page).click();
+      await saveItem(page);
       await page.waitForFunction(() => window.__runtime.queue.operations.length === 2);
       await page
         .getByRole("button", { name: "Reopen source workspace fixture", exact: true })
@@ -1215,11 +1224,12 @@ try {
         await plansReady(page);
         await page.getByRole("button", { name: "Edit first", exact: true }).click();
         await title(page).fill("Source A");
+        await saveItem(page, true);
         await page.waitForFunction(() =>
           window.__runtime.queue.operations.some((op) => op.status === "sending"),
         );
         await title(page).fill("Source B");
-        await close(page).click();
+        await saveItem(page);
         await page.waitForFunction(() => window.__runtime.queue.operations.length === 2);
         const reads = calls.filter((call) => call.kind === "load").length;
         await page
@@ -1535,11 +1545,13 @@ try {
       await page.getByRole("button", { name: "Edit newest Plan fixture", exact: true }).click();
       const name = page.getByRole("textbox", { name: "Plan name", exact: true });
       await name.fill("Plan A");
+      await page.getByRole("button", { name: "Save changes", exact: true }).click();
+      await page.getByRole("button", { name: "Edit newest Plan fixture", exact: true }).click();
       await page.waitForFunction(() =>
         window.__variants.queue.operations.some((op) => op.intent.kind === "update"),
       );
       await name.fill("Plan B");
-      await close(page).click();
+      await saveItem(page);
       await plansSynced(page);
       const created = calls.find((call) => call.kind === "duplicate-plan").input;
       const saved = planWorkspaces.get(created.operationId);
@@ -1580,13 +1592,13 @@ try {
       await plansReady(page);
       await page.getByRole("button", { name: "Edit first Plan fixture", exact: true }).click();
       await page.getByRole("textbox", { name: "Plan name", exact: true }).fill("Failed Plan A");
-      await close(page).click();
+      await saveItem(page);
       await page.waitForFunction(() =>
         window.__variants.queue.operations.some((op) => op.status === "failed"),
       );
       await page.getByRole("button", { name: "Edit newest Plan fixture", exact: true }).click();
       await page.getByRole("textbox", { name: "Plan name", exact: true }).fill("Successful Plan B");
-      await close(page).click();
+      await saveItem(page);
       await page.waitForFunction(
         () =>
           window.__variants.queue.operations.length === 1 &&
@@ -1709,16 +1721,17 @@ try {
       delay = 3000;
       await page.getByRole("button", { name: "Edit first", exact: true }).click();
       await title(page).fill("A");
+      await saveItem(page, true);
       await page.waitForFunction(() =>
         window.__runtime.queue.operations.some((op) => op.status === "sending"),
       );
       await title(page).fill("B");
-      await close(page).click();
+      await saveItem(page);
       await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
       assert.ok(calls.filter((call) => call.kind === "update").length > 0);
       await page.getByRole("button", { name: "Edit first", exact: true }).click();
       assert.equal(await title(page).inputValue(), "B");
-      await close(page).click();
+      await saveItem(page);
       await synced(page);
       assert.equal(workspace.days[0].items[0].title, "B");
       await page.reload();
@@ -1734,39 +1747,49 @@ try {
       const original = workspace.days[0].items[0].title;
       await page.getByRole("button", { name: "Edit first", exact: true }).click();
       await title(page).fill("Accepted A");
+      await saveItem(page, true);
       await page.waitForFunction(() =>
         window.__runtime.queue.operations.some((op) => op.status === "sending"),
       );
       await title(page).fill(original);
-      await close(page).click();
+      await saveItem(page);
       await synced(page);
       assert.equal(workspace.days[0].items[0].title, original);
       assert.equal(calls.filter((call) => call.kind === "update").length, 2);
     },
   );
-  await scenario("invalid new draft survives Escape, close and refresh", async (page) => {
-    await page.getByRole("button", { name: "New meal", exact: true }).click();
-    await page.getByRole("button", { name: /Detail/ }).click();
-    const notes = page.getByRole("dialog").locator("textarea").first();
-    await notes.fill("中文 IME 尾部 pasted draft");
-    await page.keyboard.press("Escape");
-    assert.equal(calls.filter((call) => call.kind === "create").length, 0);
-    await page.reload();
-    await page.waitForFunction(() => window.__runtime);
-    await page.getByRole("button", { name: "New meal", exact: true }).click();
-    await page.getByRole("button", { name: /Detail/ }).click();
-    assert.equal(
-      await page.getByRole("dialog").locator("textarea").first().inputValue(),
-      "中文 IME 尾部 pasted draft",
-    );
-  });
+  await scenario(
+    "unsaved creation confirms exit and recovers fields after refresh",
+    async (page) => {
+      await page.getByRole("button", { name: "New meal", exact: true }).click();
+      await title(page).fill("Unsaved meal");
+      await page.getByRole("button", { name: /Detail/ }).click();
+      const notes = page.getByRole("dialog").locator("textarea").first();
+      await notes.fill("中文 IME 尾部 pasted draft");
+      await page.keyboard.press("Escape");
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Keep editing", exact: true })
+        .click();
+      assert.equal(calls.filter((call) => call.kind === "create").length, 0);
+      await page.reload();
+      await page.waitForFunction(() => window.__runtime);
+      await page.getByRole("button", { name: "New meal", exact: true }).click();
+      await title(page).fill("Unsaved meal");
+      await page.getByRole("button", { name: /Detail/ }).click();
+      assert.equal(
+        await page.getByRole("dialog").locator("textarea").first().inputValue(),
+        "中文 IME 尾部 pasted draft",
+      );
+    },
+  );
   await scenario(
     "loaded application accepts offline edits and reconnects",
     async (page, context) => {
       await context.setOffline(true);
       await page.getByRole("button", { name: "Edit first", exact: true }).click();
       await title(page).fill("Offline tail");
-      await close(page).click();
+      await saveItem(page);
       assert.equal(calls.filter((call) => call.kind === "update").length, 0);
       await page.locator('[data-sync-status="Offline"]').waitFor({ timeout: 3000 });
       await context.setOffline(false);
@@ -1784,7 +1807,7 @@ try {
       await context.setOffline(true);
       await page.getByRole("button", { name: "Edit first", exact: true }).click();
       await title(page).fill("Offline restored B");
-      await close(page).click();
+      await saveItem(page);
       await page.reload();
       await page.waitForFunction(() => window.__runtime);
       assert.equal(
@@ -1801,12 +1824,14 @@ try {
     "two tabs retain both unfinished drafts after a storage conflict",
     async (page, context) => {
       await page.getByRole("button", { name: "New meal", exact: true }).click();
+      await title(page).fill("Unsaved meal");
       await page.getByRole("button", { name: /Detail/ }).click();
       await page.getByRole("dialog").locator("textarea").first().fill("Tab A draft");
       const other = await context.newPage();
       await other.goto(origin);
       await other.waitForFunction(() => window.__runtime);
       await other.getByRole("button", { name: "New meal", exact: true }).click();
+      await title(other).fill("Unsaved meal");
       await other.getByRole("button", { name: /Detail/ }).click();
       await other.getByRole("dialog").locator("textarea").first().fill("Tab B draft");
       await page.getByText("Local save failed", { exact: true }).first().waitFor();
@@ -1817,6 +1842,7 @@ try {
       await page.reload();
       await page.waitForFunction(() => window.__runtime);
       await page.getByRole("button", { name: "New meal", exact: true }).click();
+      await title(page).fill("Unsaved meal");
       await page.getByRole("button", { name: /Detail/ }).click();
       assert.equal(
         await page.getByRole("dialog").locator("textarea").first().inputValue(),
@@ -1835,7 +1861,7 @@ try {
       await context.setOffline(true);
       await page.getByRole("button", { name: "Edit first", exact: true }).click();
       await title(page).fill("Background recovered A");
-      await close(page).click();
+      await saveItem(page);
       await context.setOffline(false);
       delay = 3000;
       await page.goto(`${origin}/background`);
@@ -1856,61 +1882,67 @@ try {
       assert.equal(operations.size, 1);
     },
   );
-  await scenario("trip settings A ACK preserves B and closing accepts it locally", async (page) => {
-    delay = 3000;
-    await page.getByRole("button", { name: "Trip settings", exact: true }).click();
-    const field = page.getByRole("textbox", { name: "Trip name" });
-    await field.waitFor({ state: "visible" });
-    const capturedFields = await readTripSettingsBrowserFields(page, {
-      evaluate: (_browser, expression) => page.evaluate(expression),
-    });
-    assert.deepEqual(capturedFields, {
-      title: tripSettings.title,
-      dayCount: String(tripSettings.day_count),
-      startDate: tripSettings.start_date ?? "",
-      endDate: tripSettings.end_date ?? "",
-      currency: tripSettings.currency,
-    });
-    assert.equal(
-      await page.evaluate((input) => window.__settingsInputValid(input), {
-        ...capturedFields,
-        tripId: tripSettings.id,
-        timezone: tripSettings.timezone,
-        expectedVersion: tripSettings.version,
-        expectedContentVersion: tripSettings.content_version,
-        operationId: randomUUID(),
-      }),
-      true,
-      "Captured current fields and owned metadata must reach the typed authorization boundary.",
-    );
-    await field.fill("Settings A");
-    await page.waitForFunction(
-      () =>
-        document.querySelector("[data-sync-status]")?.getAttribute("data-sync-status") ===
-        "Syncing",
-    );
-    await field.fill("Settings B");
-    await page.keyboard.press("Escape");
-    await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
-    await page.waitForFunction(
-      () =>
-        window.__client.getQueryData(["trip-settings", window.__trip.id])?.title === "Settings B",
-    );
-    await page.getByRole("button", { name: "Trip settings", exact: true }).click();
-    assert.equal(await field.inputValue(), "Settings B");
-    await page.keyboard.press("Escape");
-    await page.waitForFunction(
-      () =>
-        document.querySelector("[data-sync-status]")?.getAttribute("data-sync-status") === "Synced",
-      null,
-      { timeout: 15000 },
-    );
-    assert.equal(tripSettings.title, "Settings B");
-    await page.reload();
-    await page.waitForFunction(() => window.__runtime);
-    await page.getByRole("button", { name: "Trip settings", exact: true }).click();
-    assert.equal(await field.inputValue(), "Settings B");
-  });
+  await scenario(
+    "trip settings A ACK preserves B accepted by a second explicit Save",
+    async (page) => {
+      delay = 3000;
+      await page.getByRole("button", { name: "Trip settings", exact: true }).click();
+      const field = page.getByRole("textbox", { name: "Trip name" });
+      await field.waitFor({ state: "visible" });
+      const capturedFields = await readTripSettingsBrowserFields(page, {
+        evaluate: (_browser, expression) => page.evaluate(expression),
+      });
+      assert.deepEqual(capturedFields, {
+        title: tripSettings.title,
+        dayCount: String(tripSettings.day_count),
+        startDate: tripSettings.start_date ?? "",
+        endDate: tripSettings.end_date ?? "",
+        currency: tripSettings.currency,
+      });
+      assert.equal(
+        await page.evaluate((input) => window.__settingsInputValid(input), {
+          ...capturedFields,
+          tripId: tripSettings.id,
+          timezone: tripSettings.timezone,
+          expectedVersion: tripSettings.version,
+          expectedContentVersion: tripSettings.content_version,
+          operationId: randomUUID(),
+        }),
+        true,
+        "Captured current fields and owned metadata must reach the typed authorization boundary.",
+      );
+      await field.fill("Settings A");
+      await saveItem(page);
+      await page.getByRole("button", { name: "Trip settings", exact: true }).click();
+      await page.waitForFunction(
+        () =>
+          document.querySelector("[data-sync-status]")?.getAttribute("data-sync-status") ===
+          "Syncing",
+      );
+      await field.fill("Settings B");
+      await saveItem(page);
+      await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
+      await page.waitForFunction(
+        () =>
+          window.__client.getQueryData(["trip-settings", window.__trip.id])?.title === "Settings B",
+      );
+      await page.getByRole("button", { name: "Trip settings", exact: true }).click();
+      assert.equal(await field.inputValue(), "Settings B");
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(
+        () =>
+          document.querySelector("[data-sync-status]")?.getAttribute("data-sync-status") ===
+          "Synced",
+        null,
+        { timeout: 15000 },
+      );
+      assert.equal(tripSettings.title, "Settings B");
+      await page.reload();
+      await page.waitForFunction(() => window.__runtime);
+      await page.getByRole("button", { name: "Trip settings", exact: true }).click();
+      assert.equal(await field.inputValue(), "Settings B");
+    },
+  );
   for (const restore of ["reload", "pageshow"])
     await scenario(
       `pagehide during settings preparation resumes the same accepted edit on ${restore}`,
@@ -2043,7 +2075,7 @@ try {
       delay = 2500;
       await page.getByRole("button", { name: "Edit first", exact: true }).click();
       await page.locator('input[id^="item-title-"]').fill("Prior local planning edit");
-      await page.keyboard.press("Escape");
+      await saveItem(page);
       await page.waitForFunction(() => window.__runtime.queue.operations.length > 0);
       await page.getByRole("button", { name: "Trip settings", exact: true }).click();
       await page.getByRole("textbox", { name: "Trip name" }).fill("Dependent settings");
@@ -2119,13 +2151,13 @@ try {
       fault = status;
       await page.getByRole("button", { name: "Edit first", exact: true }).click();
       await title(page).fill(`Local ${status}`);
-      await close(page).click();
+      await saveItem(page);
       await page.waitForFunction(() =>
         window.__runtime.queue.operations.some((op) => ["failed", "conflict"].includes(op.status)),
       );
       await page.getByRole("button", { name: "Edit other day", exact: true }).click();
       await title(page).fill("Independent B");
-      await close(page).click();
+      await saveItem(page);
       await page.waitForFunction(() =>
         window.__runtime.queue.operations.every(
           (op) => op.status !== "sending" && op.status !== "queued",
@@ -2147,7 +2179,7 @@ try {
       fault = "lost";
       await page.getByRole("button", { name: "Edit first", exact: true }).click();
       await title(page).fill("ACK lost");
-      await close(page).click();
+      await saveItem(page);
       await page.waitForFunction(() =>
         window.__runtime.queue.operations.some((op) => op.status === "failed"),
       );
@@ -2409,27 +2441,131 @@ try {
     },
   );
   await scenario(
-    "desktop panel and inline editing leave unrelated workspace controls available",
+    "desktop map pane reuses width, preserves fields across view switches and keeps Plan interactive",
     async (page) => {
       delay = 3000;
       await page.getByRole("button", { name: "Edit first", exact: true }).click();
+      assert.equal(await page.getByText("Draft", { exact: true }).count(), 0);
+      assert.equal(await page.getByText("Discard changes", { exact: true }).count(), 0);
       await title(page).fill("Panel A");
+      await page.waitForTimeout(650);
+      assert.equal(
+        calls.filter((call) => call.kind === "update").length,
+        0,
+        "typing is not a save",
+      );
+      const dock = await page.locator("[data-planner-editor-dock]").boundingBox();
+      const plan = await page.locator("[data-test-cell]").boundingBox();
+      assert.ok(plan.x + plan.width <= dock.x + 1, JSON.stringify({ plan, dock }));
+      await page.getByRole("button", { name: "Show map", exact: true }).click();
+      assert.equal(await page.getByRole("dialog").isVisible(), false);
+      assert.equal(
+        await page.getByRole("button", { name: "Show map" }).getAttribute("aria-pressed"),
+        "true",
+      );
+      assert.equal(await page.locator("[data-fixture-map]").isVisible(), true);
+      await page.getByRole("button", { name: "Show editor", exact: true }).click();
+      assert.equal(await title(page).inputValue(), "Panel A");
+      await saveItem(page);
+      assert.equal(await page.locator("[data-fixture-map]").isVisible(), true);
       await page.getByRole("button", { name: "Edit other day", exact: true }).click();
       await title(page).fill("Other panel B");
-      await close(page).click();
-      await page.getByRole("button", { name: "Inline edit first", exact: true }).click();
-      const inline = page.locator("[data-inline-editor]");
-      await inline.getByRole("textbox", { name: "Name", exact: true }).fill("Inline tail");
-      await inline.getByRole("button", { name: "Close editor", exact: true }).click();
+      await saveItem(page);
       await synced(page);
-      assert.equal(workspace.days[0].items[0].title, "Inline tail");
+      assert.equal(workspace.days[0].items[0].title, "Panel A");
       assert.equal(workspace.days[1].items[0].title, "Other panel B");
     },
   );
+  await scenario(
+    "NZ last day renders 14:05 flight before 21:20 flight from existing reversed saved positions",
+    async (page) => {
+      const rows = await page.locator("[data-flight-rows] [data-item-row]").allTextContents();
+      assert.match(rows[0], /14:05/);
+      assert.match(rows[1], /21:20/);
+      assert.deepEqual(
+        workspace.days[0].items
+          .filter((item) => item.type === "flight")
+          .map((item) => item.sort_order),
+        [2, 4],
+      );
+      assert.equal(calls.filter((call) => call.kind === "reorder").length, 0);
+      await page.reload();
+      const after = await page.locator("[data-flight-rows] [data-item-row]").allTextContents();
+      assert.match(after[0], /14:05/);
+      assert.match(after[1], /21:20/);
+    },
+    () => {
+      workspace.variant.name = "NZ ordering regression";
+      const seed = workspace.days[0].items[0];
+      const late = {
+        ...seed,
+        id: randomUUID(),
+        type: "flight",
+        title: "AKL → SHA",
+        sort_order: 2,
+        start_time: "21:20:00",
+        details: { departureDate: "2027-04-10", departureTime: "21:20" },
+      };
+      const early = {
+        ...seed,
+        id: randomUUID(),
+        type: "flight",
+        title: "CHC → AKL",
+        sort_order: 4,
+        start_time: "14:05:00",
+        details: { departureDate: "2027-04-10", departureTime: "14:05" },
+      };
+      const endpoint = (id, parent, role, date, time, order) => ({
+        ...seed,
+        id,
+        type: "activity",
+        title: id,
+        start_time: time,
+        sort_order: order,
+        details: {
+          flightEndpointParentId: parent,
+          flightEndpointRole: role,
+          flightEndpointDate: date,
+        },
+      });
+      workspace.days[0].items = [
+        endpoint("CHC", early.id, "departure", "2027-04-10", "14:05", 0),
+        endpoint("AKL arrival", early.id, "arrival", "2027-04-10", "15:30", 1),
+        late,
+        endpoint("AKL departure", late.id, "departure", "2027-04-10", "21:20", 3),
+        early,
+        endpoint("SHA", late.id, "arrival", "2027-04-11", "15:25", 5),
+      ];
+    },
+  );
+  for (const width of [390, 430, 1280])
+    await scenario(
+      `primary Plan identity stays on one line at ${width}px`,
+      async (page) => {
+        await page.setViewportSize({ width, height: 900 });
+        await plansReady(page);
+        await page
+          .getByRole("button", { name: /Open Plans for Navigation fixture/ })
+          .first()
+          .click();
+        const badge = page.getByText("Primary", { exact: true }).first();
+        await badge.waitFor();
+        const metrics = await badge.evaluate((node) => ({
+          height: node.getBoundingClientRect().height,
+          line: parseFloat(getComputedStyle(node).lineHeight),
+          nowrap: getComputedStyle(node).whiteSpace,
+        }));
+        assert.equal(metrics.nowrap, "nowrap");
+        assert.ok(metrics.height < metrics.line * 2, JSON.stringify(metrics));
+      },
+      () => {
+        workspace.variant.name = "上海往返奥克兰 - 清明";
+      },
+    );
   await scenario("context menu reorder commits locally while backend is slow", async (page) => {
     delay = 3000;
     await page.locator("[data-test-cell]").click({ button: "right" });
-    await page.getByRole("menuitem", { name: "Reorder", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Reorder day events", exact: true }).click();
     await page.getByRole("button", { name: /Second walk.*Choose position/ }).click();
     await page
       .getByRole("button", { name: "Click to place Activity here", exact: true })
@@ -2459,7 +2595,7 @@ try {
         bounds.x >= -1 && bounds.x + bounds.width <= width + 1,
         JSON.stringify({ width, bounds }),
       );
-      await close(page).click();
+      await saveItem(page);
       await page.getByRole("button", { name: "Edit first", exact: true }).click();
       assert.equal(await title(page).inputValue(), `Width ${width}`);
       await close(page).click();
@@ -2659,7 +2795,7 @@ try {
     const pendingItem = page.locator("[data-test-item]").filter({ hasText: "Idea 71" });
     await pendingItem.click();
     await page.locator('input[id^="item-title-"]').fill("Edited before application ACK");
-    await page.keyboard.press("Escape");
+    await saveItem(page);
     await page.waitForFunction(
       () =>
         window.__workflows.queue.operations.length === 0 &&
@@ -2696,12 +2832,16 @@ try {
     await page.locator("[data-test-item]").filter({ hasText: "Idea 71" }).click();
     await page.locator('input[id^="item-title-"]').fill("");
     await page.keyboard.press("Escape");
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Keep editing", exact: true })
+      .click();
     await page.waitForFunction(() => window.__workflows.queue.operations.length === 0);
     await page.reload();
     await page.locator("[data-test-item]").filter({ hasText: "Idea 71" }).click();
     assert.equal(await page.locator('input[id^="item-title-"]').inputValue(), "");
     await page.locator('input[id^="item-title-"]').fill("Recovered after binding");
-    await page.keyboard.press("Escape");
+    await saveItem(page);
     await page.waitForFunction(() => window.__runtime.queue.operations.length === 0);
     assert.equal(
       workspace.days
@@ -4149,7 +4289,7 @@ try {
     "note",
   ])
     await scenario(
-      `existing ${type} raw notes and unfinished price survive close`,
+      `existing ${type} raw notes and unfinished price survive refresh until explicit discard`,
       async (page) => {
         await page.getByRole("button", { name: "Edit first", exact: true }).click();
         const extras = page.locator('[data-step-id="extras"]');
@@ -4161,12 +4301,18 @@ try {
           await price.fill("12+");
           await page.waitForFunction(() => window.__editorDraft?.price_amount === 17);
         }
-        await close(page).click();
+        await page.reload();
+        await page.waitForFunction(() => window.__runtime);
         await page.getByRole("button", { name: "Edit first", exact: true }).click();
         if (await extras.count()) await extras.click();
         assert.equal(await notes.inputValue(), `未完成 ${type} 中文备注 B`);
         if (await price.count()) assert.equal(await price.inputValue(), "12+");
         await close(page).click();
+        await page
+          .getByRole("alertdialog")
+          .getByRole("button", { name: "Exit without saving", exact: true })
+          .click();
+        assert.equal(calls.filter((call) => call.kind === "update").length, 0);
       },
       () => {
         const item = workspace.days[0].items[0];

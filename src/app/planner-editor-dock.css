@@ -1,0 +1,36 @@
+/* Desktop editor and map share the existing right pane. */
+.planner-editor-dock,
+.planner-editor-view-switch {
+  display: none;
+}
+@media (min-width: 1200px) {
+  .planner-editor-region:has(.planner-item-dialog[data-nonblocking][data-state="open"])
+    .planner-editor-view-switch {
+    display: flex;
+  }
+  .planner-editor-region:has(
+      .planner-item-dialog[data-nonblocking][data-state="open"]
+    )[data-editor-view="editor"]
+    .planner-editor-map-surface {
+    display: none;
+  }
+  .planner-editor-region[data-editor-view="editor"]
+    .planner-editor-dock:has(.planner-item-dialog[data-nonblocking][data-state="open"]) {
+    display: flex;
+  }
+  .planner-editor-dock .planner-item-dialog[data-nonblocking] {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0;
+    z-index: 70;
+    animation: none;
+  }
+  .planner-editor-dock .planner-item-form-header,
+  .planner-editor-dock .planner-item-form-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

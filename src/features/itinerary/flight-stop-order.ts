@@ -53,9 +53,21 @@ export function orderOwnerFlightStops<
   Item extends {
     details?: ItineraryItem["details"];
     start_time?: string | null;
+    type?: string;
   },
 >(items: Item[]) {
-  return orderFlightStopSlots(items, (item) => {
+  const journeys = orderFlightJourneySlots(items, (item) => {
+    const details = item.details as Record<string, unknown> | null | undefined;
+    if (item.type !== "flight" && !(item.type === "transport" && details?.mode === "flight"))
+      return null;
+    return {
+      date: typeof details?.departureDate === "string" ? details.departureDate : null,
+      time:
+        item.start_time?.slice(0, 5) ??
+        (typeof details?.departureTime === "string" ? details.departureTime : null),
+    };
+  });
+  return orderFlightStopSlots(journeys, (item) => {
     const endpoint = { details: item.details ?? null };
     const role = flightEndpointRole(endpoint);
     return role
@@ -66,5 +78,16 @@ export function orderOwnerFlightStops<
           time: item.start_time?.slice(0, 5),
         }
       : null;
+  });
+}
+
+/** Reorder complete flight cards independently from endpoint activity slots. */
+export function orderFlightJourneySlots<Item>(
+  items: Item[],
+  schedule: (item: Item) => Pick<FlightSchedule, "date" | "time"> | null,
+) {
+  return orderFlightStopSlots(items, (item) => {
+    const flight = schedule(item);
+    return flight ? { ...flight, role: "departure" } : null;
   });
 }

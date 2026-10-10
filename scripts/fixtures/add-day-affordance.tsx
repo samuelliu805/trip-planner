@@ -20,6 +20,8 @@ function Fixture() {
               setDays((current) => current + 1);
             }}
             onSelect={() => setSelected(index)}
+            onReorder={() => {}}
+            canReorder={false}
             pending={false}
             selected={selected === index}
           />
