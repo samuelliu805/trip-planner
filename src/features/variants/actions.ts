@@ -102,7 +102,7 @@ export async function createRouteVariant(
   const parsed = createRouteVariantSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("create_route_variant_v3", {
+  const args = {
     duplicate_content: false,
     expected_source_content_version: parsed.data.expectedSourceContentVersion,
     expected_source_days_version: parsed.data.expectedSourceDaysVersion,
@@ -113,7 +113,15 @@ export async function createRouteVariant(
     target_trip_id: parsed.data.tripId,
     variant_color: parsed.data.color,
     variant_name: parsed.data.name,
-  });
+  };
+  const { data, error } =
+    parsed.data.dayIds && parsed.data.itemIds
+      ? await database.rpc("create_route_variant_v4", {
+          ...args,
+          requested_day_ids: parsed.data.dayIds,
+          requested_item_ids: parsed.data.itemIds,
+        })
+      : await database.rpc("create_route_variant_v3", args);
   return mutationResult(
     parsed.data.tripId,
     (data as { variantId?: string } | null)?.variantId ?? null,
@@ -132,7 +140,7 @@ export async function duplicateRouteVariant(
   const parsed = duplicateRouteVariantSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("create_route_variant_v3", {
+  const args = {
     duplicate_content: true,
     expected_source_content_version: parsed.data.expectedSourceContentVersion,
     expected_source_days_version: parsed.data.expectedSourceDaysVersion,
@@ -143,7 +151,15 @@ export async function duplicateRouteVariant(
     target_trip_id: parsed.data.tripId,
     variant_color: parsed.data.color,
     variant_name: parsed.data.name,
-  });
+  };
+  const { data, error } =
+    parsed.data.dayIds && parsed.data.itemIds
+      ? await database.rpc("create_route_variant_v4", {
+          ...args,
+          requested_day_ids: parsed.data.dayIds,
+          requested_item_ids: parsed.data.itemIds,
+        })
+      : await database.rpc("create_route_variant_v3", args);
   return mutationResult(
     parsed.data.tripId,
     (data as { variantId?: string } | null)?.variantId ?? null,

@@ -1,9 +1,16 @@
 "use client";
 
-import type { ReactNode, Ref } from "react";
+import { useSyncExternalStore, type ReactNode, type Ref } from "react";
 
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { usePlannerEditorViewportLock } from "@/features/itinerary/components/use-planner-editor-viewport-lock";
+
+const desktopQuery = "(min-width: 1200px)";
+const subscribeDesktop = (listener: () => void) => {
+  const media = window.matchMedia(desktopQuery);
+  media.addEventListener("change", listener);
+  return () => media.removeEventListener("change", listener);
+};
 
 /** The one full-screen editor surface shared by itinerary cells and trip settings. */
 export function PlannerEditorScreen({
@@ -13,6 +20,7 @@ export function PlannerEditorScreen({
   onDismissReason,
   onOpenChange,
   open,
+  nonBlocking = false,
 }: {
   children: ReactNode;
   editorKind?: "research" | "trip-people" | "trip-settings" | "variant";
@@ -20,14 +28,25 @@ export function PlannerEditorScreen({
   onDismissReason?: (reason: "escape" | "overlay") => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  nonBlocking?: boolean;
 }) {
-  usePlannerEditorViewportLock(open);
+  const desktop = useSyncExternalStore(
+    subscribeDesktop,
+    () => window.matchMedia(desktopQuery).matches,
+    () => false,
+  );
+  const floating = nonBlocking && desktop;
+  usePlannerEditorViewportLock(open && !floating);
 
   return (
-    <Sheet onOpenChange={onOpenChange} open={open}>
+    <Sheet modal={!floating} onOpenChange={onOpenChange} open={open}>
       <SheetContent
         className="planner-item-dialog p-0"
         data-editor-kind={editorKind}
+        data-nonblocking={floating ? "" : undefined}
+        onInteractOutside={(event) => {
+          if (floating) event.preventDefault();
+        }}
         onEscapeKeyDown={() => onDismissReason?.("escape")}
         onOpenAutoFocus={
           initialFocusSelector

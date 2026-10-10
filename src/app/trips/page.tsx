@@ -11,7 +11,7 @@ import { listTrips } from "@/features/trips/data";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
 import { resolveTripStatusFilter, type TripStatusFilter } from "@/features/trips/status";
-import { getBackendCapabilities } from "@/platform/composition/server";
+import { getBackendCapabilities, getTripRepository } from "@/platform/composition/server";
 import { getServerProviderConfig } from "@/platform/config/server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -42,7 +42,12 @@ export default async function TripsPage({
   const { post_login: postLogin, status } = await searchParams;
   if (postLogin === "1") return <PostLoginRefresh region={getServerProviderConfig().appRegion} />;
   const filter = resolveTripStatusFilter(status);
-  const { data: trips, error } = await listTrips(filter);
+  const [{ data: trips, error }, initialCurrency] = await Promise.all([
+    listTrips(filter),
+    getTripRepository()
+      .getDefaultCurrencyForCurrentUser()
+      .catch(() => null),
+  ]);
   const empty = emptyCopy[filter];
   const sharingEnabled = getBackendCapabilities().signedUrls;
 
@@ -58,7 +63,10 @@ export default async function TripsPage({
       </div>
 
       <div className="mt-6">
-        <TripStatusFilterTabs action={<CreateTripButton />} active={filter}>
+        <TripStatusFilterTabs
+          action={<CreateTripButton initialCurrency={initialCurrency ?? undefined} />}
+          active={filter}
+        >
           <h2 className="sr-only" id="trip-list-title">
             <T message={" Your trips "} />
           </h2>

@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardPaste, Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { ClipboardPaste, Copy, Pencil, Plus, Trash2, ListOrdered } from "lucide-react";
 
 import {
   ContextMenuContent,
@@ -24,6 +24,8 @@ export function PlannerCellContextMenu({
   onDeleteItem,
   onEditItem,
   onPaste,
+  onReorder,
+  canReorder,
 }: {
   dayMutationPending: boolean;
   hasItems: boolean;
@@ -38,9 +40,15 @@ export function PlannerCellContextMenu({
   onDeleteItem: () => void;
   onEditItem: () => void;
   onPaste: () => void;
+  onReorder: () => void;
+  canReorder: boolean;
 }) {
   return (
     <ContextMenuContent>
+      <ContextMenuItem disabled={!canReorder} onSelect={onReorder}>
+        <ListOrdered className="size-4" /> <T message="Reorder" />
+      </ContextMenuItem>
+      <ContextMenuSeparator />
       {item ? (
         <>
           <ContextMenuItem onSelect={onEditItem}>

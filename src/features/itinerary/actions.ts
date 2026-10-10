@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
 import { firstIssue, mutationError } from "@/features/itinerary/action-helpers";
@@ -59,9 +60,15 @@ export async function clearItineraryItems(
         error: mutationError(cleared.error?.message ?? "The selected cells could not be cleared."),
       };
     else {
-      await drainAssetDeletionQueue(Math.min(100, parsed.data.itemIds.length * 5));
+      after(() => drainAssetDeletionQueue(Math.min(100, parsed.data.itemIds.length * 5)));
       revalidatePath(`/trips/${parsed.data.tripId}`);
-      result = { data: { ids: parsed.data.itemIds } };
+      const workspace = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
+      result = workspace.data
+        ? {
+            data: { ids: parsed.data.itemIds },
+            sync: { operationId: input.operationId, full: true, workspace: workspace.data },
+          }
+        : { error: workspace.error ?? "The cleared cells could not be confirmed." };
     }
   }
   return reportItemMutations({

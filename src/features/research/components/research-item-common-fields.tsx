@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-
-import { Textarea } from "@/components/ui/textarea";
-import { T } from "@/features/i18n/i18n-provider";
+import { type ReactNode } from "react";
 import {
-  PlannerEditorField,
-  PlannerEditorTextField,
-} from "@/features/itinerary/components/planner-editor-fields";
+  usePersistentEditorState,
+  PersistentTextField as PlannerEditorTextField,
+  PersistentTextarea as Textarea,
+} from "@/features/editing/persistent-editor-fields";
+
+import { T } from "@/features/i18n/i18n-provider";
+import { PlannerEditorField } from "@/features/itinerary/components/planner-editor-fields";
 import { BookingPriceFields } from "@/features/itinerary/components/booking-price-fields";
 
 import type { ResearchCategory, ResearchItem } from "../types";
@@ -87,12 +88,16 @@ export function ResearchPriceFields({
   defaultCurrency: string;
   item?: ResearchItem;
 }) {
-  const [amount, setAmount] = useState(
+  const [amount, setAmount] = usePersistentEditorState(
+    "totalPriceAmount",
     item?.total_price_amount === null || item?.total_price_amount === undefined
       ? ""
       : String(item.total_price_amount),
   );
-  const [currency, setCurrency] = useState(item?.currency ?? defaultCurrency);
+  const [currency, setCurrency] = usePersistentEditorState(
+    "currency",
+    item?.currency ?? defaultCurrency,
+  );
   return (
     <BookingPriceFields
       amount={amount}

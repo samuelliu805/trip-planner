@@ -184,6 +184,10 @@ export const researchApplySchema = researchSelectionSchema.extend({
   operationId: telemetryOperationId,
   scheduleChoice: z.enum(["automatic", "keep_extra_days"]).default("automatic"),
   targetItemId: z.uuid().optional().nullable(),
+  expectedVariantVersion: z.number().int().positive().optional(),
+  expectedContentVersion: z.number().int().positive().optional(),
+  expectedDaysVersion: z.number().int().positive().optional(),
+  expectedItemsVersion: z.number().int().positive().optional(),
 });
 export const researchApplicationSchema = z.object({
   applicationId: z.uuid(),

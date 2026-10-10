@@ -1,5 +1,5 @@
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
-import { priceFromExpression } from "../../lib/price-expression.ts";
+import { priceFromExpression, parsedPriceExpression } from "../../lib/price-expression.ts";
 
 import { firstPresentIsoDate } from "./date-range.ts";
 import { parseResearchLinks } from "./links.ts";
@@ -96,6 +96,8 @@ export function researchItemInputFromForm({
   tripId: string;
 }) {
   const rawPrice = optional(form, "totalPriceAmount");
+  if (rawPrice !== null && parsedPriceExpression(rawPrice) === undefined)
+    throw new Error("The price expression is incomplete.");
   const price = rawPrice === null ? null : String(priceFromExpression(rawPrice));
   const hasPrice = price !== null;
   const rawSegments =

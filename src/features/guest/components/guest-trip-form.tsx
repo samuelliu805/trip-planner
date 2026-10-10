@@ -26,6 +26,11 @@ import {
 import { updateTripSchema } from "@/features/trips/schema";
 import { useTripSettingsEditorContext } from "@/features/trips/components/trip-settings-editor";
 import type { Trip } from "@/platform/contracts/trips";
+import { useDraftScope } from "@/features/editing/draft-scope";
+import { editingStorageKey } from "@/features/editing/draft-storage";
+import { useDurableFields } from "@/features/editing/use-durable-fields";
+import { useDraftAutosave } from "@/features/editing/use-draft-autosave";
+import { LocalDraftStatus } from "@/features/editing/local-draft-status";
 
 export type GuestTripSettings = {
   currency: string;
@@ -39,16 +44,28 @@ export function GuestTripForm({
   onSave,
   trip,
 }: {
-  onSave: (settings: GuestTripSettings) => void;
+  onSave: (settings: GuestTripSettings) => boolean;
   trip: Trip;
 }) {
   const { locale } = useI18n();
   const editor = useTripSettingsEditorContext();
-  const [title, setTitle] = useState(trip.title);
-  const [dayCount, setDayCount] = useState(String(trip.day_count));
-  const [startDate, setStartDate] = useState(trip.start_date ?? "");
-  const [endDate, setEndDate] = useState(trip.end_date ?? "");
-  const [currency, setCurrency] = useState(trip.currency);
+  const defaults = {
+    title: trip.title,
+    dayCount: String(trip.day_count),
+    startDate: trip.start_date ?? "",
+    endDate: trip.end_date ?? "",
+    currency: trip.currency,
+  };
+  const fields = useDurableFields(
+    editingStorageKey(useDraftScope(trip.id, "settings"), "guest-trip-settings"),
+    defaults,
+  );
+  const { title, dayCount, startDate, endDate, currency } = fields.values;
+  const setTitle = (value: string) => fields.set("title", value);
+  const setDayCount = (value: string) => fields.set("dayCount", value);
+  const setStartDate = (value: string) => fields.set("startDate", value);
+  const setEndDate = (value: string) => fields.set("endDate", value);
+  const setCurrency = (value: string) => fields.set("currency", value);
   const [error, setError] = useState<string>();
 
   function commitDateField(committed: TripDateField, value: string) {
@@ -61,32 +78,40 @@ export function GuestTripForm({
     setEndDate(settled.endDate);
   }
 
-  function save() {
-    const parsed = updateTripSchema.safeParse({
-      currency,
-      dayCount,
-      endDate,
+  function parseCurrent() {
+    const raw = fields.getValues();
+    return updateTripSchema.safeParse({
+      ...raw,
       expectedContentVersion: trip.content_version,
       expectedVersion: trip.version,
       operationId: crypto.randomUUID(),
-      startDate,
       timezone: trip.timezone,
-      title,
       tripId: trip.id,
     });
+  }
+  function save(close = true) {
+    if (fields.getError()) return;
+    const parsed = parseCurrent();
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "The trip settings are invalid.");
       return;
     }
-    onSave({
+    const saved = onSave({
       currency: parsed.data.currency,
       dayCount: parsed.data.dayCount,
       endDate: parsed.data.endDate || null,
       startDate: parsed.data.startDate || null,
       title: parsed.data.title,
     });
-    editor.onClose();
+    if (saved) fields.checkpoint();
+    if (close) editor.onClose();
   }
+
+  const autosave = useDraftAutosave(
+    fields.dirty && !fields.error && dayCount === String(trip.day_count) && parseCurrent().success,
+    JSON.stringify(fields.values),
+    () => save(false),
+  );
 
   return (
     <PlannerEditorForm
@@ -94,10 +119,12 @@ export function GuestTripForm({
       header={null}
       onCancel={editor.onClose}
       onClose={editor.onClose}
-      onSave={save}
+      onSave={() => save()}
+      onCompositionChange={autosave.composition}
       pending={false}
       pendingLabel="Saving…"
     >
+      <LocalDraftStatus draft={fields} onDiscard={() => fields.reset(defaults)} />
       <div className="flex min-w-0 items-start gap-3 border-b pb-4 sm:gap-4 sm:pb-6">
         <span
           aria-hidden="true"

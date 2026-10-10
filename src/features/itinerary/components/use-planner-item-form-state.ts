@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type SetStateAction } from "react";
+import { useDurableFields } from "@/features/editing/use-durable-fields";
+import { useDraftScope } from "@/features/editing/draft-scope";
+import { editingStorageKey } from "@/features/editing/draft-storage";
+import { validateRawItemDraft } from "./raw-item-draft";
 
 import { normalizedActionLabel } from "./planner-item-form-config";
 import { itemOrderAnchor } from "../activity-order";
@@ -23,7 +27,13 @@ export function usePlannerItemFormState({
   item,
   items,
   type,
+  tripId,
+  variantId,
+  dayId,
 }: {
+  tripId: string;
+  variantId: string;
+  dayId: string;
   dayDate: string;
   defaultCurrency: string;
   item?: ItineraryItem;
@@ -44,61 +54,103 @@ export function usePlannerItemFormState({
     item.place?.displayName === item.title
       ? ""
       : (item?.title ?? "");
-  const [title, setTitleState] = useState(initialTitle);
-  const [autoFilledTitle, setAutoFilledTitle] = useState<string | null>(() =>
-    item?.place?.displayName === initialTitle ? initialTitle : null,
+  const initialStartTime = item?.start_time?.slice(0, 5) ?? detailText("departureTime").slice(0, 5);
+  const initialArrivalTime = item?.end_time?.slice(0, 5) ?? detailText("arrivalTime").slice(0, 5);
+  const scope = useDraftScope(tripId, variantId);
+  const [creationId] = useState(() => crypto.randomUUID());
+  const draft = useDurableFields(
+    editingStorageKey(scope, item ? `item:${item.id}` : `new:${dayId}:${type}`),
+    {
+      creationId,
+      title: initialTitle,
+      autoFilledTitle: (item?.place?.displayName === initialTitle ? initialTitle : null) as
+        string | null,
+      startTime: initialStartTime,
+      arrivalTime: initialArrivalTime,
+      arrivalDate: detailText("arrivalDate") || (initialArrivalTime && dayDate ? dayDate : ""),
+      departureDate: detailText("departureDate") || (initialStartTime && dayDate ? dayDate : ""),
+      originPlace: existingOriginPlace as PlaceSnapshot | null,
+      destinationPlace: existingDestinationPlace as PlaceSnapshot | null,
+      origin: detailText("origin") || existingOriginPlace?.displayName || "",
+      destination: detailText("destination") || existingDestinationPlace?.displayName || "",
+      serviceNumber: detailText("serviceNumber"),
+      priceAmount: item?.price_amount == null ? "" : String(item.price_amount),
+      priceCurrency: item?.price_currency ?? defaultCurrency,
+      notes: item?.notes ?? "",
+      links: item?.links?.length
+        ? item.links.map(({ label, url }) => ({ label: normalizedActionLabel(label), url }))
+        : item?.booking_url
+          ? [{ label: "Booking", url: item.booking_url }]
+          : [],
+      carAction: (existingCar.action ?? "pickup") as CarRentalDetails["action"],
+      carProvider: existingCar.provider ?? "",
+      place: (item?.place ?? null) as PlaceSnapshot | null,
+      placeQuery: "",
+      insertAfterItemId: itemOrderAnchor(items, item?.id, item?.type ?? type),
+      transportMode:
+        item?.type === "transport"
+          ? normalizeTransportMode(detailText("mode"))
+          : (allTransportModes[0] ?? "train"),
+    },
+    { ignoreDirty: ["creationId"], validate: validateRawItemDraft },
   );
-  const [startTime, setStartTime] = useState(
-    item?.start_time?.slice(0, 5) ?? detailText("departureTime").slice(0, 5),
-  );
-  const [arrivalTime, setArrivalTime] = useState(
-    item?.end_time?.slice(0, 5) ?? detailText("arrivalTime").slice(0, 5),
-  );
-  const [arrivalDate, setArrivalDate] = useState(
-    detailText("arrivalDate") || (arrivalTime && dayDate ? dayDate : ""),
-  );
-  const [departureDate, setDepartureDate] = useState(
-    detailText("departureDate") || (startTime && dayDate ? dayDate : ""),
-  );
-  const [originPlace, setOriginPlace] = useState<PlaceSnapshot | null>(existingOriginPlace);
-  const [destinationPlace, setDestinationPlace] = useState<PlaceSnapshot | null>(
-    existingDestinationPlace,
-  );
-  const [origin, setOrigin] = useState(
-    detailText("origin") || existingOriginPlace?.displayName || "",
-  );
-  const [destination, setDestination] = useState(
-    detailText("destination") || existingDestinationPlace?.displayName || "",
-  );
-  const [serviceNumber, setServiceNumber] = useState(detailText("serviceNumber"));
-  const [priceAmount, setPriceAmount] = useState(
-    item?.price_amount === null || item?.price_amount === undefined
-      ? ""
-      : String(item.price_amount),
-  );
-  const [priceCurrency, setPriceCurrency] = useState(item?.price_currency ?? defaultCurrency);
-  const [notes, setNotes] = useState(item?.notes ?? "");
-  const [links, setLinks] = useState(() =>
-    item?.links?.length
-      ? item.links.map(({ label, url }) => ({ label: normalizedActionLabel(label), url }))
-      : item?.booking_url
-        ? [{ label: "Booking", url: item.booking_url }]
-        : [],
-  );
-  const [carAction, setCarAction] = useState<CarRentalDetails["action"]>(
-    existingCar.action ?? "pickup",
-  );
-  const [carProvider, setCarProvider] = useState(existingCar.provider ?? "");
-  const [place, setPlace] = useState<PlaceSnapshot | null>(item?.place ?? null);
-  const [insertAfterItemId, setInsertAfterItemId] = useState<string | null>(() =>
-    itemOrderAnchor(items, item?.id, item?.type ?? type),
-  );
-  const existingTransportMode = normalizeTransportMode(detailText("mode"));
-  // Multiple journeys of the same type are valid (for example two flights on one day), so the
-  // mode picker must never hide Flight or another mode just because it is already used.
-  const [transportMode, setTransportMode] = useState<TransportMode>(
-    item?.type === "transport" ? existingTransportMode : (allTransportModes[0] ?? "train"),
-  );
+  const {
+    title,
+    autoFilledTitle,
+    startTime,
+    arrivalTime,
+    arrivalDate,
+    departureDate,
+    originPlace,
+    destinationPlace,
+    origin,
+    destination,
+    serviceNumber,
+    priceAmount,
+    priceCurrency,
+    notes,
+    links,
+    carAction,
+    carProvider,
+    place,
+    placeQuery,
+    insertAfterItemId,
+    transportMode,
+  } = draft.values;
+  const orderChanged = insertAfterItemId !== itemOrderAnchor(items, item?.id, item?.type ?? type);
+  const setTitleState = (value: SetStateAction<typeof title>) => draft.set("title", value);
+  const setAutoFilledTitle = (value: SetStateAction<typeof autoFilledTitle>) =>
+    draft.set("autoFilledTitle", value);
+  const setStartTime = (value: SetStateAction<typeof startTime>) => draft.set("startTime", value);
+  const setArrivalTime = (value: SetStateAction<typeof arrivalTime>) =>
+    draft.set("arrivalTime", value);
+  const setArrivalDate = (value: SetStateAction<typeof arrivalDate>) =>
+    draft.set("arrivalDate", value);
+  const setDepartureDate = (value: SetStateAction<typeof departureDate>) =>
+    draft.set("departureDate", value);
+  const setOriginPlace = (value: SetStateAction<typeof originPlace>) =>
+    draft.set("originPlace", value);
+  const setDestinationPlace = (value: SetStateAction<typeof destinationPlace>) =>
+    draft.set("destinationPlace", value);
+  const setOrigin = (value: SetStateAction<typeof origin>) => draft.set("origin", value);
+  const setDestination = (value: SetStateAction<typeof destination>) =>
+    draft.set("destination", value);
+  const setServiceNumber = (value: SetStateAction<typeof serviceNumber>) =>
+    draft.set("serviceNumber", value);
+  const setPriceAmount = (value: SetStateAction<typeof priceAmount>) =>
+    draft.set("priceAmount", value);
+  const setPriceCurrency = (value: SetStateAction<typeof priceCurrency>) =>
+    draft.set("priceCurrency", value);
+  const setNotes = (value: SetStateAction<typeof notes>) => draft.set("notes", value);
+  const setLinks = (value: SetStateAction<typeof links>) => draft.set("links", value);
+  const setCarAction = (value: SetStateAction<typeof carAction>) => draft.set("carAction", value);
+  const setCarProvider = (value: SetStateAction<typeof carProvider>) =>
+    draft.set("carProvider", value);
+  const setPlace = (value: SetStateAction<typeof place>) => draft.set("place", value);
+  const setInsertAfterItemId = (value: SetStateAction<typeof insertAfterItemId>) =>
+    draft.set("insertAfterItemId", value);
+  const setTransportMode = (value: SetStateAction<typeof transportMode>) =>
+    draft.set("transportMode", value);
 
   function setTitle(nextTitle: string) {
     setAutoFilledTitle(null);
@@ -111,36 +163,13 @@ export function usePlannerItemFormState({
     setTitleState(next.title);
   }
 
-  // One serialized snapshot answers "has anything changed?" for the exit confirmation.
-  const snapshot = JSON.stringify([
-    arrivalTime,
-    arrivalDate,
-    carAction,
-    carProvider,
-    destination,
-    destinationPlace,
-    departureDate,
-    links,
-    insertAfterItemId,
-    notes,
-    origin,
-    originPlace,
-    place ? `${place.provider}:${place.providerPlaceId}:${place.displayName}` : null,
-    priceAmount,
-    priceCurrency,
-    serviceNumber,
-    startTime,
-    title,
-    transportMode,
-  ]);
-  const [initialSnapshot] = useState(snapshot);
-
   return {
     arrivalDate,
     arrivalTime,
     availableTransportModes: allTransportModes,
     carAction,
-    dirty: snapshot !== initialSnapshot,
+    dirty: draft.dirty,
+    localDraft: draft,
     carProvider,
     destination,
     destinationPlace,
@@ -148,10 +177,12 @@ export function usePlannerItemFormState({
     existingDetails,
     links,
     insertAfterItemId,
+    orderChanged,
     notes,
     origin,
     originPlace,
     place,
+    placeQuery,
     priceAmount,
     priceCurrency,
     serviceNumber,
@@ -168,6 +199,7 @@ export function usePlannerItemFormState({
     setOrigin,
     setOriginPlace,
     setPlace,
+    setPlaceQuery: (value: string) => draft.set("placeQuery", value),
     setPriceAmount,
     setPriceCurrency,
     setServiceNumber,

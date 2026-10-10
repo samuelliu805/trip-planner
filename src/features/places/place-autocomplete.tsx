@@ -4,7 +4,7 @@ import { LoaderCircle, Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
-import { T, useI18n } from "@/features/i18n/i18n-provider";
+import { useI18n } from "@/features/i18n/i18n-provider";
 import type { PlaceSearchSession } from "@/lib/providers/places/contracts";
 import { PlaceProviderError } from "@/lib/providers/places/errors";
 import { usePlacesProvider } from "@/lib/providers/places/resolver.client";
@@ -12,6 +12,8 @@ import type { PlaceSnapshot } from "@/lib/providers/places/types";
 
 import { PlaceSelectionSummary } from "./place-selection-summary";
 import { PlaceSuggestionList, type PlaceSuggestion } from "./place-suggestion-list";
+import { usePlaceResolution } from "./use-place-resolution";
+import { PlaceSearchFeedback } from "./place-search-feedback";
 
 /**
  * An in-place suggestion list instead of Google's PlaceAutocompleteElement: the element takes over
@@ -32,6 +34,7 @@ export function PlaceAutocomplete({
   onQueryChange,
   onSelected,
   placeholder,
+  resolutionKey,
   showAvailabilityMessage = true,
   value,
 }: {
@@ -49,6 +52,7 @@ export function PlaceAutocomplete({
   onQueryChange?: (value: string) => void;
   onSelected?: () => void;
   placeholder?: string;
+  resolutionKey?: string;
   showAvailabilityMessage?: boolean;
   value?: PlaceSnapshot | null;
 }) {
@@ -65,8 +69,15 @@ export function PlaceAutocomplete({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [optionsDismissed, setOptionsDismissed] = useState(initialOptionsDismissed);
   const [searching, setSearching] = useState(false);
-  const [resolving, setResolving] = useState(false);
   const [error, setError] = useState<string>();
+  const [transientKey] = useState(() => crypto.randomUUID());
+  const resolution = usePlaceResolution({
+    fieldKey: resolutionKey ?? transientKey,
+    query,
+    value: selectedValue,
+    onResolved: applyPlace,
+  });
+  const resolving = resolution.resolving;
   const customQuery = query.trim();
   const hasCustomOption = Boolean(onCustomValue && customQuery && !optionsDismissed);
   const optionCount = suggestions.length;
@@ -80,6 +91,7 @@ export function PlaceAutocomplete({
 
   useEffect(
     () => () => {
+      requestGeneration.current += 1;
       requestAbort.current?.abort();
       session.current?.close();
     },
@@ -126,33 +138,44 @@ export function PlaceAutocomplete({
     };
   }, [optionsDismissed, provider, providerId, query, typesKey]);
 
-  async function choose(suggestion: PlaceSuggestion) {
+  function applyPlace(normalized: PlaceSnapshot) {
+    requestGeneration.current += 1;
+    setSuggestions([]);
+    setSearching(false);
+    setQuery("");
+    onQueryChange?.("");
+    onChange(normalized);
+    if (navigator.maxTouchPoints > 0 && !onSelected)
+      requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+    onSelected?.();
+  }
+
+  function choose(suggestion: PlaceSuggestion) {
     if (resolving) return;
-    setResolving(true);
     try {
       const activeSession = session.current;
       if (!activeSession) throw new PlaceProviderError("invalid_response");
-      const normalized = await activeSession.resolveSuggestion(suggestion.id);
-      // fetchFields ends the billed session, so the next search needs a fresh token.
-      requestGeneration.current += 1;
+      resolution.start(async () => {
+        try {
+          return await activeSession.resolveSuggestion(suggestion.id);
+        } finally {
+          activeSession.close();
+        }
+      });
+      // The owner now holds this billed session until its explicit resolution finishes.
       session.current = null;
+      requestGeneration.current += 1;
       setSuggestions([]);
       setSearching(false);
-      setQuery("");
-      onChange(normalized);
-      if (navigator.maxTouchPoints > 0 && !onSelected)
-        requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
-      onSelected?.();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The place could not be selected.");
-    } finally {
-      setResolving(false);
     }
   }
 
   function chooseCustomValue() {
     if (!onCustomValue || !customQuery || resolving) return;
     requestGeneration.current += 1;
+    resolution.invalidate();
     requestAbort.current?.abort();
     session.current?.close();
     session.current = null;
@@ -161,6 +184,7 @@ export function PlaceAutocomplete({
     setError(undefined);
     setSearching(false);
     setQuery("");
+    onQueryChange?.("");
     onCustomValue(customQuery);
     onSelected?.();
   }
@@ -185,11 +209,12 @@ export function PlaceAutocomplete({
           autoComplete="off"
           autoFocus={autoFocus}
           className="pl-9 pr-9"
-          disabled={disabled || resolving || (!provider && !onCustomValue)}
+          disabled={disabled || (!provider && !onCustomValue)}
           id={id}
           onChange={(event) => {
             const nextQuery = event.target.value;
             requestGeneration.current += 1;
+            resolution.invalidate();
             setQuery(nextQuery);
             onQueryChange?.(nextQuery);
             setActiveIndex(-1);
@@ -212,7 +237,7 @@ export function PlaceAutocomplete({
               if (suggestion) void choose(suggestion);
             } else if (event.key === "Enter") {
               event.preventDefault();
-              if (hasCustomOption) chooseCustomValue();
+              if (onCustomValue && customQuery) chooseCustomValue();
             }
             if (event.key === "Escape") {
               event.stopPropagation();
@@ -260,42 +285,35 @@ export function PlaceAutocomplete({
           />
         ) : null}
       </div>
-      {resolving ? (
-        <p
-          aria-live="polite"
-          className="flex items-center gap-2 text-sm font-medium text-muted-foreground"
-          role="status"
-        >
-          <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
-          <T message={" Loading place details… "} />
-        </p>
-      ) : null}
       {selectedValue ? (
         <PlaceSelectionSummary
           disabled={disabled}
-          onClear={() => onChange(null)}
+          onClear={() => {
+            requestGeneration.current += 1;
+            resolution.invalidate();
+            onChange(null);
+          }}
           value={selectedValue}
         />
       ) : null}
-      {!provider && showAvailabilityMessage ? (
-        <p className="mt-1 text-sm text-muted-foreground">
-          {providerError
-            ? t(providerError.message)
-            : onCustomValue
-              ? t("{provider} is unavailable. You can still type a {label}.", {
-                  label: t(customValueLabel ?? "value"),
-                  provider: providerName,
-                })
-              : t("Places search loads when {provider} is configured.", {
-                  provider: providerName,
-                })}
-        </p>
-      ) : null}
-      {error ? (
-        <p className="mt-1 text-sm text-destructive" role="alert">
-          {t(error)}
-        </p>
-      ) : null}
+      <PlaceSearchFeedback
+        resolving={resolving}
+        error={error ?? resolution.error}
+        availability={
+          !provider && showAvailabilityMessage
+            ? providerError
+              ? t(providerError.message)
+              : onCustomValue
+                ? t("{provider} is unavailable. You can still type a {label}.", {
+                    label: t(customValueLabel ?? "value"),
+                    provider: providerName,
+                  })
+                : t("Places search loads when {provider} is configured.", {
+                    provider: providerName,
+                  })
+            : undefined
+        }
+      />
     </div>
   );
 }

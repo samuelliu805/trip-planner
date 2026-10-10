@@ -17,6 +17,7 @@ export function JourneyEndpointFields({
   destinationPlace,
   origin,
   originPlace,
+  resolutionKey,
   setDestination,
   setDestinationPlace,
   setOrigin,
@@ -26,6 +27,7 @@ export function JourneyEndpointFields({
   destinationPlace: PlaceSnapshot | null;
   origin: string;
   originPlace: PlaceSnapshot | null;
+  resolutionKey?: string;
   setDestination: Dispatch<SetStateAction<string>>;
   setDestinationPlace: Dispatch<SetStateAction<PlaceSnapshot | null>>;
   setOrigin: Dispatch<SetStateAction<string>>;
@@ -39,7 +41,13 @@ export function JourneyEndpointFields({
         </Label>
         <PlaceAutocomplete
           ariaLabel="From"
+          resolutionKey={resolutionKey ? `${resolutionKey}:origin` : undefined}
           initialQuery={originPlace ? "" : airportPlaceQuery(origin)}
+          initialOptionsDismissed={Boolean(origin)}
+          onQueryChange={(query) => {
+            setOriginPlace(null);
+            setOrigin(query);
+          }}
           onChange={(nextPlace) => {
             setOriginPlace(nextPlace);
             setOrigin(nextPlace?.displayName ?? "");
@@ -54,7 +62,13 @@ export function JourneyEndpointFields({
         </Label>
         <PlaceAutocomplete
           ariaLabel="To"
+          resolutionKey={resolutionKey ? `${resolutionKey}:destination` : undefined}
           initialQuery={destinationPlace ? "" : airportPlaceQuery(destination)}
+          initialOptionsDismissed={Boolean(destination)}
+          onQueryChange={(query) => {
+            setDestinationPlace(null);
+            setDestination(query);
+          }}
           onChange={(nextPlace) => {
             setDestinationPlace(nextPlace);
             setDestination(nextPlace?.displayName ?? "");

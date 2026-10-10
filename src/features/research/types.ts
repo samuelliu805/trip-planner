@@ -121,6 +121,7 @@ export type ResearchPlanSnapshot = {
   days: ResearchPlanDay[];
   variantId: string;
   variantName: string;
+  variant?: import("../itinerary/types").PlannerVariant;
 };
 
 export type ResearchWorkspaceSnapshot = {
@@ -147,11 +148,13 @@ export type OptionImpact = {
 };
 
 export type AppliedResearchResult = {
+  projectionRows?: import("../itinerary/types").PlannerDay[];
   application: ResearchPlanApplication;
   selection: VariantResearchSelection;
 };
 
 export type ApplyRpcResult = {
+  projectionRows?: import("../itinerary/types").PlannerDay[];
   affectedEntityIds: string[];
   applicationId: string;
   appliedAt: string;

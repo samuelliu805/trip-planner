@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 219,
+  "publicFunctionCount": 235,
   "catalog": [
     {
       "schema": "public",
@@ -46,6 +46,56 @@
         { "name": "target_comparison_id", "type": "uuid" },
         { "name": "target_choice_id", "type": "uuid" },
         { "name": "requested_day_id", "type": "uuid" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "apply_idea_request_v1(uuid,uuid,uuid,uuid,uuid,uuid,uuid,integer,jsonb,bigint,bigint,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_comparison_id", "type": "uuid" },
+        { "name": "target_choice_id", "type": "uuid" },
+        { "name": "requested_day_id", "type": "uuid" },
+        { "name": "requested_before_item_id", "type": "uuid" },
+        { "name": "requested_anchor_day_number", "type": "integer" },
+        { "name": "expected_research_versions", "type": "jsonb" },
+        { "name": "expected_variant_version", "type": "bigint" },
+        { "name": "expected_content_version", "type": "bigint" },
+        { "name": "expected_days_version", "type": "bigint" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "apply_idea_request_v2(uuid,uuid,uuid,uuid,uuid,uuid,uuid,integer,jsonb,bigint,bigint,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_comparison_id", "type": "uuid" },
+        { "name": "target_choice_id", "type": "uuid" },
+        { "name": "requested_day_id", "type": "uuid" },
+        { "name": "requested_before_item_id", "type": "uuid" },
+        { "name": "requested_anchor_day_number", "type": "integer" },
+        { "name": "expected_research_versions", "type": "jsonb" },
+        { "name": "expected_variant_version", "type": "bigint" },
+        { "name": "expected_content_version", "type": "bigint" },
+        { "name": "expected_days_version", "type": "bigint" },
+        { "name": "expected_items_version", "type": "bigint" },
         { "name": "target_operation_id", "type": "uuid" }
       ],
       "returns": "jsonb",
@@ -222,6 +272,50 @@
         { "name": "schedule_choice", "type": "text" },
         { "name": "target_item_id", "type": "uuid" },
         { "name": "expected_research_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_v4(uuid,uuid,uuid,bigint,uuid,text,bigint,bigint,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "expected_research_version", "type": "bigint" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" },
+        { "name": "expected_variant_version", "type": "bigint" },
+        { "name": "expected_content_version", "type": "bigint" },
+        { "name": "expected_days_version", "type": "bigint" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_v5(uuid,uuid,uuid,bigint,uuid,text,bigint,bigint,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "expected_research_version", "type": "bigint" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" },
+        { "name": "expected_variant_version", "type": "bigint" },
+        { "name": "expected_content_version", "type": "bigint" },
+        { "name": "expected_days_version", "type": "bigint" },
+        { "name": "expected_items_version", "type": "bigint" },
         { "name": "target_operation_id", "type": "uuid" }
       ],
       "returns": "jsonb",
@@ -488,6 +582,38 @@
     },
     {
       "schema": "public",
+      "signature": "commit_attachment_session_v3(uuid,uuid,text,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_entity_id", "type": "uuid" },
+        { "name": "requested_target", "type": "text" },
+        { "name": "requested_draft_session_id", "type": "uuid" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "commit_attachment_session_v4(uuid,uuid,text,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_entity_id", "type": "uuid" },
+        { "name": "requested_target", "type": "text" },
+        { "name": "requested_draft_session_id", "type": "uuid" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "commit_item_asset_session_v1(uuid,uuid,uuid)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -513,6 +639,20 @@
       "safeSearchPath": true,
       "category": "phase_4",
       "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "continue_guest_import_v1(uuid,jsonb,text)",
+      "arguments": [
+        { "name": "guest_draft_id", "type": "uuid" },
+        { "name": "guest_payload", "type": "jsonb" },
+        { "name": "guest_locale", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -569,6 +709,28 @@
     },
     {
       "schema": "public",
+      "signature": "copy_itinerary_items_v4(uuid,uuid,uuid[],bigint[],uuid[],bigint[],uuid,boolean,bigint,uuid,uuid[])",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "source_item_ids", "type": "uuid[]" },
+        { "name": "expected_source_versions", "type": "bigint[]" },
+        { "name": "replace_target_item_ids", "type": "uuid[]" },
+        { "name": "expected_replace_versions", "type": "bigint[]" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "preserve_place", "type": "boolean" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" },
+        { "name": "requested_copied_item_ids", "type": "uuid[]" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "copy_research_assets_to_items_v1(uuid,uuid,uuid,uuid[])",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -603,6 +765,21 @@
         { "name": "target_trip_id", "type": "uuid" },
         { "name": "requested_title", "type": "text" },
         { "name": "requested_choices", "type": "jsonb" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "create_idea_comparison_v3(uuid,text,jsonb,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "requested_title", "type": "text" },
+        { "name": "requested_choices", "type": "jsonb" },
+        { "name": "target_operation_id", "type": "uuid" }
       ],
       "returns": "jsonb",
       "securityDefiner": true,
@@ -767,6 +944,29 @@
         { "name": "expected_source_days_version", "type": "bigint" },
         { "name": "expected_source_items_version", "type": "bigint" },
         { "name": "expected_source_content_version", "type": "bigint" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "create_route_variant_v4(uuid,uuid,text,text,uuid,boolean,bigint,bigint,bigint,bigint,jsonb,jsonb)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "source_variant_id", "type": "uuid" },
+        { "name": "variant_name", "type": "text" },
+        { "name": "variant_color", "type": "text" },
+        { "name": "target_operation_id", "type": "uuid" },
+        { "name": "duplicate_content", "type": "boolean" },
+        { "name": "expected_source_version", "type": "bigint" },
+        { "name": "expected_source_days_version", "type": "bigint" },
+        { "name": "expected_source_items_version", "type": "bigint" },
+        { "name": "expected_source_content_version", "type": "bigint" },
+        { "name": "requested_day_ids", "type": "jsonb" },
+        { "name": "requested_item_ids", "type": "jsonb" }
       ],
       "returns": "jsonb",
       "securityDefiner": true,
@@ -1475,6 +1675,20 @@
     },
     {
       "schema": "public",
+      "signature": "finalize_share_image_version_v2(uuid,jsonb,uuid)",
+      "arguments": [
+        { "name": "target_version_id", "type": "uuid" },
+        { "name": "requested_parts", "type": "jsonb" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "get_public_city_photo_sources_v1(uuid)",
       "arguments": [{ "name": "shared_token", "type": "uuid" }],
       "returns": "jsonb",
@@ -1575,6 +1789,20 @@
     },
     {
       "schema": "public",
+      "signature": "import_guest_trip_before_continuation(uuid,jsonb,text)",
+      "arguments": [
+        { "name": "guest_draft_id", "type": "uuid" },
+        { "name": "guest_payload", "type": "jsonb" },
+        { "name": "guest_locale", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
       "signature": "import_guest_trip_v1_phase_ideas(uuid,jsonb,text)",
       "arguments": [
         { "name": "guest_draft_id", "type": "uuid" },
@@ -1617,6 +1845,22 @@
     {
       "schema": "public",
       "signature": "insert_variant_day_v2(uuid,uuid,integer,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "before_day_number", "type": "integer" },
+        { "name": "expected_days_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "insert_variant_day_v3(uuid,uuid,integer,bigint,uuid)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
         { "name": "target_variant_id", "type": "uuid" },
@@ -1819,6 +2063,26 @@
         { "name": "target_research_item_id", "type": "uuid" },
         { "name": "expected_version", "type": "bigint" },
         { "name": "requested_share_text", "type": "text" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "mutate_attachment_collection_v1(uuid,uuid,text,text,text,bigint,bigint,boolean,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_entity_id", "type": "uuid" },
+        { "name": "requested_target", "type": "text" },
+        { "name": "requested_action", "type": "text" },
+        { "name": "requested_public_ref", "type": "text" },
+        { "name": "expected_link_version", "type": "bigint" },
+        { "name": "expected_research_version", "type": "bigint" },
+        { "name": "requested_include_in_share", "type": "boolean" },
         { "name": "target_operation_id", "type": "uuid" }
       ],
       "returns": "jsonb",
@@ -2060,6 +2324,24 @@
     },
     {
       "schema": "public",
+      "signature": "prepare_share_image_version_v3(uuid,text,uuid,text,text,jsonb,uuid)",
+      "arguments": [
+        { "name": "target_share_page_id", "type": "uuid" },
+        { "name": "requested_mode", "type": "text" },
+        { "name": "target_export_id", "type": "uuid" },
+        { "name": "requested_qr_destination_type", "type": "text" },
+        { "name": "requested_qr_destination_url", "type": "text" },
+        { "name": "requested_render_config", "type": "jsonb" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "public_share_image_manifest_v1(text)",
       "arguments": [{ "name": "requested_slug", "type": "text" }],
       "returns": "jsonb",
@@ -2117,6 +2399,20 @@
       "safeSearchPath": true,
       "category": "trigger",
       "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "read_attachment_collection_v1(uuid,uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_entity_id", "type": "uuid" },
+        { "name": "requested_target", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -3306,6 +3602,7 @@
     "asset_link_member_json(uuid)",
     "audit_itinerary_item()",
     "begin_trip_operation(uuid,uuid,text,text,uuid,jsonb)",
+    "bump_attachment_collection_version()",
     "bump_content_from_asset_link()",
     "bump_content_from_day()",
     "bump_content_from_item_link()",
@@ -3313,6 +3610,7 @@
     "bump_flight_endpoint_membership()",
     "bump_trip_content_version()",
     "bump_variant_day_content_version()",
+    "capture_application_rows(uuid,uuid)",
     "collaboration_identifier_user_id(text)",
     "collaboration_user_id()",
     "collaboration_user_label(text)",

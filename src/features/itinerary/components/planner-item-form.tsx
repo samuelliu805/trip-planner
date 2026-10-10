@@ -1,11 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RotateCcw } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-
 import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
-import { T, useI18n } from "@/features/i18n/i18n-provider";
+import { useI18n } from "@/features/i18n/i18n-provider";
 import {
   PlannerEditorForm,
   type PlannerEditorSaveIntent,
@@ -16,8 +12,6 @@ import {
   plannerItemFormError,
   plannerItemFormSteps,
   plannerItemNeedsOrderStep,
-  plannerItemSaveAction,
-  plannerItemStepError,
   type ItemFormStep,
 } from "@/features/itinerary/components/planner-item-form-steps";
 import { PlannerItemFormDialogs } from "@/features/itinerary/components/planner-item-form-dialogs";
@@ -37,7 +31,9 @@ import {
 import { itemOrderSlots } from "@/features/itinerary/activity-order";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 import type { ItemEditorCloseReason } from "@/lib/telemetry/events";
-import { isItineraryConflict } from "@/features/itinerary/query-cache";
+import { usePlannerItemAutosave } from "./use-planner-item-autosave";
+import { PlannerItemConflictFeedback } from "./planner-item-conflict-feedback";
+import { LocalDraftStatus } from "@/features/editing/local-draft-status";
 
 export function PlannerItemForm(props: PlannerItemFormProps) {
   const reload = usePlannerItemConflictReload(props);
@@ -86,6 +82,9 @@ function PlannerItemFormInner({
   const [reloadPending, setReloadPending] = useState(false);
   const state = usePlannerItemFormState({
     dayDate,
+    dayId,
+    tripId,
+    variantId,
     defaultCurrency,
     item,
     items: orderPreviewItems,
@@ -106,6 +105,7 @@ function PlannerItemFormInner({
     dayId,
     item,
     expectedVersion: baseVersion,
+    creationId: state.localDraft.values.creationId,
     onCancel: closeEditor,
     onCreateAnother: onCreateAnother ? onCreatedAnother : undefined,
     onError,
@@ -118,7 +118,6 @@ function PlannerItemFormInner({
   const {
     attachmentSession,
     canCreateAnother,
-    itemMutationPending,
     mutationError,
     pending,
     pendingLabel,
@@ -161,11 +160,6 @@ function PlannerItemFormInner({
   const [exitOpen, setExitOpen] = useState(false);
   const activeStep = steps.find(({ id }) => id === stepId) ?? steps[0];
   const stepIndex = steps.indexOf(activeStep);
-  const saveAction = plannerItemSaveAction({
-    activeStepId: activeStep.id,
-    creating: !item,
-    includeOrder,
-  });
   const formError = plannerItemFormError({
     creating: !item,
     place: state.place,
@@ -173,7 +167,7 @@ function PlannerItemFormInner({
     title: state.title,
     type,
   });
-  const { requestCancel } = attachmentSession;
+  const requestCancel = closeEditor;
 
   usePlannerItemDraft({
     arrivalDate: state.arrivalDate,
@@ -191,17 +185,23 @@ function PlannerItemFormInner({
     title: state.title,
     type,
   });
+  const autosave = usePlannerItemAutosave({
+    item,
+    state,
+    steps,
+    tripId,
+    type,
+    variantId,
+    save: saveFlow.saveInBackground,
+  });
+  const flushAutosave = autosave.flush;
   const requestExit = useCallback(
     (reason: ItemEditorCloseReason = "cancel") => {
-      if (itemMutationPending) return;
       setCloseReason(reason);
-      if (state.dirty) {
-        setExitOpen(true);
-        return;
-      }
+      flushAutosave();
       requestCancel();
     },
-    [itemMutationPending, requestCancel, setCloseReason, state.dirty],
+    [flushAutosave, requestCancel, setCloseReason],
   );
   useEffect(() => {
     onCloseRequestRegistration?.(requestExit);
@@ -209,17 +209,6 @@ function PlannerItemFormInner({
   }, [onCloseRequestRegistration, requestExit]);
   function goToStep(nextStepId: ItemFormStep["id"]) {
     if (nextStepId === activeStep.id) return true;
-    const blocking = plannerItemStepError({
-      creating: !item,
-      place: state.place,
-      step: activeStep,
-      title: state.title,
-      type,
-    });
-    if (blocking) {
-      setStepError(blocking);
-      return false;
-    }
     setStepError(undefined);
     setStepId(nextStepId);
     return true;
@@ -248,13 +237,17 @@ function PlannerItemFormInner({
       return;
     }
     setStepError(undefined);
-    if (saveAction === "confirm-order") {
-      setStepId("order");
+    let values;
+    try {
+      values = plannerItemSaveValues({ item, state, tripId, type, variantId });
+    } catch (failure) {
+      setStepError(failure instanceof Error ? failure.message : String(failure));
       return;
     }
-    const values = plannerItemSaveValues({ item, state, tripId, type, variantId });
     if (pending || !values) return;
-    await requestSave(intent, values);
+    if (!state.localDraft.persist()) return;
+    const snapshot = JSON.stringify(state.localDraft.values);
+    await requestSave(intent, values, () => state.localDraft.discardIfMatches(snapshot));
   }
 
   return (
@@ -264,57 +257,36 @@ function PlannerItemFormInner({
           attachmentSession={attachmentSession}
           editing={Boolean(item)}
           exitOpen={exitOpen}
-          onExit={requestCancel}
+          onExit={() => {
+            if (state.localDraft.discard()) requestCancel();
+          }}
           onExitOpenChange={setExitOpen}
         />
       }
-      alternateSaveLabel={
-        canCreateAnother && onCreateAnother && (!includeOrder || activeStep.id === "order")
-          ? "Save & create new"
-          : undefined
-      }
+      alternateSaveLabel={canCreateAnother && onCreateAnother ? "Save & create new" : undefined}
       backDisabled={stepIndex === 0}
       fieldsRef={motionSurfaceRef}
       footer={
-        isItineraryConflict(mutationError) ? (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-            <p className="text-sm text-muted-foreground">
-              <T
-                message={
-                  item
-                    ? "Reloading replaces only this item and keeps the editor open."
-                    : "Reload the latest day and keep this draft open."
-                }
-              />
-            </p>
-            <div className="mt-2 flex min-w-0 flex-wrap gap-2">
-              <Button
-                className="min-h-11"
-                disabled={reloadPending}
-                onClick={() => void loadLatest()}
-                type="button"
-                variant="outline"
-              >
-                <RotateCcw aria-hidden="true" className="size-4" />
-                <T message={reloadPending ? "Loading…" : "Reload latest"} />
-              </Button>
-            </div>
-          </div>
-        ) : undefined
+        <PlannerItemConflictFeedback
+          error={mutationError}
+          editing={Boolean(item)}
+          pending={reloadPending}
+          onReload={loadLatest}
+        />
       }
       header={
         <PlannerEditorHeader
-          closeDisabled={itemMutationPending}
+          closeDisabled={false}
           description={`${t("Step {current} of {total}: {step}.", {
             current: stepIndex + 1,
             step: t(activeStep.title),
             total: steps.length,
           })} ${t(
             !item && includeOrder
-              ? "Confirm the Order step before saving."
+              ? "The item can be saved from any step."
               : "The item can be saved from any step.",
           )}`}
-          error={reloadError ?? stepError ?? mutationError?.message}
+          error={state.localDraft.error ?? reloadError ?? stepError ?? mutationError?.message}
           navigation={
             <PlannerItemStepNav activeStepId={activeStep.id} onSelect={goToStep} steps={steps} />
           }
@@ -327,15 +299,18 @@ function PlannerItemFormInner({
       onClose={() => requestExit("escape")}
       onNext={() => moveStep(1)}
       onSave={save}
+      onCompositionChange={autosave.composition}
       onScrollNode={setGestureSurfaceNode}
       pending={pending}
       pendingLabel={pendingLabel}
       saveDisabled={Boolean(formError)}
-      saveLabel={saveAction === "confirm-order" ? "Confirm order" : "Save"}
+      saveLabel="Save"
     >
+      <LocalDraftStatus draft={state.localDraft} onDiscard={() => setExitOpen(true)} />
       <PlannerItemStepFields
         attachments={
           <ItemAttachmentsSection
+            creationId={state.localDraft.values.creationId}
             item={item}
             onDraftCountChange={attachmentSession.setDraftCount}
             onOpenShareSettings={() => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))}
@@ -355,7 +330,7 @@ function PlannerItemFormInner({
           state.setInsertAfterItemId(nextItemId);
           setStepError(undefined);
         }}
-        pending={pending}
+        pending={false}
         state={state}
         titleRef={titleRef}
         type={type}

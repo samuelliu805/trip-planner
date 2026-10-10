@@ -87,6 +87,7 @@ export function PlannerItemStepFields({
       case "endpoints":
         return (
           <JourneyEndpointFields
+            resolutionKey={state.localDraft.key}
             destination={state.destination}
             destinationPlace={state.destinationPlace}
             origin={state.origin}
@@ -144,9 +145,12 @@ export function PlannerItemStepFields({
       case "place":
         return (
           <ItemPlaceField
+            resolutionKey={`${state.localDraft.key}:place`}
             creating={!item}
             pending={pending}
             place={state.place}
+            placeQuery={state.placeQuery}
+            setPlaceQuery={state.setPlaceQuery}
             placeLabel={placeLabel}
             setPlace={state.setPlace}
             setTitle={state.setTitle}

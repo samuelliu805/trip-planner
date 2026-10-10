@@ -9,7 +9,7 @@ import type { PlannerItemSaveFeedback } from "@/features/itinerary/components/pl
 import type { ItineraryItem, TransportMode } from "@/features/itinerary/types";
 import type { ItemEditorCloseReason } from "@/lib/telemetry/events";
 
-/** A dedicated full-screen editor that never shares its viewport with the Matrix. */
+/** Mobile focus view; desktop editing keeps the workspace interactive. */
 export function PlannerItemEditorDialog({
   defaultCurrency,
   dayDate,
@@ -69,6 +69,7 @@ export function PlannerItemEditorDialog({
 
   return (
     <PlannerEditorScreen
+      nonBlocking
       onDismissReason={(reason) => {
         dismissReason.current = reason;
       }}

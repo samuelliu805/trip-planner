@@ -7,7 +7,7 @@ import type { PlannerItemFormState } from "@/features/itinerary/components/use-p
 import { plannerJourneyFieldCapabilities } from "@/features/itinerary/transport-form-fields";
 import type { ItineraryItem, ItineraryItemType } from "@/features/itinerary/types";
 import type { Json } from "@/types/database";
-import { priceFromExpression } from "@/lib/price-expression";
+import { parsedPriceExpression } from "@/lib/price-expression";
 
 /** Builds the create/update payload from the live form state, unchanged by the step grouping. */
 export function plannerItemSaveValues({
@@ -122,17 +122,21 @@ export function plannerItemSaveValues({
           providerPlaceId: place.providerPlaceId,
         }
       : undefined;
+  const price = priceAmount.trim() ? parsedPriceExpression(priceAmount) : null;
+  if (supportsPrice && price === undefined) throw new Error("The price expression is incomplete.");
   return {
     bookingUrl: supportsLink ? (links[0]?.url ?? "") : "",
     links: supportsLink ? links : [],
     insertAfterItemId:
-      isDestinationActivity({ type }) && (type === "hotel" || (!startTime && !arrivalTime))
+      (!item || state.orderChanged) &&
+      isDestinationActivity({ type }) &&
+      (type === "hotel" || (!startTime && !arrivalTime))
         ? insertAfterItemId
         : undefined,
     details: details as never,
     endTime: journey.arrivalTime ? arrivalTime : "",
-    notes: type === "note" ? "" : notes,
-    priceAmount: supportsPrice && priceAmount.trim() ? priceFromExpression(priceAmount) : null,
+    notes,
+    priceAmount: supportsPrice ? price : null,
     priceCurrency: supportsPrice && priceAmount.trim() ? priceCurrency : null,
     startTime: supportsTime && (type !== "transport" || journey.departureTime) ? startTime : "",
     title: savedTitle,

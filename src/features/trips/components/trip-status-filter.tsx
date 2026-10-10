@@ -73,7 +73,6 @@ export function TripStatusFilterTabs({
                   : "text-muted-foreground hover:text-foreground"
               }`}
               key={filter}
-              disabled={Boolean(operationLabel)}
               onClick={() => selectFilter(filter)}
               type="button"
             >
@@ -85,18 +84,13 @@ export function TripStatusFilterTabs({
       </div>
 
       <div className="relative mt-6 min-h-52">
-        <section
-          aria-busy={loading}
-          aria-labelledby="trip-list-title"
-          className={loading ? "pointer-events-none invisible" : undefined}
-          id="trip-list"
-        >
+        <section aria-busy={loading} aria-labelledby="trip-list-title" id="trip-list">
           {children}
         </section>
         {loading ? (
           <div
             aria-live="polite"
-            className="absolute inset-0 flex min-h-52 items-center justify-center rounded-xl border bg-card"
+            className="pointer-events-none absolute right-0 top-0 z-20 max-w-full rounded-lg border bg-card p-3 shadow-sm"
             role="status"
           >
             <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">

@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useResearchSync } from "./use-research-sync";
 
 import { requireData } from "@/features/itinerary/query-cache";
 
@@ -22,9 +24,17 @@ export function useResearchWorkspace(
   variantId: string,
   initialData: ResearchWorkspaceSnapshot,
 ) {
+  const sync = useResearchSync(tripId);
+  useEffect(() => {
+    sync?.attach(initialData.items);
+  }, [sync, initialData]);
   return useQuery({
     initialData,
-    queryFn: async () => requireData(await loadResearchWorkspace({ tripId, variantId })),
+    queryFn: async () => {
+      const read = sync?.beginRead();
+      const loaded = requireData(await loadResearchWorkspace({ tripId, variantId }));
+      return sync ? { ...loaded, items: sync.reconcile(loaded.items, read) } : loaded;
+    },
     queryKey: researchWorkspaceQueryKey(tripId, variantId),
     refetchOnMount: "always",
     refetchOnWindowFocus: true,

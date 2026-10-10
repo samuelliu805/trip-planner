@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { priceFromExpression } from "./price-expression.ts";
+import { priceFromExpression, parsedPriceExpression } from "./price-expression.ts";
 
 test("prices evaluate arithmetic with precedence, parentheses and signed operands", () => {
   for (const [expression, expected] of [
@@ -18,6 +18,13 @@ test("prices evaluate arithmetic with precedence, parentheses and signed operand
     ["(100-200)+300", 200],
   ] as const)
     assert.equal(priceFromExpression(expression), expected, expression);
+});
+
+test("invalid expressions remain distinguishable from a valid zero for drafts", () => {
+  assert.equal(parsedPriceExpression("0"), 0);
+  assert.equal(parsedPriceExpression("5-5"), 0);
+  assert.equal(parsedPriceExpression("12+"), undefined);
+  assert.equal(parsedPriceExpression("1/0"), undefined);
 });
 
 test("invalid, negative, unbounded or executable expressions become zero", () => {

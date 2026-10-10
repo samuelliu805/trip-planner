@@ -2,6 +2,10 @@
 
 import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDraftScope } from "@/features/editing/draft-scope";
+import { useDurableFields } from "@/features/editing/use-durable-fields";
+import { useResearchSync } from "../use-research-sync";
+import { editingStorageKey } from "@/features/editing/draft-storage";
 
 import { Button } from "@/components/ui/button";
 import { T, useI18n } from "@/features/i18n/i18n-provider";
@@ -35,13 +39,25 @@ export function QuickIdeaInput({
   tripId: string;
 }) {
   const { t } = useI18n();
-  const [input, setInput] = useState("");
-  const [override, setOverride] = useState<Exclude<IdeaKind, "unknown"> | null>(null);
+  const sync = useResearchSync(tripId);
+  const scope = useDraftScope(tripId, "ideas");
+  const draft = useDurableFields(editingStorageKey(scope, "quick"), {
+    input: "",
+    override: null as Exclude<IdeaKind, "unknown"> | null,
+    metadata: null as IdeaPageMetadata | null,
+    place: null as PlaceSnapshot | null,
+    originPlace: null as PlaceSnapshot | null,
+    destinationPlace: null as PlaceSnapshot | null,
+  });
+  const { input, override, metadata, place, originPlace, destinationPlace } = draft.values;
+  const setInput = (value: string) => draft.set("input", value);
+  const setOverride = (value: typeof override) => draft.set("override", value);
+  const setMetadata = (value: typeof metadata) => draft.set("metadata", value);
+  const setPlace = (value: typeof place) => draft.set("place", value);
+  const setOriginPlace = (value: typeof originPlace) => draft.set("originPlace", value);
+  const setDestinationPlace = (value: typeof destinationPlace) =>
+    draft.set("destinationPlace", value);
   const [showTypes, setShowTypes] = useState(false);
-  const [metadata, setMetadata] = useState<IdeaPageMetadata | null>(null);
-  const [place, setPlace] = useState<PlaceSnapshot | null>(null);
-  const [originPlace, setOriginPlace] = useState<PlaceSnapshot | null>(null);
-  const [destinationPlace, setDestinationPlace] = useState<PlaceSnapshot | null>(null);
   const [pending, setPending] = useState(false);
   const [duplicate, setDuplicate] = useState<ResearchItem>();
   const [error, setError] = useState<string>();
@@ -68,8 +84,16 @@ export function QuickIdeaInput({
       ? (metadata?.title ?? textCandidate) || null
       : null);
   const lastReported = useRef("");
+  const inputRevision = useRef(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const receiveMetadata = useCallback((value: IdeaPageMetadata | null) => setMetadata(value), []);
+  const metadataReceiver = useRef(setMetadata);
+  useEffect(() => {
+    metadataReceiver.current = setMetadata;
+  });
+  const receiveMetadata = useCallback(
+    (value: IdeaPageMetadata | null) => metadataReceiver.current(value),
+    [],
+  );
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("new") !== "1") return;
@@ -105,6 +129,7 @@ export function QuickIdeaInput({
         },
         { actorType: "authenticated" },
       );
+    inputRevision.current++;
     setOverride(kind);
     setShowTypes(false);
   }
@@ -121,6 +146,12 @@ export function QuickIdeaInput({
   }
 
   async function save(forceSeparate = false) {
+    if (scope[1] !== "guest" && !sync) {
+      setError(
+        "Ideas sync is unavailable. Your local draft is kept; download it before reloading.",
+      );
+      return;
+    }
     if (!input.trim() || classification.kind === "unknown" || classification.error || pending)
       return;
     const existing = findDuplicateIdea(classification.sourceUrl, items);
@@ -128,6 +159,8 @@ export function QuickIdeaInput({
       setDuplicate(existing);
       return;
     }
+    const submittedRevision = inputRevision.current;
+    if (!draft.persist()) return;
     setPending(true);
     setError(undefined);
     const operationId = newTelemetryOperationId();
@@ -135,7 +168,7 @@ export function QuickIdeaInput({
     const textOnly = classification.sourceUrl
       ? shareText.replace(classification.sourceUrl, "").trim()
       : shareText;
-    const result = await captureIdea({
+    const captureInput = {
       kind: classification.kind,
       originPlaceSnapshot: originPlace,
       destinationPlaceSnapshot:
@@ -149,7 +182,17 @@ export function QuickIdeaInput({
       sourceUrl: classification.sourceUrl,
       title: quickIdeaCaptureTitle(textOnly, classification.kind, route),
       tripId,
-    });
+    };
+    let result;
+    try {
+      result = sync
+        ? { data: sync.accept({ kind: "capture", input: captureInput }) }
+        : await captureIdea(captureInput);
+    } catch (failure) {
+      setPending(false);
+      setError(failure instanceof Error ? failure.message : String(failure));
+      return;
+    }
     setPending(false);
     if (!result.data) {
       setError(result.error ?? t("The idea could not be saved."));
@@ -161,30 +204,48 @@ export function QuickIdeaInput({
       { idea_kind: classification.kind, operation_id: operationId, surface: "ideas_input" },
       { actorType: "authenticated" },
     );
-    clearInput();
-    setNotice(t("Idea saved"));
+    if (inputRevision.current === submittedRevision) clearInput();
+    setNotice(t(sync ? "Saved locally" : "Idea saved"));
   }
 
   async function merge() {
+    if (scope[1] !== "guest" && !sync) {
+      setError(
+        "Ideas sync is unavailable. Your local draft is kept; download it before reloading.",
+      );
+      return;
+    }
     if (!duplicate || !classification.sourceUrl || pending) return;
+    const submittedRevision = inputRevision.current;
+    if (!draft.persist()) return;
     setPending(true);
     setError(undefined);
-    const result = await mergeIdeaSource({
+    const mergeInput = {
       expectedVersion: duplicate.version,
       operationId: newTelemetryOperationId(),
       researchItemId: duplicate.id,
       shareText: input.trim(),
       sourceUrl: classification.sourceUrl,
       tripId,
-    });
+    };
+    let result;
+    try {
+      result = sync
+        ? { data: sync.accept({ kind: "merge", input: mergeInput }, duplicate), error: undefined }
+        : await mergeIdeaSource(mergeInput);
+    } catch (failure) {
+      setPending(false);
+      setError(failure instanceof Error ? failure.message : String(failure));
+      return;
+    }
     setPending(false);
     if (!result.data) {
-      setError(result.error);
+      setError(result.error ?? t("The idea could not be saved."));
       return;
     }
     onSaved(result.data);
-    clearInput();
-    setNotice(t("Source added to saved idea"));
+    if (inputRevision.current === submittedRevision) clearInput();
+    setNotice(t(sync ? "Saved locally" : "Source added to saved idea"));
   }
 
   return (
@@ -192,6 +253,17 @@ export function QuickIdeaInput({
       aria-label={t("Save an idea")}
       className="min-w-0 rounded-2xl border bg-card p-4 shadow-sm"
     >
+      {draft.error ? (
+        <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
+          <T message="Local save failed" />
+          <Button type="button" onClick={draft.download}>
+            <T message="Download draft" />
+          </Button>
+          <Button type="button" onClick={draft.retry}>
+            <T message="Retry" />
+          </Button>
+        </div>
+      ) : null}
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold">
           <T message="Save an idea" />
@@ -214,6 +286,7 @@ export function QuickIdeaInput({
         className="min-h-20 w-full min-w-0 resize-y rounded-xl border bg-background px-3 py-3 text-base"
         maxLength={5000}
         onChange={(event) => {
+          inputRevision.current++;
           setInput(event.target.value);
           setPlace(null);
           setOriginPlace(null);
@@ -240,14 +313,24 @@ export function QuickIdeaInput({
             <QuickIdeaKindPicker current={classification.kind} onChoose={choose} />
           ) : null}
           <QuickIdeaDetails
+            resolutionKey={draft.key}
             candidateLocation={candidateLocation}
             classification={classification}
             destinationPlace={destinationPlace}
             metadata={metadata}
-            onDestinationPlaceChange={setDestinationPlace}
+            onDestinationPlaceChange={(value) => {
+              inputRevision.current++;
+              setDestinationPlace(value);
+            }}
             onMetadata={receiveMetadata}
-            onOriginPlaceChange={setOriginPlace}
-            onPlaceChange={setPlace}
+            onOriginPlaceChange={(value) => {
+              inputRevision.current++;
+              setOriginPlace(value);
+            }}
+            onPlaceChange={(value) => {
+              inputRevision.current++;
+              setPlace(value);
+            }}
             originPlace={originPlace}
             place={place}
             preview={preview}

@@ -15,6 +15,7 @@ import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import { claimGuestTrip } from "../actions";
+import { claimCurrentGuestDraft, transferGuestEditorDrafts } from "../claim-continuation";
 import { guestDaysForCount } from "../defaults";
 import { GuestDraftMutations } from "../mutations";
 import type { GuestIntent, GuestRegion, GuestTripDraft } from "../schema";
@@ -119,28 +120,38 @@ export function GuestPlanner({
             : null;
       setClaimPending(true);
       setClaimError(undefined);
-      const result = await claimGuestTrip(draft);
-      if (!result.data) {
-        setClaimError(result.error ?? "The local trip could not be imported.");
-        setClaimPending(false);
-        return;
-      }
       try {
-        if (storage) {
-          storage.writeImportMarker({
-            draftId: draft.draftId,
-            importedAt: new Date().toISOString(),
-            intent,
-            tripId: result.data.tripId,
-          });
-          storage.clear(draft.draftId);
-        }
-      } catch {
-        // The account copy is authoritative once the idempotent server import succeeds.
+        const result = await claimCurrentGuestDraft({
+          getCurrent: local.getCurrentDraft,
+          flush: local.flush,
+          send: claimGuestTrip,
+          complete: (cutoff, saved) => {
+            if (!storage) return false;
+            transferGuestEditorDrafts(
+              window.localStorage,
+              cutoff.draftId,
+              saved.tripId,
+              saved.actorId,
+            );
+            storage.writeImportMarker({
+              draftId: cutoff.draftId,
+              revision: cutoff.revision,
+              importedAt: new Date().toISOString(),
+              intent,
+              tripId: saved.tripId,
+            });
+            return storage.clear(cutoff.draftId, cutoff.revision) === true;
+          },
+        });
+        window.location.replace(importedDestination(result.tripId, intent));
+      } catch (error) {
+        setClaimError(
+          error instanceof Error ? error.message : "The local trip could not be imported.",
+        );
+        setClaimPending(false);
       }
-      window.location.replace(importedDestination(result.data.tripId, intent));
     },
-    [claimPending, gateItemId, local.draft, local.storage],
+    [claimPending, gateItemId, local],
   );
 
   useEffect(() => {
@@ -152,7 +163,8 @@ export function GuestPlanner({
     )
       return;
     const marker = local.storage.current?.readImportMarker();
-    const markerMatchesDraft = marker?.draftId === local.draft.draftId;
+    const markerMatchesDraft =
+      marker?.draftId === local.draft.draftId && marker.revision === local.draft.revision;
     const interruptedClaim = claimMode === "claim" && local.restoredFromStorage === false;
     if (marker && (markerMatchesDraft || interruptedClaim)) {
       automaticClaimStarted.current = true;
@@ -198,6 +210,7 @@ export function GuestPlanner({
         workspace: { ...next.workspace, days: guestDaysForCount(next, settings.dayCount) },
       };
     });
+    return local.flush();
   }
 
   function continueFromGate() {
@@ -237,6 +250,7 @@ export function GuestPlanner({
           {section === "ideas" ? (
             <GuestIdeasWorkspace
               commit={local.commit}
+              flush={local.flush}
               draft={draft}
               onOpenPlan={() => setSection("plan")}
               onSaveToAccount={() => openGate("save")}
@@ -260,11 +274,7 @@ export function GuestPlanner({
                 initialVariants={[draft.workspace.variant]}
                 initialWorkspace={draft.workspace}
                 settings={
-                  <GuestTripForm
-                    key={draft.trip.updated_at}
-                    onSave={updateTrip}
-                    trip={draft.trip}
-                  />
+                  <GuestTripForm key={draft.trip.id} onSave={updateTrip} trip={draft.trip} />
                 }
                 shareAttachmentsEnabled={false}
                 trip={draft.trip}
@@ -298,7 +308,7 @@ export function GuestPlanner({
         ) : null}
         {claimPending ? (
           <div
-            className="fixed inset-0 z-[120] flex items-center justify-center bg-background/70"
+            className="pointer-events-none fixed inset-x-3 bottom-16 z-[80] flex justify-center"
             role="status"
           >
             <div className="flex items-center gap-2 rounded-full border bg-background px-4 py-2.5 shadow-lg">

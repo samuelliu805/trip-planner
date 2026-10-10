@@ -1,9 +1,8 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { ExternalLink, LoaderCircle, RotateCcw, Share2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition, type MouseEvent } from "react";
+import { ExternalLink, RotateCcw, Share2 } from "lucide-react";
+import { useEffect, useState, type MouseEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
@@ -22,24 +21,15 @@ import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import type { Trip } from "@/platform/contracts/trips";
 
-import {
-  createPublicItineraryLink,
-  loadPublicItineraryLinks,
-  revokePublicItineraryLink,
-  updatePublicItineraryLink,
-} from "../actions";
 import { OPEN_SHARE_SETTINGS_EVENT } from "../events";
 import { publicItineraryDescription } from "../public-copy";
 import type { PublicItineraryLink } from "../types";
 import { PublicShareSettingsFields } from "./public-share-settings-fields";
-import {
-  defaultShareSettings,
-  settingsFromLink,
-  shareSettingsSignature,
-  type ShareSettings,
-} from "./public-share-settings";
+import { settingsFromLink, shareSettingsSignature } from "./public-share-settings";
 import { PublicShareStatusPanel } from "./public-share-status-panel";
 import { OwnerLongImageSettings } from "./owner-long-image-settings";
+import { useSharePageEditor } from "./use-share-page-editor";
+import { LocalDraftStatus } from "@/features/editing/local-draft-status";
 import { PublicSharePagePicker } from "./public-share-page-picker";
 
 export function PublicShareDialog({
@@ -60,23 +50,32 @@ export function PublicShareDialog({
   variants: PlannerVariant[];
 }) {
   const { locale } = useI18n();
-  const router = useRouter();
   const [open, setOpen] = useState(initialOpen);
-  const [links, setLinks] = useState(initialLinks);
-  const [variantId, setVariantId] = useState(activeVariantId);
-  const initialLink = initialLinks.find((link) => link.variantId === activeVariantId);
-  const [selectedPageId, setSelectedPageId] = useState(initialLink?.id ?? "new");
-  const [settings, setSettings] = useState<ShareSettings>(() => settingsFromLink(initialLink));
-  const [error, setError] = useState<string>();
-  const [notice, setNotice] = useState<string>();
-  const [pending, startTransition] = useTransition();
-  const [conflict, setConflict] = useState(false);
-  const [variantVersions, setVariantVersions] = useState(() =>
-    Object.fromEntries(variants.map(({ id, version }) => [id, version])),
-  );
+  const editor = useSharePageEditor(trip.id, activeVariantId, initialLinks, variants);
+  const {
+    links,
+    variantId,
+    selectedPageId,
+    settings,
+    activeLink,
+    selectedPageWasRevoked,
+    error,
+    notice,
+    conflict,
+    pending,
+    loading,
+    saveDisabled,
+    chooseVariant,
+    choosePage,
+    createAnotherPage,
+    setSetting,
+    save,
+    revoke,
+    reloadConflictedSharePage,
+    setError,
+    setNotice,
+  } = editor;
   const variant = variants.find(({ id }) => id === variantId) ?? variants[0];
-  const activeLink = links.find((link) => link.id === selectedPageId);
-  const selectedPageWasRevoked = selectedPageId !== "new" && !activeLink;
   const suggestedTitle = `${trip.title} · ${variant?.name ?? "Route"}`;
   const suggestedDescription = publicItineraryDescription(locale, trip.day_count);
   const activeSiteUrl = open && typeof window !== "undefined" ? window.location.origin : siteUrl;
@@ -84,7 +83,10 @@ export function PublicShareDialog({
   const unchanged =
     Boolean(activeLink) &&
     shareSettingsSignature(settings, variantId) ===
-      shareSettingsSignature(settingsFromLink(activeLink), activeLink?.variantId ?? variantId);
+      shareSettingsSignature(
+        editor.activeLink ? settingsFromLink(editor.activeLink) : editor.settings,
+        activeLink?.variantId ?? variantId,
+      );
 
   useExclusivePullUpPanel("share-settings", open, setOpen);
 
@@ -105,131 +107,6 @@ export function PublicShareDialog({
     window.addEventListener(OPEN_SHARE_SETTINGS_EVENT, openShareSettings);
     return () => window.removeEventListener(OPEN_SHARE_SETTINGS_EVENT, openShareSettings);
   }, []);
-
-  function chooseVariant(nextVariantId: string) {
-    setVariantId(nextVariantId);
-    setError(undefined);
-    setNotice(undefined);
-  }
-
-  function choosePage(nextPageId: string) {
-    const page = links.find(({ id }) => id === nextPageId);
-    setSelectedPageId(nextPageId);
-    if (page?.variantId) setVariantId(page.variantId);
-    setSettings(settingsFromLink(page));
-    setError(undefined);
-    setNotice(undefined);
-  }
-
-  function createAnotherPage() {
-    setSelectedPageId("new");
-    setSettings(defaultShareSettings);
-    setError(undefined);
-    setNotice("Set up a new shareable page. Existing links will not change.");
-  }
-
-  function setSetting<Key extends keyof ShareSettings>(key: Key, value: ShareSettings[Key]) {
-    setSettings((current) => ({ ...current, [key]: value }));
-  }
-
-  function save() {
-    setError(undefined);
-    setNotice(undefined);
-    if (selectedPageWasRevoked) {
-      setError(
-        "This Share Page was revoked by another trip member. Choose another page or explicitly create a new one.",
-      );
-      return;
-    }
-    startTransition(async () => {
-      const operationId = newTelemetryOperationId();
-      if (!activeLink)
-        captureBrowserProductEvent(
-          "share_publish_started",
-          { operation_id: operationId, share_artifact: "page", surface: "share_dialog" },
-          { actorType: "authenticated" },
-        );
-      const expectedVariantVersion = variantVersions[variantId];
-      if (!expectedVariantVersion) {
-        setError("Reload the trip before changing Share Page settings.");
-        return;
-      }
-      const input = { ...settings, expectedVariantVersion, operationId, variantId };
-      const result = activeLink
-        ? await updatePublicItineraryLink(activeLink.id, activeLink.version, input)
-        : await createPublicItineraryLink(input);
-      if ("error" in result) {
-        setError(result.error);
-        setConflict(result.code === "conflict");
-        return;
-      }
-      const savedLink = result.data;
-      if (savedLink.variantVersion)
-        setVariantVersions((current) => ({
-          ...current,
-          [variantId]: savedLink.variantVersion!,
-        }));
-      setConflict(false);
-      setLinks((current) => [...current.filter(({ id }) => id !== savedLink.id), savedLink]);
-      setSelectedPageId(savedLink.id);
-      setSettings(settingsFromLink(savedLink));
-      setNotice(activeLink ? "Shareable page updated." : "Shareable page created.");
-      router.refresh();
-    });
-  }
-
-  function revoke() {
-    if (!activeLink) return;
-    setError(undefined);
-    setNotice(undefined);
-    startTransition(async () => {
-      const result = await revokePublicItineraryLink({
-        expectedVersion: activeLink.version,
-        linkId: activeLink.id,
-        operationId: newTelemetryOperationId(),
-        tripId: trip.id,
-      });
-      if ("error" in result) {
-        setError(result.error);
-        setConflict(result.code === "conflict");
-        return;
-      }
-      setConflict(false);
-      setLinks((current) => current.filter(({ id }) => id !== activeLink.id));
-      setSelectedPageId("new");
-      setSettings(defaultShareSettings);
-      setNotice("Public access revoked. Other shareable pages and permanent images are unchanged.");
-      router.refresh();
-    });
-  }
-
-  function reloadConflictedSharePage() {
-    startTransition(async () => {
-      const latest = await loadPublicItineraryLinks(trip.id);
-      if (latest.error) {
-        setError(latest.error);
-        return;
-      }
-      setLinks(latest.data);
-      setVariantVersions((current) => ({
-        ...current,
-        ...Object.fromEntries(
-          latest.data.flatMap((link) =>
-            link.variantId ? [[link.variantId, link.variantVersion] as const] : [],
-          ),
-        ),
-      }));
-      setError(undefined);
-      setConflict(false);
-      if (!latest.data.some(({ id }) => id === selectedPageId) && selectedPageId !== "new") {
-        setError(
-          "This Share Page was revoked by another trip member. Your settings draft is preserved; choose another page or explicitly create a new one.",
-        );
-        return;
-      }
-      setNotice("Latest Share Page loaded. Your local settings draft is still here.");
-    });
-  }
 
   function openPublishedPage(event: MouseEvent<HTMLAnchorElement>) {
     captureBrowserProductEvent(
@@ -304,7 +181,7 @@ export function PublicShareDialog({
             </p>
             <Button
               className="mt-2 min-h-11"
-              disabled={pending}
+              disabled={loading}
               onClick={reloadConflictedSharePage}
               type="button"
               variant="outline"
@@ -357,6 +234,9 @@ export function PublicShareDialog({
             />
           </div>
         </div>
+        <div className="px-4 sm:px-6">
+          <LocalDraftStatus draft={editor.fields} onDiscard={editor.discardDraft} />
+        </div>
         <DialogFooter className="shrink-0 [&>*]:w-full sm:[&>*]:w-auto">
           {unchanged ? (
             <Button asChild>
@@ -372,16 +252,11 @@ export function PublicShareDialog({
           ) : (
             <Button
               aria-busy={pending}
-              disabled={pending || selectedPageWasRevoked}
+              disabled={saveDisabled || selectedPageWasRevoked}
               onClick={save}
               type="button"
             >
-              {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-              <Localized
-                value={
-                  pending ? "Publishing…" : activeLink ? "Publish changes" : "Create and publish"
-                }
-              />
+              <Localized value={activeLink ? "Publish changes" : "Create and publish"} />
             </Button>
           )}
         </DialogFooter>

@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import {
+  authenticatedGuestStorageFixture,
+  verifyUnconfirmedGuestPreservation,
+} from "./authenticated-guest-storage-fixture.mjs";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -11,6 +15,12 @@ import { stopChild } from "./child-process.mjs";
 import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
 import { startLoopbackTlsProxy } from "./loopback-tls-proxy.mjs";
 import { resolveGlobalBrowserOrigin } from "./phase-5-global-browser-origin.mjs";
+import {
+  readTripOutbox,
+  waitForTripOutbox,
+  readTripAcceptedOperations,
+  summarizeNewTripOperations,
+} from "./browser-outbox-confirmation.mjs";
 
 function chromeExecutable() {
   const candidates = [
@@ -259,7 +269,7 @@ async function waitFor(browser, expression, label, timeoutMs = 45_000) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
-async function clickElement(browser, elementExpression, label, button = "left") {
+export async function clickElement(browser, elementExpression, label, button = "left") {
   await waitFor(
     browser,
     `(() => {
@@ -1375,22 +1385,78 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     `document.querySelector('[role="dialog"]')?.innerText.includes('Day 1: 2026-11-${anchorDayNumber === 2 ? "19" : "20"}')`,
     "new Plan date preview follows selected Day",
   );
-  await clickElement(
+  const acceptanceOptions = { evaluate, domains: ["variants", "idea-workflows"] };
+  const beforeCreation = await readTripAcceptedOperations(browser, tripId, acceptanceOptions);
+  await evaluate(
+    browser,
+    `(() => {
+    const expected = [...document.querySelectorAll('[role="dialog"] button')]
+      .find((button) => button.textContent.includes('Create Plan') && !button.disabled);
+    window.__phase5CreationPointer = [];
+    for (const type of ['pointerdown', 'pointerup', 'click'])
+      document.addEventListener(type, (event) => {
+        if (window.__phase5CreationPointer.length >= 12) return;
+        window.__phase5CreationPointer.push({ type, trusted: event.isTrusted,
+          expectedTarget: event.composedPath().includes(expected) });
+      }, { capture: true });
+  })()`,
+  );
+  await clickElementUntil(
     browser,
     `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
       button.textContent.includes('Create Plan') && !button.disabled)`,
+    `!document.querySelector('[role="dialog"][data-state="open"]') ||
+      [...document.querySelectorAll('[role="dialog"] [role="alert"]')]
+        .some((node) => node.getClientRects().length && node.textContent.trim())`,
     "create rebased flight Plan",
   );
-  const rebasedVariantId = await waitFor(
-    browser,
-    `(() => {
+  let rebasedVariantId;
+  try {
+    const acceptance = summarizeNewTripOperations(
+      beforeCreation,
+      await readTripAcceptedOperations(browser, tripId, acceptanceOptions),
+    );
+    assert.ok(
+      acceptance.variants?.accepted && acceptance["idea-workflows"]?.accepted,
+      "Create Plan closed without accepting both durable operations.",
+    );
+    rebasedVariantId = await waitFor(
+      browser,
+      `(() => {
       const id = new URLSearchParams(location.search).get('variant');
       return location.pathname === '/trips/${tripId}' && id &&
         id !== ${JSON.stringify(originalVariantId)} ? id : null;
     })()`,
-    "rebased flight Plan navigation",
-    60_000,
-  );
+      "rebased flight Plan navigation",
+      60_000,
+    );
+  } catch (error) {
+    const page = await boundedPageDiagnostic(browser);
+    const outbox = await readTripOutbox(browser, tripId, {
+      evaluate,
+      domains: ["variants", "idea-workflows", "ideas"],
+    }).catch(() => ({ unavailable: true }));
+    const alerts = await evaluate(
+      browser,
+      `[...document.querySelectorAll('[role="alert"]')]
+      .filter((node) => node.getClientRects().length).map((node) => node.textContent.trim().slice(0, 240))`,
+    ).catch(() => []);
+    const acceptance = summarizeNewTripOperations(
+      beforeCreation,
+      await readTripAcceptedOperations(browser, tripId, acceptanceOptions).catch(() => []),
+    );
+    const pointer = await evaluate(browser, "window.__phase5CreationPointer ?? []").catch(() => []);
+    throw new Error(
+      `${error.message}; creation diagnostic: ${JSON.stringify({ page, outbox, alerts, acceptance, pointer })}`,
+      { cause: error },
+    );
+  }
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: ["variants", "idea-workflows"],
+    label: "new flight Plan and application confirmed before cold navigation",
+  });
   await navigate(browser, baseUrl, `/trips/${tripId}?variant=${rebasedVariantId}`);
   await waitFor(
     browser,
@@ -1426,6 +1492,16 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     })()`,
     `Boolean(document.querySelector('[role="dialog"][data-state="open"]'))`,
     "add Google Flights booking idea to Plan",
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('[role="dialog"][data-state="open"]')?.innerText.includes('New Plan dates')`,
+    "returning flight import retains its previous creation draft",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].find((button) => button.textContent.trim() === 'Back')`,
+    "choose existing Plans from the retained creation draft",
   );
   await waitFor(
     browser,
@@ -1495,6 +1571,31 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       { deviceScaleFactor: 1, height: 844, mobile: false, width },
       browser.sessionId,
     );
+    // The dialog's visual-viewport constraint updates on the next animation frame.
+    try {
+      await waitFor(
+        browser,
+        `(() => {
+          const rect = document.querySelector('[role="dialog"]')?.getBoundingClientRect();
+          return Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
+            rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5;
+        })()`,
+        `multi-Plan dialog layout at ${width}px`,
+        10_000,
+      );
+    } catch (error) {
+      const bounds = await evaluate(
+        browser,
+        `(() => {
+          const dialog = document.querySelector('[role="dialog"]');
+          const rect = dialog?.getBoundingClientRect();
+          return { innerWidth, innerHeight, visualHeight: visualViewport?.height,
+            constraint: dialog?.style.getPropertyValue('--dialog-viewport-height'),
+            left: rect?.left, right: rect?.right, top: rect?.top, bottom: rect?.bottom };
+        })()`,
+      );
+      throw new Error(`${error.message}; ${JSON.stringify(bounds)}`, { cause: error });
+    }
     const layout = await evaluate(
       browser,
       `(() => {
@@ -1600,6 +1701,12 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     })()`,
     "outbound departure and arrival appear in Order",
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: ["idea-workflows"],
+    label: "both flight Plan applications confirmed before leaving",
+  });
   await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
   await waitFor(browser, `Boolean(document.querySelector('textarea'))`, "Ideas capture input");
   const hiltonUrl =
@@ -2168,7 +2275,7 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
   ];
   await evaluate(
     browser,
-    `${JSON.stringify(authenticatedGuestKeys)}.forEach((key) => localStorage.setItem(key, 'stale')); true`,
+    `Object.entries(${JSON.stringify(authenticatedGuestStorageFixture())}).forEach(([key,value]) => localStorage.setItem(key,value)); true`,
   );
   await navigate(browser, baseUrl, "/guest?claim=1");
   await waitFor(
@@ -2177,6 +2284,11 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
       ${JSON.stringify(authenticatedGuestKeys)}.every((key) => localStorage.getItem(key) === null)`,
     "authenticated guest redirect and storage cleanup",
   );
+  await verifyUnconfirmedGuestPreservation({
+    evaluate: (expression) => evaluate(browser, expression),
+    visit: () => navigate(browser, baseUrl, "/guest?claim=1"),
+    waitFor: (expression, label) => waitFor(browser, expression, label),
+  });
 
   await navigate(browser, baseUrl, "/");
   await waitFor(

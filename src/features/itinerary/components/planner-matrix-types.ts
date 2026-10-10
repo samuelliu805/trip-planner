@@ -63,6 +63,7 @@ export type PlannerMatrixProps = {
   onDecisionSummaryPanelClose: () => void;
   onEditMapItem: (itemId: string) => void;
   onMapExpand: () => void;
+  onReorder: (day: PlannerDay) => void;
   onMapModeChange: PlannerMapModeChange;
   onMapSelectionClear: () => void;
   onMarkerClick: (id?: string) => void;

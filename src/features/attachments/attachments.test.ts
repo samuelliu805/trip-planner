@@ -374,7 +374,15 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   );
   assert.match(itemAction, /saveAtomicItineraryItem/);
   assert.match(itemSaveFlow, /uploadSessionId/);
-  assert.match(attachmentSection, /onPendingChange\?\.\(pending\)/);
+  const uploadControls = await readFile(
+    new URL("./components/persistent-upload-controls.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    attachmentSection,
+    /<PersistentUploadControls[\s\S]*onPendingChange=\{onPendingChange\}/,
+  );
+  assert.match(uploadControls, /onPendingChange\?\.\(owner\.tasks\.some/);
   assert.match(attachmentSection, /ShareAttachmentsCallout/);
   assert.match(itemSaveFlow, /attachmentSession\.attachmentPending \? "Updating attachments…"/);
   assert.match(plannerForm, /min-w-0 flex-1 flex-col overflow-hidden/);
@@ -410,7 +418,9 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.doesNotMatch(attachmentSession, /\[item, tripId, uploadSessionId\]/);
   assert.match(attachmentSession, /commitAttachmentUploadSession/);
   assert.match(attachmentSession, /discardAttachmentUploadSession/);
-  assert.match(sessionRoute, /committed by saving the itinerary item/);
+  assert.match(sessionRoute, /commit_attachment_session_v3/);
+  assert.match(sessionRoute, /target_operation_id: input\.data\.operationId/);
+  assert.match(sessionRoute, /getCurrentUser\(\)/);
   assert.doesNotMatch(sessionRoute, /commit_item_asset_session_v1/);
   assert.match(sessionRoute, /discard_item_asset_session_v2/);
   assert.match(cleanup, /drainQueue\(getAdminCleanupBackend\(\), limit\)/);

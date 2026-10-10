@@ -51,6 +51,8 @@ export function OwnerAttachmentCard({
   attachment,
   disabled,
   onDelete,
+  pending = false,
+  requestedShare,
   onOpen,
   onShareChange,
   showShareControl = true,
@@ -58,6 +60,8 @@ export function OwnerAttachmentCard({
   tripId,
 }: {
   attachment: OwnerAttachment;
+  pending?: boolean;
+  requestedShare?: boolean;
   disabled: boolean;
   onDelete: () => void;
   onOpen: (trigger: HTMLElement) => void;
@@ -96,6 +100,11 @@ export function OwnerAttachmentCard({
               }
             />
           </p>
+          {pending ? (
+            <p role="status" className="text-xs">
+              <T message="Pending sync" />
+            </p>
+          ) : null}
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
             <Button
               className="min-h-11 min-w-0 justify-start px-1 text-primary underline decoration-primary/40 underline-offset-4 hover:bg-transparent hover:text-primary"
@@ -131,7 +140,7 @@ export function OwnerAttachmentCard({
         <div className="mt-3 border-t pt-2">
           <Label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-3 text-sm">
             <Checkbox
-              checked={attachment.includeInShare}
+              checked={requestedShare ?? attachment.includeInShare}
               disabled={disabled || attachment.status !== "ready"}
               onCheckedChange={(checked) => onShareChange(checked === true)}
             />

@@ -281,6 +281,7 @@ export function useGuestDraft(region: GuestRegion, deferInitialSave = false) {
   );
 
   return {
+    getCurrentDraft: () => draftRef.current,
     commit,
     draft,
     flush,

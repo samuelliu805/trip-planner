@@ -13,6 +13,7 @@ import { ResearchField } from "./form-controls";
 import { ResearchDateTimeField } from "./research-schedule-fields";
 import type { ResearchSegment } from "../types";
 import { changeSegmentDepartureDate } from "../journey";
+import { usePersistentEditorKey } from "@/features/editing/persistent-editor-fields";
 
 const blankSegment = (): ResearchSegment => ({
   arrivalDate: "",
@@ -35,6 +36,7 @@ export function ResearchMultiCityFields({
   segments: ResearchSegment[];
 }) {
   const { t } = useI18n();
+  const resolutionKey = usePersistentEditorKey("airports");
   const airportCodes = [
     ...new Set(
       segments.flatMap(({ origin, destination }) =>
@@ -135,6 +137,7 @@ export function ResearchMultiCityFields({
                 <div className="min-w-0 space-y-2" key={code}>
                   <label className="block text-sm font-medium">{code}</label>
                   <PlaceAutocomplete
+                    resolutionKey={resolutionKey ? `${resolutionKey}:${code}` : undefined}
                     ariaLabel={`${code} airport`}
                     includedPrimaryTypes={["airport", "international_airport", "locality"]}
                     initialQuery={selected ? "" : airportPlaceQuery(code)}

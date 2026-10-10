@@ -72,6 +72,7 @@ const comparisonSchema = z.object({
   tripId: z.uuid(),
   title: z.string().trim().min(1).max(160),
   choices: z.array(z.array(z.uuid()).min(1)).min(2),
+  operationId: z.uuid().optional(),
 });
 
 export async function createIdeaComparison(
@@ -80,11 +81,15 @@ export async function createIdeaComparison(
   const parsed = comparisonSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid comparison." };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("create_idea_comparison_v2", {
-    target_trip_id: parsed.data.tripId,
-    requested_title: parsed.data.title,
-    requested_choices: parsed.data.choices as Json,
-  });
+  const { data, error } = await database.rpc(
+    parsed.data.operationId ? "create_idea_comparison_v3" : "create_idea_comparison_v2",
+    {
+      ...(parsed.data.operationId ? { target_operation_id: parsed.data.operationId } : {}),
+      target_trip_id: parsed.data.tripId,
+      requested_title: parsed.data.title,
+      requested_choices: parsed.data.choices as Json,
+    },
+  );
   if (error || !data) return { error: error?.message ?? "The comparison could not be created." };
   const result = z.object({ id: z.uuid() }).safeParse(data);
   if (!result.success) return { error: "The comparison result could not be read." };

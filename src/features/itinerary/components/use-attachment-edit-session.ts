@@ -1,5 +1,8 @@
 "use client";
 
+import { useDraftScope } from "@/features/editing/draft-scope";
+import { useDurableFields } from "@/features/editing/use-durable-fields";
+import { editingStorageKey } from "@/features/editing/draft-storage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -9,6 +12,7 @@ import {
 import type { OwnerAttachment } from "@/features/attachments/schema";
 
 type AttachmentEditSessionOptions = {
+  draftId?: string;
   item?: { id: string; version: number };
   itemMutationPending: boolean;
   onCancel: () => void;
@@ -17,6 +21,7 @@ type AttachmentEditSessionOptions = {
 };
 
 export function useAttachmentEditSession({
+  draftId,
   item,
   itemMutationPending,
   onCancel,
@@ -29,7 +34,17 @@ export function useAttachmentEditSession({
   const [discardPending, setDiscardPending] = useState(false);
   const [error, setError] = useState<string>();
   const [abortController, setAbortController] = useState(() => new AbortController());
-  const [uploadSessionId] = useState(() => crypto.randomUUID());
+  const scope = useDraftScope(tripId, "attachments");
+  const session = useDurableFields(
+    editingStorageKey(scope, `${targetKind}:${item?.id ?? draftId ?? "new"}`),
+    { uploadSessionId: crypto.randomUUID() },
+    { ignoreDirty: ["uploadSessionId"] },
+  );
+  const uploadSessionId = session.values.uploadSessionId;
+  const persistSession = useRef(session.persist);
+  useEffect(() => {
+    persistSession.current = session.persist;
+  }, [session.persist]);
   const abortControllerRef = useRef(abortController);
   const attachmentPendingRef = useRef(false);
   const draftCountRef = useRef(0);
@@ -44,6 +59,7 @@ export function useAttachmentEditSession({
 
   const setAttachmentPending = useCallback(
     (pending: boolean) => {
+      if (pending) persistSession.current();
       attachmentPendingRef.current = pending;
       shouldDiscardSession.current = Boolean(
         !sessionHandled.current && itemId && (pending || draftCountRef.current > 0),
@@ -82,18 +98,6 @@ export function useAttachmentEditSession({
     window.addEventListener("beforeunload", confirmNavigation);
     return () => window.removeEventListener("beforeunload", confirmNavigation);
   }, [hasUncommittedAttachments]);
-
-  useEffect(
-    () => () => {
-      if (!itemId || !shouldDiscardSession.current) return;
-      abortControllerRef.current.abort();
-      void discardAttachmentUploadSession(
-        { ...target, expectedVersion: item.version, tripId, uploadSessionId },
-        true,
-      ).catch(() => undefined);
-    },
-    [item?.version, itemId, target, tripId, uploadSessionId],
-  );
 
   const commit = useCallback(
     async <SavedItem extends { id: string }>(savedItem: SavedItem) => {

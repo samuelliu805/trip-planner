@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { waitForTripOutbox } from "./browser-outbox-confirmation.mjs";
 
 export async function verifyCrossVariantClipboard({
   browser,
@@ -127,6 +128,12 @@ export async function verifyCrossVariantClipboard({
       "clipboard mutation settled",
       60_000,
     );
+    await waitForTripOutbox(browser, tripId, {
+      evaluate,
+      waitFor,
+      domains: [targetVariantId],
+      label: "cross-variant clipboard target confirmed",
+    });
     const alerts = await evaluate(
       browser,
       `[...document.querySelectorAll('[role="alert"]')]

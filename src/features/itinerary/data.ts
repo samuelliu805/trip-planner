@@ -120,6 +120,7 @@ export async function getPlannerVariants(
 export async function getPlannerWorkspace(
   tripId: string,
   variantId: string,
+  dayIds?: string[],
 ): Promise<{ data: PlannerWorkspace | null; error: string | null }> {
   const database = await getRelationalDatabase();
   const capabilities = getBackendCapabilities();
@@ -143,16 +144,18 @@ export async function getPlannerWorkspace(
     { data: items, error: itemsError },
     { data: routePlans, error: routePlansError },
   ] = await runServerReads([
-    () =>
-      database
+    () => {
+      const query = database
         .from("trip_days")
         .select(
           "id, variant_id, day_number, date, title, notes, version, items_version, content_version",
         )
         .eq("variant_id", variant.id)
-        .order("day_number", { ascending: true }),
-    () =>
-      database
+        .order("day_number", { ascending: true });
+      return dayIds ? query.in("id", dayIds) : query;
+    },
+    () => {
+      const query = database
         .from("itinerary_items")
         .select<WorkspaceItemRow>(
           [
@@ -165,14 +168,18 @@ export async function getPlannerWorkspace(
         .eq("trip_id", tripId)
         .eq("variant_id", variant.id)
         .order("day_id", { ascending: true })
-        .order("sort_order", { ascending: true }),
-    () =>
-      database
+        .order("sort_order", { ascending: true });
+      return dayIds ? query.in("day_id", dayIds) : query;
+    },
+    () => {
+      const query = database
         .from("day_route_plans")
         .select("*")
         .eq("trip_id", tripId)
         .eq("variant_id", variant.id)
-        .order("day_id", { ascending: true }),
+        .order("day_id", { ascending: true });
+      return dayIds ? query.in("day_id", dayIds) : query;
+    },
   ]);
 
   if (daysError || itemsError || routePlansError)

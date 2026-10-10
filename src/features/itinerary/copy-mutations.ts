@@ -1,5 +1,6 @@
 "use client";
 
+import { rollbackWorkspaceChange } from "@/features/itinerary/workspace-rollback";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { loadPlannerWorkspace } from "./actions";
@@ -14,6 +15,8 @@ import { rebaseUnchangedCopy } from "./mutation-rebase";
 import { retryPlannerMutation } from "./mutation-retry";
 import { plannerQueryKey } from "./planner-query";
 import { usePlannerPersistence } from "./planner-persistence";
+import { usePlannerOutbox } from "./planner-outbox-provider";
+import { createLocalCopies } from "./structure-sync";
 import { removeItem, replaceItem, requireData } from "./query-cache";
 import { insertActivityAtPlacement } from "./activity-order";
 import type { ItineraryItem, PlannerWorkspace } from "./types";
@@ -25,8 +28,38 @@ import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 export function useCopyItineraryItems(tripId: string, variantId: string) {
   const client = useQueryClient();
   const persistence = usePlannerPersistence();
+  const outbox = usePlannerOutbox();
   return useMutation({
+    networkMode: "always",
     mutationFn: async (input: CopyItineraryItemsInput) => {
+      if (outbox) {
+        const sourceId = input.sourceVariantId ?? variantId;
+        const sourceWorkspace =
+          sourceId === variantId
+            ? outbox.project()
+            : (client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, sourceId)) ??
+              requireData(await loadPlannerWorkspace(tripId, sourceId)));
+        const all = sourceWorkspace.days.flatMap((day) => day.items);
+        const sources = input.sourceItemIds.map((id) => all.find((item) => item.id === id));
+        if (sources.some((item) => !item))
+          throw new Error("A source item is unavailable. Reload the source Plan.");
+        input.copiedItemIds ??= input.sourceItemIds.map(() => crypto.randomUUID());
+        const copiedItems = createLocalCopies(input, sources as ItineraryItem[]);
+        const replacements = outbox
+          .project()
+          .days.flatMap((day) => day.items)
+          .filter((item) => input.replaceTargetItemIds?.includes(item.id));
+        if (replacements.length !== (input.replaceTargetItemIds?.length ?? 0))
+          throw new Error("A replacement item is unavailable. Review the selection.");
+        outbox.accept({
+          kind: "copy",
+          input,
+          sources: sources as ItineraryItem[],
+          replacements,
+          copiedItems,
+        });
+        return copiedItems;
+      }
       if (persistence) return persistence.copyItems(input);
       return retryPlannerMutation(
         input,
@@ -43,6 +76,7 @@ export function useCopyItineraryItems(tripId: string, variantId: string) {
       );
     },
     onMutate: async (input) => {
+      if (outbox) return;
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const sourceWorkspace = client.getQueryData<PlannerWorkspace>(
@@ -98,11 +132,19 @@ export function useCopyItineraryItems(tripId: string, variantId: string) {
             }
           : current,
       );
-      return { optimisticIds: optimistic.map(({ id }) => id), previous, sources };
+      return {
+        optimisticIds: optimistic.map(({ id }) => id),
+        previous,
+        sources,
+        applied: client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId)),
+      };
     },
     onError: (_error, _input, context) =>
-      client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
+      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
+        rollbackWorkspaceChange(current, context?.previous, context?.applied),
+      ),
     onSuccess: async (items, input, context) => {
+      if (outbox) return;
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         items.reduce(
           (workspace, item) => {

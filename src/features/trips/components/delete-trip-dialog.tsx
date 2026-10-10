@@ -2,7 +2,7 @@
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   AlertDialog,
@@ -15,7 +15,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { deleteTrip, loadTripDeleteSnapshot } from "@/features/trips/actions";
+import { loadTripDeleteSnapshot } from "@/features/trips/actions";
 import {
   completedTripDeleteReload,
   effectiveTripDeleteSnapshot,
@@ -23,6 +23,8 @@ import {
   startedTripDeleteSubmission,
   type TripDeleteReloadState,
 } from "@/features/trips/delete-trip-reload";
+import { useBackgroundActions } from "@/features/editing/use-background-actions";
+import type { TripActionState } from "../types";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 function DeleteAction({
@@ -86,8 +88,59 @@ export function DeleteTripDialog({
   contentVersion: number;
 }) {
   const { t } = useI18n();
-  const [state, action, pending] = useActionState(deleteTrip, {});
-  const [reloadState, setReloadState] = useState<TripDeleteReloadState<typeof state>>({
+  const owner = useBackgroundActions(tripId, "trip-card");
+  const [state, setState] = useState<TripActionState>({});
+  const [internalOpen, setInternalOpen] = useState(false);
+  const pending = Boolean(
+    owner?.queue.operations.some(
+      (op) =>
+        (op.intent as { kind: string }).kind === "trip.delete" &&
+        ["queued", "sending", "acknowledged"].includes(op.status),
+    ),
+  );
+  const failure = owner?.queue.operations.find(
+    (op) => (op.intent as { kind: string }).kind === "trip.delete" && op.error,
+  );
+  const visibleState: TripActionState = failure
+    ? { error: failure.error, conflict: failure.status === "conflict" }
+    : state;
+  const visibleStateKey = failure
+    ? `${failure.id}:${failure.status}:${failure.attempts}:${failure.error}`
+    : state;
+  function setOpen(next: boolean) {
+    setInternalOpen(next);
+    onOpenChange?.(next);
+  }
+  function action(formData: FormData) {
+    try {
+      if (!owner) throw new Error("Local storage is unavailable.");
+      if (failure?.status === "failed") {
+        owner.queue.retry(failure.id);
+        setOpen(false);
+        return;
+      }
+      if (
+        failure?.status === "conflict" &&
+        reloadState.hiddenErrorState === visibleStateKey &&
+        reloadState.latestSnapshot
+      )
+        owner.queue.archiveBranch(failure.id);
+      owner.accept({
+        kind: "trip.delete",
+        input: {
+          tripId,
+          expectedVersion: Number(formData.get("expected_version")),
+          expectedContentVersion: Number(formData.get("expected_content_version")),
+          operationId: String(formData.get("operation_id")),
+        },
+      });
+      setState({});
+      setOpen(false);
+    } catch (error) {
+      setState({ error: String(error) });
+    }
+  }
+  const [reloadState, setReloadState] = useState<TripDeleteReloadState<TripActionState | string>>({
     latestSnapshot: null,
     reloadSucceeded: false,
   });
@@ -97,7 +150,8 @@ export function DeleteTripDialog({
     reloadState.latestSnapshot,
   );
   const checkingSharePages = effectiveSnapshot.activeSharePageCount === null;
-  const visibleError = state !== reloadState.hiddenErrorState ? state.error : undefined;
+  const visibleError =
+    visibleStateKey !== reloadState.hiddenErrorState ? visibleState.error : undefined;
   const operationRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => onPendingChange?.(pending), [onPendingChange, pending]);
@@ -112,7 +166,7 @@ export function DeleteTripDialog({
         onUnavailable?.("This trip is no longer available. The delete dialog was closed safely.");
         return;
       }
-      setReloadState(completedTripDeleteReload(snapshot, state));
+      setReloadState(completedTripDeleteReload(snapshot, visibleStateKey));
     } finally {
       setReloadPending(false);
     }
@@ -121,11 +175,10 @@ export function DeleteTripDialog({
   return (
     <AlertDialog
       onOpenChange={(nextOpen) => {
-        if (pending && !nextOpen) return;
         setReloadState(openedTripDeleteSession(state));
-        onOpenChange?.(nextOpen);
+        setOpen(nextOpen);
       }}
-      open={open}
+      open={open ?? internalOpen}
     >
       {renderTrigger ? (
         <AlertDialogTrigger asChild>
@@ -182,7 +235,7 @@ export function DeleteTripDialog({
           {visibleError ? (
             <div className="px-5 pb-3 text-sm text-destructive sm:px-6" role="alert">
               <Localized value={visibleError} />
-              {state.conflict && state !== reloadState.hiddenErrorState ? (
+              {visibleState.conflict && visibleStateKey !== reloadState.hiddenErrorState ? (
                 <Button
                   className="mt-3 min-h-11 w-full sm:w-auto"
                   disabled={reloadPending}
@@ -202,7 +255,7 @@ export function DeleteTripDialog({
             </div>
           ) : null}
           <AlertDialogFooter className="[&_button]:min-h-11">
-            <AlertDialogCancel disabled={pending} type="button">
+            <AlertDialogCancel type="button">
               <T message={"Cancel"} />
             </AlertDialogCancel>
             <DeleteAction

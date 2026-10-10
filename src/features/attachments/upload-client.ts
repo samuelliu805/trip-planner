@@ -1,4 +1,5 @@
 "use client";
+import { z } from "zod";
 
 import { Upload } from "tus-js-client";
 
@@ -34,6 +35,8 @@ export type AttachmentUploadProgress = {
 };
 
 type UploadOptions = {
+  resumeUploaded?: boolean;
+  onUploaded?: () => Promise<void>;
   expectedVersion: number;
   file: File;
   itemId?: string;
@@ -179,6 +182,8 @@ async function videoPoster(file: File) {
 }
 
 export async function uploadFileAttachment({
+  resumeUploaded,
+  onUploaded,
   expectedVersion,
   file,
   itemId,
@@ -247,7 +252,9 @@ export async function uploadFileAttachment({
       type: detected.mimeType,
     });
     onProgress({ percent: 12, stage: "uploading" });
-    if (file.size > RESUMABLE_UPLOAD_THRESHOLD_BYTES && prepared.data.upload.tusEndpoint) {
+    if (resumeUploaded) {
+      // The bytes checkpoint survived refresh; finalize the same asset without uploading twice.
+    } else if (file.size > RESUMABLE_UPLOAD_THRESHOLD_BYTES && prepared.data.upload.tusEndpoint) {
       await signedTusUpload({
         file: normalizedFile,
         mimeType: detected.mimeType,
@@ -269,7 +276,7 @@ export async function uploadFileAttachment({
     }
 
     let posterUploaded = false;
-    if (detected.kind === "video" && prepared.data.posterUpload) {
+    if (!resumeUploaded && detected.kind === "video" && prepared.data.posterUpload) {
       const poster = await videoPoster(normalizedFile);
       if (poster) {
         try {
@@ -287,6 +294,7 @@ export async function uploadFileAttachment({
       }
     }
 
+    await onUploaded?.();
     onProgress({ percent: 88, stage: "finalizing" });
     const finalizeResponse = await fetch(lifecycleUrl, {
       body: JSON.stringify({ expectedVersion, operationId, posterUploaded }),
@@ -304,6 +312,9 @@ export async function uploadFileAttachment({
   } catch (error) {
     if (attachmentFailureWasReported(error)) throw error;
     const aborted = attachmentUploadWasAborted(error);
+    // An unacknowledged finalize may already have committed. Preserve it for exact replay;
+    // explicit cancellation and the existing expiry/deletion queue own unused-file cleanup.
+    if (!aborted) throw error;
     let failureReported = false;
     try {
       const cleanupResponse = await fetch(lifecycleUrl, {
@@ -348,18 +359,33 @@ function attachmentSessionUrl({
 }
 
 export async function commitAttachmentUploadSession(input: {
+  operationId?: string;
   itemId?: string;
   researchItemId?: string;
   tripId: string;
   uploadSessionId: string;
 }) {
-  const response = await fetch(attachmentSessionUrl(input), { method: "POST" });
+  const response = await fetch(attachmentSessionUrl(input), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Trip-Planner-Attachment-Delta": "1" },
+    body: JSON.stringify({ operationId: input.operationId ?? crypto.randomUUID() }),
+  });
   const payload: unknown = await response.json().catch(() => null);
   if (!response.ok)
     throw new Error(responseError(payload, "The new attachments could not be saved."));
+  const versioned = z
+    .object({
+      attachments: attachmentSessionSchema,
+      attachmentsVersion: z.number().int().positive(),
+    })
+    .safeParse(payload);
+  if (versioned.success)
+    return Object.assign(versioned.data.attachments, {
+      attachmentsVersion: versioned.data.attachmentsVersion,
+    });
   const attachments = attachmentSessionSchema.safeParse(payload);
   if (!attachments.success) throw new Error("The saved attachment response is invalid.");
-  return attachments.data;
+  return attachments.data as typeof attachments.data & { attachmentsVersion?: number };
 }
 
 export async function discardAttachmentUploadSession(

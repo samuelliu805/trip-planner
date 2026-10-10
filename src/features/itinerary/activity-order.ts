@@ -1,6 +1,7 @@
 import { orderOwnerFlightStops } from "./flight-stop-order.ts";
 import type { ItineraryItem } from "@/features/itinerary/types";
 import { flightEndpointParentId, flightEndpointRole } from "./flight-endpoints.ts";
+import { compareCanonicalItemOrder } from "./canonical-item-order.ts";
 
 type OrderableActivity = Pick<ItineraryItem, "id" | "sort_order" | "type"> &
   Partial<Pick<ItineraryItem, "details" | "start_time">>;
@@ -12,9 +13,15 @@ export function isDestinationActivity(item: Pick<ItineraryItem, "type">) {
 }
 
 export function compareActivityOrder(left: OrderableActivity, right: OrderableActivity) {
-  if (left.type === "hotel" && right.type !== "hotel") return 1;
-  if (left.type !== "hotel" && right.type === "hotel") return -1;
-  return left.sort_order - right.sort_order || left.id.localeCompare(right.id);
+  return compareCanonicalItemOrder(
+    { ...left, order: left.sort_order },
+    { ...right, order: right.sort_order },
+    true,
+  );
+}
+
+export function orderedMatrixItems(items: ItineraryItem[]) {
+  return orderOwnerFlightStops([...items].sort(compareActivityOrder));
 }
 
 export function orderedDayActivities(items: ItineraryItem[]) {

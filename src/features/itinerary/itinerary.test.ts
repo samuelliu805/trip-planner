@@ -491,7 +491,8 @@ test("trip creation uses the old branch defaults and opens the planner directly"
   assert.equal(longPlaceTitle.endsWith(" Trip"), true);
   assert.ok(longPlaceTitle.length <= 32);
 
-  assert.match(createButton, /<form action=\{action\}/);
+  assert.match(createButton, /owner\.accept\([\s\S]*kind: "trip.create"/);
+  assert.match(createButton, /router\.push\([\s\S]*row\.result/);
   assert.doesNotMatch(createButton, /Dialog|TripForm|href="\/trips\/new"/);
   assert.match(actions, /title: defaultTripTitle\(today\)/);
   assert.match(actions, /redirect\(`\/trips\/\$\{createdTripId\}`\)/);
@@ -765,12 +766,12 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(filter, /operationLabel[\s\S]*Loading \{status\} trips/);
   assert.match(filter, /items-center justify-between/);
   assert.match(filter, /bg-muted\/30/);
-  assert.match(tripsPage, /action=\{<CreateTripButton \/>\}/);
+  assert.match(tripsPage, /action=\{<CreateTripButton initialCurrency=/);
   assert.match(card, /<TripSettingsEditor/);
   assert.match(card, /<DeleteTripDialog/);
   assert.match(card, /countActiveSharePages\(trip\.id\)/);
-  assert.match(card, /useTripListLoading\(\)/);
-  assert.match(card, /Deleting/);
+  assert.match(card, /useBackgroundActions\(trip\.id, "trip-card"\)/);
+  assert.match(card, /kind: "trip.status"/);
   assert.match(tripAppBarOverlays, /<DeleteTripDialog/);
   assert.match(tripAppBar, /countActiveSharePages\(tripId\)/);
   assert.match(tripAppBarOverlays, /Deleting/);
@@ -783,21 +784,18 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(deleteDialog, /Checking published Share Pages/);
   assert.match(deleteDialog, /pending \? "Deleting…"/);
   assert.match(deleteDialog, /onPendingChange\?\.\(pending\)/);
-  assert.match(
-    deleteDialog,
-    /const \[state, action, pending\] = useActionState\(deleteTrip, \{\}\)/,
-  );
-  assert.match(deleteDialog, /state\.conflict[\s\S]*Reload latest/);
+  assert.match(deleteDialog, /owner\.accept\([\s\S]*kind: "trip.delete"/);
+  assert.match(deleteDialog, /visibleState\.conflict[\s\S]*Reload latest/);
   assert.match(deleteDialog, /loadTripDeleteSnapshot\(tripId\)/);
   assert.match(deleteDialog, /<form action=\{action\}>/);
   assert.doesNotMatch(deleteDialog, /AlertDialogAction/);
   assert.match(deleteDialog, /<Button[\s\S]*type="submit"[\s\S]*variant="destructive"/);
-  assert.match(deleteDialog, /if \(pending && !nextOpen\) return/);
-  assert.match(deleteDialog, /<AlertDialogCancel disabled=\{pending\}/);
+  assert.doesNotMatch(deleteDialog, /if \(pending && !nextOpen\) return/);
+  assert.match(deleteDialog, /<AlertDialogCancel type="button"/);
   assert.doesNotMatch(tripBarMenu, /emphasis|bg-primary text-primary-foreground/);
   assert.match(tripBarMenu, /focusPanelOnOpen/);
   assert.match(editor, /className="planner-item-dialog p-0"/);
-  assert.match(editor, /usePlannerEditorViewportLock\(open\)/);
+  assert.match(editor, /usePlannerEditorViewportLock\(open && !floating\)/);
   assert.match(editor, /data-planner-editor-scroll[\s\S]*\{header\}[\s\S]*\{children\}/);
   assert.doesNotMatch(editor, /overscroll-contain/);
   assert.match(itemDialog, /<PlannerEditorScreen/);
@@ -820,7 +818,8 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     /Rename the trip, change its length, or adjust its dates and currency\.|SheetDescription/,
   );
   assert.match(form, /<Settings2/);
-  assert.match(form, /onCancel=\{editor\.onClose\}/);
+  assert.match(form, /onCancel=\{close\}/);
+  assert.match(form, /const close = \(\) => \{\s*autosave\.flush\(\);\s*editor\.onClose\(\);\s*\}/);
   assert.match(form, /gap-3 border-b pb-4 sm:gap-4 sm:pb-6/);
   assert.match(editorForm, /compactActions \? "space-y-6 sm:space-y-10" : "space-y-10"/);
   assert.match(
@@ -842,7 +841,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   );
   assert.match(
     editorForm,
-    /<fieldset[\s\S]*aria-busy=\{pending \|\| cancelPending\}[\s\S]*disabled=\{pending \|\| cancelPending\}[\s\S]*planner-item-form-fields planner-item-step-fields/,
+    /<fieldset[\s\S]*aria-busy=\{pending \|\| cancelPending\}[\s\S]*disabled=\{cancelPending\}[\s\S]*planner-item-form-fields planner-item-step-fields/,
   );
   assert.match(editorHeader, /navigation\?: ReactNode/);
   assert.match(editor, /onOpenAutoFocus[\s\S]*initialFocusSelector[\s\S]*preventScroll: true/);
@@ -866,14 +865,18 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(placeAutocomplete, /const requestGeneration = useRef\(0\)/);
   assert.match(placeAutocomplete, /generation !== requestGeneration\.current/);
   assert.match(placeAutocomplete, /t\("Use “\{query\}” as \{label\}"/);
-  assert.match(placeAutocomplete, /Loading place details…/);
+  assert.match(
+    placeAutocomplete +
+      (await readFile(new URL("../places/place-search-feedback.tsx", import.meta.url), "utf8")),
+    /Loading place details…/,
+  );
   assert.doesNotMatch(placeAutocomplete, /Enter" && hasCustomOption/);
   assert.match(itemSaveFlow, /showViewLink: intent === "save-and-create-another"/);
   assert.match(itemSaveFeedback, /success && feedback\.showViewLink/);
   assert.doesNotMatch(itemSaveFlow, /saveConfirmation|setSaveConfirmation|confirmSave/);
   assert.match(
     itemSaveFlow,
-    /if \(reportsCreationFeedback\) onSaveFeedback\(undefined\);\s*await persistSave\(intent, values\)/,
+    /if \(reportsCreationFeedback\) onSaveFeedback\(undefined\);\s*await persistSave\(intent, values, false, onAccepted\)/,
   );
   assert.doesNotMatch(itemForm, /onSaveConfirm|saveConfirmation/);
   assert.doesNotMatch(
@@ -888,7 +891,9 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     /splitCancelAndSave[\s\S]*justify-between[\s\S]*cancelPending \? cancelPendingLabel : cancelLabel/,
   );
   assert.match(actions, /pending \|\| cancelPending \|\| saveDisabled/);
-  assert.match(form, /useActionState\(updateTrip, \{\}\)/);
+  assert.match(form, /useSettingsSync\(trip\)/);
+  assert.match(form, /sync\.accept\(parsed\.data\)/);
+  assert.match(form, /draft\.discardIfMatches\(signature\)/);
   assert.match(formFields, /label="Trip name"/);
   assert.match(formFields, /label="Duration \(days\)"/);
   assert.equal(formFields.match(/planner-native-datetime-input/g)?.length, 2);
@@ -947,7 +952,9 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
     variantIdentity,
     variantDeleteDialog,
   ].join("\n");
-  const variantQueries = await readFile(new URL("../variants/queries.ts", import.meta.url), "utf8");
+  const variantQueries =
+    (await readFile(new URL("../variants/queries.ts", import.meta.url), "utf8")) +
+    (await readFile(new URL("../variants/sync-intent.ts", import.meta.url), "utf8"));
   let toolbar = await readFile(
     new URL("./components/planner-toolbar.tsx", import.meta.url),
     "utf8",
@@ -999,8 +1006,9 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(data, /\.eq\("id", variantId\)/);
   assert.match(queries, /\["planner", tripId, variantId\]/);
   assert.match(routeQueries, /plannerQueryKey\(tripId, variantId\)/);
-  assert.match(workspace, /key=\{props\.initialWorkspace\.variant\.id\}/);
-  assert.match(dayRoute, /useSaveDayRoutePlan\(tripId, variantId\)/);
+  assert.match(workspace, /PlannerOutboxProvider\s+key=\{workspace\.variant\.id\}/);
+  assert.match(workspace, /initialWorkspace=\{workspace\}/);
+  assert.match(dayRoute, /useRouteTasks\(tripId, variantId\)/);
   assert.match(dayRoute, /const variantId = workspace\.variant\.id/);
   assert.match(mapHook, /overview:\$\{variantId\}/);
 
@@ -1016,13 +1024,16 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.doesNotMatch(variantUi, /window\.confirm/);
   assert.match(variantUi, /min-h-11|h-11/);
   assert.doesNotMatch(variantUi, /z-\[90\]/);
-  assert.match(variantUi, /is now the primary Plan/);
-  assert.match(variantUi, /router\.refresh\(\)/);
+  assert.match(variantManagement, /kind: "primary"/);
+  assert.match(variantManagement, /Saved locally/);
+  assert.match(variantManagement, /hasConfirmed/);
+  assert.match(variantManagement, /is now the primary Plan/);
+  assert.match(variantUi, /useVariantSync/);
   assert.match(variantEditor, /<PlannerEditorScreen/);
   assert.match(variantEditor, /<PlannerEditorForm/);
   assert.doesNotMatch(variantEditor, /<Dialog|<DialogContent/);
-  assert.match(variantQueries, /is_primary: variant\.id === input\.variantId/);
-  assert.match(variantQueries, /onError:[\s\S]*context\?\.previous/);
+  assert.match(variantQueries, /is_primary: row\.id === intent\.input\.variantId/);
+  assert.match(variantQueries, /runtime\.accept\(intent\(input\)\)[\s\S]*retry: false/);
   assert.match(workspaceEvents, /event\.key === "Backspace"/);
   assert.match(clearDialog, /<AlertDialog/);
   assert.match(clearDialog, /Saved day routes[\s\S]*will need editing/);
@@ -2659,8 +2670,8 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.match(overviewUi, /Close Overview panel/);
   assert.match(overviewUi, /<RouteIconButton[\s\S]*Edit Overview route[\s\S]*<Pencil/);
   assert.doesNotMatch(overviewUi, /Route details/);
-  assert.match(overviewHook, /useCalculateOverviewRoute/);
-  assert.match(overviewHook, /mutation\.mutateAsync/);
+  assert.match(overviewHook, /useRouteTasks/);
+  assert.match(overviewHook, /runtime\.accept/);
   assert.doesNotMatch(overviewHook, /calculateGoogleRouteLeg/);
   assert.match(overviewHook, /isOverviewRouteLeg/);
   assert.match(overview, /deriveDayOverviewClusters/);
@@ -2696,8 +2707,8 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
     /panelDismissed[\s\S]*mapMode === "day_route" && routeUpdateAvailable[\s\S]*onRouteUpdate/,
   );
   assert.doesNotMatch(mapShell, /day-route-place-card/);
-  assert.match(routeUi, /Discard changes and collapse route editor/);
-  assert.match(routeUi, /Discard changes and return to route summary/);
+  assert.match(routeUi, /Close route editor/);
+  assert.match(routeUi, /Close route editor/);
   assert.match(routeUi, /onBack=\{route\.cancelEditing\}/);
   assert.match(routeUi, /Close route panel/);
   assert.match(routeUi, /route\.openEdit/);
@@ -3539,7 +3550,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
   assert.match(editorDialog, /<PlannerEditorScreen/);
-  assert.match(editorScreen, /usePlannerEditorViewportLock\(open\)/);
+  assert.match(editorScreen, /usePlannerEditorViewportLock\(open && !floating\)/);
   assert.match(editorViewportLock, /planner-editor-viewport-locked/);
   assert.match(editorViewportLock, /--planner-editor-viewport-height/);
   assert.match(editorViewportLock, /visualViewport\?\.addEventListener\("scroll", syncViewport\)/);
@@ -3562,7 +3573,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /destination\.column !== payload\.sourceColumn/);
   assert.match(workspace, /cells selected across one row only/);
   assert.match(workspace, /Updating selected cells…/);
-  assert.match(workspace, /fixed inset-0 z-\[120\]/);
+  assert.match(workspace, /pointer-events-none fixed bottom-4[\s\S]*z-\[80\]/);
+  assert.doesNotMatch(workspace, /fixed inset-0 z-\[120\]/);
   assert.match(form, /<form/);
   assert.match(form, /type="submit"/);
   assert.match(form, /event\.key === "Escape"/);

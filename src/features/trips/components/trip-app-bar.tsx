@@ -1,5 +1,6 @@
 "use client";
 
+import { PlannerSyncStatus } from "@/features/itinerary/components/planner-sync-status";
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { ArrowLeft, CloudUpload, Lightbulb, LoaderCircle, Plus, Table2 } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
@@ -257,16 +258,7 @@ export function TripAppBar({
                 </Button>
               </>
             ) : null}
-            {mutating ? (
-              <span
-                aria-live="polite"
-                className="hidden items-center gap-1 text-xs text-muted-foreground lg:flex"
-                role="status"
-              >
-                <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />{" "}
-                <T message={" Saving "} />
-              </span>
-            ) : null}
+            {!guestExperience ? <PlannerSyncStatus mutating={mutating} tripId={tripId} /> : null}
             {actions}
             <TripBarMenu
               accountEmail={accountEmail}

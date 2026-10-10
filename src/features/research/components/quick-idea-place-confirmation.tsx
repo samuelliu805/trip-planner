@@ -12,12 +12,14 @@ export function QuickIdeaPlaceConfirmation({
   onChange,
   sourceKey,
   value,
+  resolutionKey,
 }: {
   candidate: string;
   label?: string;
   onChange: (place: PlaceSnapshot | null) => void;
   sourceKey: string;
   value: PlaceSnapshot | null;
+  resolutionKey: string;
 }) {
   return (
     <div className="rounded-xl border bg-muted/20 p-3">
@@ -26,6 +28,7 @@ export function QuickIdeaPlaceConfirmation({
         <T message={label} />
       </label>
       <PlaceAutocomplete
+        resolutionKey={`${resolutionKey}:${sourceKey}:${candidate}`}
         initialQuery={candidate}
         key={`${sourceKey}:${candidate}`}
         onChange={onChange}

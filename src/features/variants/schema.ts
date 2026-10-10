@@ -23,6 +23,8 @@ export const createRouteVariantSchema = z.object({
   sourceVariantId: variantIdentitySchema,
   tripId: variantIdentitySchema,
   operationId: operationIdSchema,
+  dayIds: z.record(z.uuid(), z.uuid()).optional(),
+  itemIds: z.record(z.uuid(), z.uuid()).optional(),
 });
 
 export const duplicateRouteVariantSchema = createRouteVariantSchema;

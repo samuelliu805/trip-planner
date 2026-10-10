@@ -90,6 +90,10 @@ const bundle = await build({
     {
       name: "loopback-fixture-boundaries",
       setup(builder) {
+        builder.onResolve({ filter: /draft-scope$/ }, () => ({
+          path: "draft-scope",
+          namespace: "fixture",
+        }));
         builder.onResolve({ filter: /^\.\/actions$/, namespace: "file" }, (args) =>
           args.importer.endsWith("i18n-provider.tsx")
             ? { path: "locale", namespace: "fixture" }
@@ -106,11 +110,13 @@ const bundle = await build({
         builder.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => ({
           loader: "js",
           contents:
-            args.path === "locale"
-              ? "export async function persistLocale() {}"
-              : args.path === "place"
-                ? "export function PlaceAutocomplete() { return null; }"
-                : "export function useDayRouteActions() {return {clearRoute:async()=>{},pending:false,persistAndCalculate:async()=>{},reloadLatest:async()=>{}};}",
+            args.path === "draft-scope"
+              ? "export function useDraftScope(trip,resource){return ['global','fixture',trip,resource]}"
+              : args.path === "locale"
+                ? "export async function persistLocale() {}"
+                : args.path === "place"
+                  ? "export function PlaceAutocomplete() { return null; }"
+                  : "export function useDayRouteActions() {return {clearRoute:async()=>{},pending:false,persistAndCalculate:async()=>{},reloadLatest:async()=>{}};}",
         }));
       },
     },
@@ -158,7 +164,11 @@ try {
     assert.equal(await price.inputValue(), "100");
     await price.fill("1 / 0");
     await price.press("Tab");
-    assert.equal(await price.inputValue(), "0");
+    assert.equal(await price.inputValue(), "1 / 0");
+    assert.deepEqual(JSON.parse(await page.locator("[data-saved]").textContent()), {
+      research: 100,
+      planner: 100,
+    });
     await price.fill("");
     await page.getByText("Save price", { exact: true }).click();
     assert.deepEqual(JSON.parse(await page.locator("[data-saved]").textContent()), {

@@ -10,7 +10,6 @@ import {
   getStorageProvider,
 } from "@/platform/composition/server";
 
-import { getPublicItinerary } from "../data";
 import { getRequestSiteUrl } from "../request-site-url";
 import { publicItineraryLinkSchema, publicItinerarySchema } from "../schema";
 import type { PreparedShareImage, ShareActionResult, ShareImagePartInput } from "../types";
@@ -99,18 +98,23 @@ export async function prepareShareImageVersion(
       version: 1 as const,
       width: 1080 as const,
     };
-    const { data, error } = await database.rpc("prepare_share_image_version_v2", {
-      requested_mode: input.data.mode,
-      requested_qr_destination_type: qrDestinationType,
-      requested_qr_destination_url: qrDestinationUrl,
-      requested_render_config: renderConfig,
-      // The RPC intentionally accepts null for a new export; generated types lose that nullability.
-      target_export_id: input.data.exportId as string,
-      target_share_page_id: page.data.id,
-    });
+    const { data, error } = await database.rpc(
+      input.data.operationId ? "prepare_share_image_version_v3" : "prepare_share_image_version_v2",
+      {
+        ...(input.data.operationId ? { target_operation_id: input.data.operationId } : {}),
+        requested_mode: input.data.mode,
+        requested_qr_destination_type: qrDestinationType,
+        requested_qr_destination_url: qrDestinationUrl,
+        requested_render_config: renderConfig,
+        // The RPC intentionally accepts null for a new export; generated types lose that nullability.
+        target_export_id: input.data.exportId as string,
+        target_share_page_id: page.data.id,
+      },
+    );
     if (error || !data) return failPreparation(imageError(error?.message));
     const rpcData = data as Record<string, unknown>;
-    const enrichedSnapshot = await getPublicItinerary(page.data.publicToken);
+    const frozenSnapshot = publicItinerarySchema.safeParse(rpcData.sourceSnapshot);
+    const enrichedSnapshot = frozenSnapshot.success ? frozenSnapshot.data : null;
     const parsedRenderConfig = longImageRenderConfigSchema.safeParse(rpcData.renderConfig);
     if (!parsedRenderConfig.success)
       return failPreparation("The image settings could not be read.");
@@ -172,10 +176,14 @@ export async function finalizeShareImageVersion(rawInput: {
   const user = await getAuthProvider().getCurrentUser();
   if (!user) return { error: "Sign in to publish a permanent image." };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("finalize_share_image_version_v1", {
-    requested_parts: input.data.parts,
-    target_version_id: input.data.versionId,
-  });
+  const { data, error } = await database.rpc(
+    input.data.operationId ? "finalize_share_image_version_v2" : "finalize_share_image_version_v1",
+    {
+      ...(input.data.operationId ? { target_operation_id: input.data.operationId } : {}),
+      requested_parts: input.data.parts,
+      target_version_id: input.data.versionId,
+    },
+  );
   const parsed = z
     .object({
       expiresAt: z.string().optional(),

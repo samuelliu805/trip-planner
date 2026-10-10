@@ -1,6 +1,6 @@
 "use client";
 
-import { priceFromExpression } from "@/lib/price-expression";
+import { parsedPriceExpression } from "@/lib/price-expression";
 
 import { useEffect } from "react";
 
@@ -54,6 +54,14 @@ export function usePlannerItemDraft({
               : `draft-place-${place.providerPlaceId ?? item.id}`,
         }
       : null;
+    let draftPrice = item.price_amount;
+    try {
+      draftPrice = priceAmount.trim()
+        ? (parsedPriceExpression(priceAmount) ?? item.price_amount)
+        : null;
+    } catch {
+      /* Invalid expressions remain in the persistent editor draft. */
+    }
     onDraftChange({
       ...item,
       booking_url: links[0]?.url ?? null,
@@ -62,7 +70,7 @@ export function usePlannerItemDraft({
       notes: notes || null,
       place: draftPlace,
       place_id: draftPlace?.id ?? null,
-      price_amount: priceAmount.trim() ? priceFromExpression(priceAmount) : null,
+      price_amount: draftPrice,
       price_currency: priceAmount.trim() ? priceCurrency : null,
       schedule_kind: scheduleKind(startTime, endTime),
       start_time: startTime || null,

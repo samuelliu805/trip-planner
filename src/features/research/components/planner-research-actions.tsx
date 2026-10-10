@@ -4,6 +4,11 @@ import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Lightbulb, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { useResearchSync } from "../use-research-sync";
+import { useDurableFields } from "@/features/editing/use-durable-fields";
+import { useDraftScope } from "@/features/editing/draft-scope";
+import { editingStorageKey } from "@/features/editing/draft-storage";
+import { LocalDraftStatus } from "@/features/editing/local-draft-status";
 
 import { Button } from "@/components/ui/button";
 import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
@@ -18,7 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { PriceInput } from "@/components/ui/price-input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { priceFromExpression } from "@/lib/price-expression";
+import { priceFromExpression, parsedPriceExpression } from "@/lib/price-expression";
 import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 import {
   tripCurrencyCodes,
@@ -29,7 +34,6 @@ import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import { nativeSelectClass, ResearchField } from "./form-controls";
-import { createResearchItem } from "../actions";
 import { capturePlanItemAsResearch } from "../capture-plan-item";
 import {
   compareHrefForPlanContext,
@@ -59,17 +63,25 @@ export function PlannerResearchActions({
 }) {
   const { locale, t } = useI18n();
   const [open, setOpen] = useState(false);
-  const [text, setText] = useState(context.itemId ? context.label : "");
-  const [price, setPrice] = useState("");
-  const [selectedCurrency, setSelectedCurrency] = useState(currency);
-  const [pending, setPending] = useState(false);
+  const runtime = useResearchSync(tripId);
+  const local = useDurableFields(
+    editingStorageKey(
+      useDraftScope(tripId, "ideas"),
+      `from-plan:${context.itemId ?? context.dayId}:${context.category}`,
+    ),
+    { text: context.itemId ? context.label : "", price: "", selectedCurrency: currency },
+  );
+  const { text, price, selectedCurrency } = local.values;
+  const setText = (value: string) => local.set("text", value);
+  const setPrice = (value: string) => local.set("price", value);
+  const setSelectedCurrency = (value: string) => local.set("selectedCurrency", value);
+  const pending = false;
   const [error, setError] = useState<string>();
   const [feedback, setFeedback] = useState<string>();
   const count = matchingPlanResearchItems(items, context).length;
 
-  async function savePlanSnapshot() {
+  function savePlanSnapshot() {
     if (!sourceItem || pending) return;
-    setPending(true);
     setError(undefined);
     const operationId = newTelemetryOperationId();
     captureBrowserProductEvent(
@@ -77,27 +89,32 @@ export function PlannerResearchActions({
       { ideas_category: context.category, operation_id: operationId, surface: "research_editor" },
       { actorType: "authenticated" },
     );
-    const result = await createResearchItem({
-      ...capturePlanItemAsResearch({
-        category: context.category,
-        days,
-        item: sourceItem,
-        tripId,
-      }),
-      draftSessionId: operationId,
-      operationId,
-    });
-    setPending(false);
-    if (result.error) return setError(result.error);
-    setFeedback("Saved all Plan details · Plan unchanged");
+    try {
+      if (!runtime) throw new Error("The Idea could not be stored locally.");
+      runtime.accept({
+        kind: "create",
+        input: {
+          ...capturePlanItemAsResearch({
+            category: context.category,
+            days,
+            item: sourceItem,
+            tripId,
+          }),
+          draftSessionId: operationId,
+          operationId,
+        },
+      });
+      setFeedback("Saved locally");
+    } catch (error) {
+      setError(String(error));
+    }
   }
 
-  async function save(event: React.FormEvent<HTMLFormElement>) {
+  function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = text.trim();
     const isUrl = /^https?:\/\/\S+$/i.test(value);
     const hasPrice = price.trim() !== "";
-    setPending(true);
     setError(undefined);
     const operationId = newTelemetryOperationId();
     captureBrowserProductEvent(
@@ -105,22 +122,32 @@ export function PlannerResearchActions({
       { ideas_category: context.category, operation_id: operationId, surface: "research_editor" },
       { actorType: "authenticated" },
     );
-    const result = await createResearchItem({
-      category: context.category,
-      currency: hasPrice ? selectedCurrency : null,
-      dayId: context.dayId,
-      itemId: context.itemId,
-      sourceUrl: isUrl ? value : null,
-      title: isUrl ? null : value,
-      totalPriceAmount: hasPrice ? priceFromExpression(price) : null,
-      tripId,
-      draftSessionId: operationId,
-      operationId,
-    });
-    setPending(false);
-    if (result.error) return setError(result.error);
-    setOpen(false);
-    setFeedback("Saved · Plan unchanged");
+    try {
+      if (!runtime || local.getError())
+        throw new Error(local.getError() ?? "The Idea could not be stored locally.");
+      if (hasPrice && parsedPriceExpression(price) === undefined)
+        throw new Error("The price expression is incomplete.");
+      runtime.accept({
+        kind: "create",
+        input: {
+          category: context.category,
+          currency: hasPrice ? selectedCurrency : null,
+          dayId: context.dayId,
+          itemId: context.itemId,
+          sourceUrl: isUrl ? value : null,
+          title: isUrl ? null : value,
+          totalPriceAmount: hasPrice ? priceFromExpression(price) : null,
+          tripId,
+          draftSessionId: operationId,
+          operationId,
+        },
+      });
+      local.discard();
+      setOpen(false);
+      setFeedback("Saved locally");
+    } catch (error) {
+      setError(String(error));
+    }
   }
 
   return (
@@ -183,6 +210,12 @@ export function PlannerResearchActions({
               </DialogDescription>
             </DialogHeader>
             <div className="research-form-grid space-y-4 px-5 py-5 sm:px-6">
+              <LocalDraftStatus
+                draft={local}
+                onDiscard={() => {
+                  if (local.discard()) setOpen(false);
+                }}
+              />
               <ResearchField label="Name, link, or note">
                 <Input
                   autoFocus

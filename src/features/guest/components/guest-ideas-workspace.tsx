@@ -29,9 +29,14 @@ import {
 import { GuestIdeaDialogs } from "./guest-idea-dialogs";
 import { GuestSaveStatus } from "./guest-save-status";
 import type { GuestSaveState } from "../use-guest-draft";
+import { useDraftScope } from "@/features/editing/draft-scope";
+import { editingStorageKey } from "@/features/editing/draft-storage";
+import { useDurableFields } from "@/features/editing/use-durable-fields";
+import { LocalDraftStatus } from "@/features/editing/local-draft-status";
 
 type GuestIdeasWorkspaceProps = {
   commit: CommitGuestDraft;
+  flush: () => boolean;
   draft: GuestTripDraft;
   onOpenPlan: () => void;
   onSaveToAccount: () => void;
@@ -41,6 +46,7 @@ type GuestIdeasWorkspaceProps = {
 
 export function GuestIdeasWorkspace({
   commit,
+  flush,
   draft,
   onOpenPlan,
   onSaveToAccount,
@@ -48,8 +54,13 @@ export function GuestIdeasWorkspace({
   saveState,
 }: GuestIdeasWorkspaceProps) {
   const { t } = useI18n();
-  const [category, setCategory] = useState<ResearchCategory>("flight");
-  const [quickInput, setQuickInput] = useState("");
+  const fields = useDurableFields(
+    editingStorageKey(useDraftScope(draft.draftId, "ideas"), "guest-quick-idea"),
+    { category: "flight" as ResearchCategory, quickInput: "", operationId: crypto.randomUUID() },
+  );
+  const { category, quickInput } = fields.values;
+  const setCategory = (value: ResearchCategory) => fields.set("category", value);
+  const setQuickInput = (value: string) => fields.set("quickInput", value);
   const [reviewId, setReviewId] = useState<string>();
   const [deleteId, setDeleteId] = useState<string>();
   const [error, setError] = useState<string>();
@@ -64,10 +75,19 @@ export function GuestIdeasWorkspace({
     try {
       let saved: ResearchItem | undefined;
       commit((current) => {
-        const result = saveGuestIdea(current, input, existingId);
+        const replayId = current.ideas.some(({ id }) => id === input.operationId)
+          ? input.operationId
+          : undefined;
+        const result = saveGuestIdea(
+          current,
+          input,
+          existingId ?? replayId,
+          () => input.operationId,
+        );
         saved = researchItemFromGuestIdea(result.idea);
         return result.draft;
       });
+      if (!flush()) return { error: "This browser could not save the local draft." };
       setNotice(t("Idea saved"));
       setError(undefined);
       return { data: saved! };
@@ -77,14 +97,21 @@ export function GuestIdeasWorkspace({
   }
 
   async function saveQuickIdea() {
+    if (fields.getError()) return;
+    const snapshot = JSON.stringify(fields.getValues());
     const text = quickInput.trim();
     if (!text) return;
     try {
       const quick = guestQuickIdeaInput(text, category, draft.draftId);
+      quick.input.operationId = fields.getValues().operationId;
       const result = await localSave(quick.input);
       if (!result.data) return setError(result.error);
-      setQuickInput("");
-      setCategory(quick.category);
+      if (JSON.stringify(fields.getValues()) === snapshot)
+        fields.reset({
+          quickInput: "",
+          category: quick.category,
+          operationId: crypto.randomUUID(),
+        });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The idea could not be saved.");
     }
@@ -179,6 +206,12 @@ export function GuestIdeasWorkspace({
               <T message="Save idea" />
             </Button>
           </div>
+          <LocalDraftStatus
+            draft={fields}
+            onDiscard={() =>
+              fields.reset({ quickInput: "", category, operationId: crypto.randomUUID() })
+            }
+          />
           <div className="flex min-w-0 items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
               <T message="Saved ideas" /> · {visible.length}

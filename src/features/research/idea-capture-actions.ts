@@ -32,6 +32,15 @@ const captureSchema = z
 export async function captureIdea(
   input: z.input<typeof captureSchema>,
 ): Promise<ResearchMutationResult<ResearchItem>> {
+  const resolved = await resolveIdeaCapture(input);
+  if (!resolved.data) return { error: resolved.error };
+  return createResearchItem(resolved.data);
+}
+
+/** Resolve metadata before freezing an outbox payload; retries never resolve it again. */
+export async function resolveIdeaCapture(
+  input: z.input<typeof captureSchema>,
+): Promise<ResearchMutationResult<import("./schema").CreateResearchItemInput>> {
   const parsed = captureSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid idea." };
   const classification = parsed.data.sourceUrl ? classifyIdeaInput(parsed.data.sourceUrl) : null;
@@ -79,41 +88,43 @@ export async function captureIdea(
           segments,
         })
       : null;
-  return createResearchItem({
-    category: parsed.data.kind === "car" ? "rental" : parsed.data.kind,
-    currency: priceAmount === null ? null : priceCurrency,
-    destinationPlaceSnapshot: destinationPlace,
-    destinationText,
-    endDate: fields.endDate,
-    endTime: fields.endTime ?? null,
-    journeyType: fields.journeyType ?? null,
-    links: [],
-    locationPlaceSnapshot: parsed.data.locationPlaceSnapshot ?? null,
-    locationText,
-    note:
-      textWithoutUrl && textWithoutUrl !== parsed.data.title && textWithoutUrl !== metadata?.title
-        ? textWithoutUrl
-        : null,
-    operationId: parsed.data.operationId,
-    originPlaceSnapshot: originPlace,
-    originText,
-    segments,
-    sourceUrl: parsed.data.sourceUrl,
-    startDate: fields.startDate,
-    startTime: fields.startTime ?? null,
-    title:
-      parsed.data.title ??
-      journeyName ??
-      (parsed.data.kind === "car" && classification?.kind === "car"
-        ? classification.provider
-        : null) ??
-      metadata?.title ??
-      (originText && destinationText
-        ? parsed.data.kind === "car" && originText === destinationText
-          ? `Car · ${originText}`
-          : `${originText} → ${destinationText}`
-        : locationText),
-    totalPriceAmount: priceAmount,
-    tripId: parsed.data.tripId,
-  });
+  return {
+    data: {
+      category: parsed.data.kind === "car" ? "rental" : parsed.data.kind,
+      currency: priceAmount === null ? null : priceCurrency,
+      destinationPlaceSnapshot: destinationPlace,
+      destinationText,
+      endDate: fields.endDate,
+      endTime: fields.endTime ?? null,
+      journeyType: fields.journeyType ?? null,
+      links: [],
+      locationPlaceSnapshot: parsed.data.locationPlaceSnapshot ?? null,
+      locationText,
+      note:
+        textWithoutUrl && textWithoutUrl !== parsed.data.title && textWithoutUrl !== metadata?.title
+          ? textWithoutUrl
+          : null,
+      operationId: parsed.data.operationId,
+      originPlaceSnapshot: originPlace,
+      originText,
+      segments,
+      sourceUrl: parsed.data.sourceUrl,
+      startDate: fields.startDate,
+      startTime: fields.startTime ?? null,
+      title:
+        parsed.data.title ??
+        journeyName ??
+        (parsed.data.kind === "car" && classification?.kind === "car"
+          ? classification.provider
+          : null) ??
+        metadata?.title ??
+        (originText && destinationText
+          ? parsed.data.kind === "car" && originText === destinationText
+            ? `Car · ${originText}`
+            : `${originText} → ${destinationText}`
+          : locationText),
+      totalPriceAmount: priceAmount,
+      tripId: parsed.data.tripId,
+    },
+  };
 }

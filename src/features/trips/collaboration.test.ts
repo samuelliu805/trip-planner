@@ -53,15 +53,19 @@ test("trip saves use atomic versions, idempotent history, and no conflict audit"
 });
 
 test("conflicts offer entity-local reload and roles/history remain discoverable", async () => {
-  const [tripForm, itemForm, itemReload, card, menu] = await Promise.all([
+  const [tripForm, tripSettingsRead, itemForm, itemReload, card, menu] = await Promise.all([
     source("src/features/trips/components/trip-form.tsx"),
+    source("src/features/trips/settings-read.ts"),
     source("src/features/itinerary/components/planner-item-form.tsx"),
     source("src/features/itinerary/components/use-planner-item-conflict-reload.ts"),
     source("src/features/trips/components/trip-card.tsx"),
     source("src/features/trips/components/trip-app-bar-menu.tsx"),
   ]);
   assert.match(tripForm, /Reload latest/);
-  assert.match(tripForm, /api\/trips\/\$\{tripId\}\/settings/);
+  assert.match(tripForm, /import \{ loadLatestTripSettings \} from "\.\.\/settings-read"/);
+  assert.match(tripForm, /await loadLatestTripSettings\(trip\.id\)/);
+  assert.match(tripSettingsRead, /api\/trips\/\$\{tripId\}\/settings/);
+  assert.match(tripSettingsRead, /cache: "no-store"/);
   assert.match(itemReload, /refetchQueries[\s\S]*currentDayItems[\s\S]*currentItem/);
   assert.match(itemForm, /setOrderPreviewItems\(latest\.items\)/);
   assert.doesNotMatch(itemForm, /Reapply my draft|Replace draft/);
@@ -97,15 +101,14 @@ test("every destructive workspace conflict exposes a structured scope-local relo
   assert.doesNotMatch(plannerMutations + clipboard, /message\.includes|window\.location\.reload/);
   assert.match(plannerStatus, /interactionConflict[\s\S]*Reload latest/);
   assert.match(compare, /researchWorkspaceQueryKey[\s\S]*plannerQueryKey/);
-  assert.match(research, /result\.code === "conflict"[\s\S]*Reload latest/);
+  assert.match(research, /failure\?\.status === "conflict"[\s\S]*Reload latest/);
   assert.match(plans, /isItineraryConflict\(caught\)[\s\S]*refetchRouteVariantList/);
   assert.match(deleteAction, /PlatformOperationError[\s\S]*error\.code === "conflict"/);
   assert.match(deleteAction, /return \{ conflict: true[\s\S]*\?error=delete/);
-  assert.match(dialog, /loadTripDeleteSnapshot[\s\S]*state\.conflict[\s\S]*Reload latest/);
-  assert.match(
-    dialog,
-    /if \(pending && !nextOpen\) return;[\s\S]*setReloadState\(openedTripDeleteSession\(state\)\)/,
-  );
+  assert.match(dialog, /loadTripDeleteSnapshot[\s\S]*visibleState\.conflict[\s\S]*Reload latest/);
+  assert.match(dialog, /setReloadState\(openedTripDeleteSession\(state\)\)/);
+  assert.doesNotMatch(dialog, /if \(pending && !nextOpen\) return/);
+  assert.match(dialog, /owner\.accept\([\s\S]*setOpen\(false\)/);
 });
 
 test("the forward migration fail-closes the complete installed Research function graph", async () => {
@@ -191,19 +194,25 @@ test("history filter options are bounded and Transport is excluded from order sn
   assert.match(migration, /REVOKE EXECUTE[\s\S]*FROM PUBLIC, anon/);
 });
 
-test("publishing keeps the source Plan version stable and refreshes aggregate trip versions", async () => {
-  const [migration, dialog, form, editorScreen] = await Promise.all([
+test("publishing keeps source versions stable and owns durable confirmation separately from the dialog", async () => {
+  const [migration, dialog, form, editorScreen, sharingOwner] = await Promise.all([
     source("database/shared/migrations/20260908101000_share_page_source_version_stability.sql"),
     source("src/features/sharing/components/public-share-dialog.tsx"),
     source("src/features/trips/components/trip-form.tsx"),
     source("src/features/itinerary/components/planner-editor-screen.tsx"),
+    source("src/features/sharing/components/use-share-page-editor.ts"),
   ]);
   assert.match(migration, /'variantVersion', variant_version/);
   assert.doesNotMatch(migration, /UPDATE public\.route_variants SET version/);
-  assert.match(dialog, /router\.refresh\(\)/);
+  assert.match(dialog, /useSharePageEditor\(/);
+  assert.match(sharingOwner, /owner\.accept\([\s\S]*kind: "share.save"/);
+  assert.match(
+    sharingOwner,
+    /publicItineraryLinkSchema\.parse[\s\S]*rows\.get\(saved\.id\)!\.version <= saved\.version/,
+  );
   assert.match(editorScreen, /\{open \? children : null\}/);
   assert.match(form, /useState\(true\)[\s\S]*loadLatestTripSettings\(trip\.id\)/);
-  assert.match(form, /pending=\{pending \|\| refreshing\}/);
+  assert.match(form, /pending=\{false\}/);
   assert.match(
     form,
     /trip\.version === currentTrip\.version[\s\S]*Math\.max\(trip\.content_version, currentTrip\.content_version\)/,

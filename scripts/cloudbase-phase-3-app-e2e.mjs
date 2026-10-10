@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
+import {
+  authenticatedGuestStorageFixture,
+  verifyUnconfirmedGuestPreservation,
+} from "./lib/authenticated-guest-storage-fixture.mjs";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -18,6 +22,9 @@ import { measureMatrixContentAlignment } from "./lib/public-sharing-table-conten
 import { stopChild } from "./lib/child-process.mjs";
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { googleFlightsBookingSample } from "./lib/idea-provider-samples.mjs";
+import { clickCloudbaseElement, pressCloudbaseElement } from "./lib/cloudbase-ui-click.mjs";
+import { waitForTripOutbox } from "./lib/browser-outbox-confirmation.mjs";
+import { readTripSettingsBrowserFields } from "./lib/trip-settings-browser-fields.mjs";
 import { startLoopbackTlsProxy } from "./lib/loopback-tls-proxy.mjs";
 import {
   chromiumProxyArguments,
@@ -893,6 +900,30 @@ async function verifyTripSectionNavigation(browser, tripId) {
       browser.sessionId,
     );
     await waitFor(browser, `innerWidth === ${width}`, `${width}px Idea apply viewport`);
+    try {
+      await waitFor(
+        browser,
+        `(() => {
+          const rect = document.querySelector('[role="dialog"][data-state="open"]')?.getBoundingClientRect();
+          return Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
+            rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5;
+        })()`,
+        `${width}px Idea apply dialog layout`,
+        10_000,
+      );
+    } catch (error) {
+      const bounds = await evaluate(
+        browser,
+        `(() => {
+          const dialog = document.querySelector('[role="dialog"][data-state="open"]');
+          const rect = dialog?.getBoundingClientRect();
+          return { innerWidth, innerHeight, visualHeight: visualViewport?.height,
+            constraint: dialog?.style.getPropertyValue('--dialog-viewport-height'),
+            left: rect?.left, right: rect?.right, top: rect?.top, bottom: rect?.bottom };
+        })()`,
+      );
+      throw new Error(`${error.message}; ${JSON.stringify(bounds)}`, { cause: error });
+    }
     const actions = await evaluate(
       browser,
       `(() => {
@@ -991,6 +1022,12 @@ async function verifyTripSectionNavigation(browser, tripId) {
     "closed",
     `Dated Google flight was not added to Plan: ${datedApplyResult.text ?? "unknown error"}`,
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: ["idea-workflows"],
+    label: "CN flight application confirmed before cold navigation",
+  });
   await navigate(browser, `/trips/${tripId}`);
   await waitFor(
     browser,
@@ -2610,7 +2647,8 @@ async function verifySetPrimaryConflictRetryThroughUi(browser, tripId, createdVa
       const alert = dialog?.querySelector('[role="alert"]');
       if (alert?.textContent.trim()) return { kind: 'error', text: alert.textContent.trim() };
       const status = dialog?.querySelector('[role="status"]');
-      return status?.textContent.trim() ? { kind: 'status', text: status.textContent.trim() } : null;
+      return status?.textContent.trim() && status.textContent.trim() !== 'Saved locally'
+        ? { kind: 'status', text: status.textContent.trim() } : null;
     })()`,
     "Set Primary automatic retry result",
     45_000,
@@ -2786,6 +2824,12 @@ async function verifyVariantDeleteRefreshThroughUi(browser, tripId, createdVaria
     "Plan delete with refreshed version",
     45_000,
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: ["variants"],
+    label: "Plan deletion confirmed after navigation",
+  });
   const deleted = await controlledData(
     () => db.from("route_variants").select("id").eq("id", createdVariant.createdVariantId),
     "Plan delete with refreshed version evidence",
@@ -3066,51 +3110,12 @@ async function clickElement(
   movePointer = false,
 ) {
   await waitForClickableElement(browser, elementExpression, label);
-  const point = await evaluate(
-    browser,
-    `(async () => {
-      const element = (${elementExpression});
-      if (!element) return { available: false, reason: "missing" };
-      if (!element.getClientRects().length) return { available: false, reason: "hidden" };
-      if (element.disabled) return { available: false, reason: "disabled" };
-      element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const rect = element.getBoundingClientRect();
-      const x = rect.left + rect.width / 2;
-      const y = rect.top + rect.height / 2;
-      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) {
-        return { available: false, reason: "outside-viewport", rect: rect.toJSON(), viewport: { height: innerHeight, width: innerWidth } };
-      }
-      const hit = document.elementFromPoint(x, y);
-      if (!hit || (hit !== element && !element.contains(hit))) {
-        return {
-          available: false,
-          reason: "covered",
-          rect: rect.toJSON(),
-          hit: hit ? { className: String(hit.className).slice(0, 160), tagName: hit.tagName } : null,
-        };
-      }
-      return { available: true, x, y };
-    })()`,
-  );
-  assert(point?.available, `${label} was not available: ${JSON.stringify(point)}`);
-  if (movePointer) {
-    await browser.cdp.send(
-      "Input.dispatchMouseEvent",
-      { type: "mouseMoved", x: point.x, y: point.y },
-      browser.sessionId,
-    );
-  }
-  await browser.cdp.send(
-    "Input.dispatchMouseEvent",
-    { button, clickCount: 1, type: "mousePressed", x: point.x, y: point.y },
-    browser.sessionId,
-  );
-  await browser.cdp.send(
-    "Input.dispatchMouseEvent",
-    { button, clickCount: 1, type: "mouseReleased", x: point.x, y: point.y },
-    browser.sessionId,
-  );
+  return clickCloudbaseElement(browser, elementExpression, label, {
+    evaluate,
+    waitFor,
+    button,
+    movePointer,
+  });
 }
 
 async function verifyMatrixContextMenus(browser) {
@@ -3187,7 +3192,7 @@ async function verifyMatrixContextMenus(browser) {
   );
 }
 
-async function verifyRapidPasteThenEdit(browser, tripId) {
+async function verifyRapidPasteThenEdit(browser, tripId, variantId) {
   await evaluate(
     browser,
     `(() => {
@@ -3372,29 +3377,16 @@ async function verifyRapidPasteThenEdit(browser, tripId) {
         .some((item) => item.textContent.includes(${JSON.stringify(editedTitle)}))`,
     "new day and pasted activity removed",
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: [variantId],
+    label: "rapid copied activity edit and day deletion confirmed",
+  });
 }
 
 async function pressElement(browser, elementExpression, label) {
-  await waitFor(
-    browser,
-    `(() => {
-      const element = (${elementExpression});
-      if (!element || !element.getClientRects().length || element.disabled) return false;
-      element.focus();
-      return document.activeElement === element;
-    })()`,
-    `${label} keyboard focus`,
-  );
-  await browser.cdp.send(
-    "Input.dispatchKeyEvent",
-    { code: "Enter", key: "Enter", type: "rawKeyDown", windowsVirtualKeyCode: 13 },
-    browser.sessionId,
-  );
-  await browser.cdp.send(
-    "Input.dispatchKeyEvent",
-    { code: "Enter", key: "Enter", type: "keyUp", windowsVirtualKeyCode: 13 },
-    browser.sessionId,
-  );
+  await pressCloudbaseElement(browser, elementExpression, label, { waitFor });
 }
 
 async function clickButtonText(browser, text) {
@@ -3513,17 +3505,27 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
       `${error instanceof Error ? error.message : error}; bounded planner diagnostic: ${JSON.stringify(diagnostic)}`,
     );
   }
+  await waitForReactHydration(browser, addActivityExpression, "Add activity React hydration");
   await clickElement(browser, addActivityExpression, "Add activity");
   const placeSelector = 'input[aria-label="Place or activity name"]';
-  await waitFor(
-    browser,
-    `(() => {
+  try {
+    await waitFor(
+      browser,
+      `(() => {
       const input = document.querySelector(${JSON.stringify(placeSelector)});
       return input instanceof HTMLInputElement && !input.disabled;
     })()`,
-    "activity place search",
-    45_000,
-  );
+      "activity place search",
+      45_000,
+    );
+  } catch (error) {
+    const activity = await readBoundedActivitySaveDiagnostic(browser);
+    const pointer = await evaluate(browser, "window.__phase3LastClick ?? {}").catch(() => ({}));
+    throw new Error(
+      `${error.message}; activity opening diagnostic: ${JSON.stringify({ activity, pointer })}`,
+      { cause: error },
+    );
+  }
   await setInputValue(browser, placeSelector, query);
   try {
     await waitFor(
@@ -3633,7 +3635,7 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
   return title;
 }
 
-async function calculateAmapRouteThroughUi(browser, tripId) {
+async function calculateAmapRouteThroughUi(browser, tripId, variantId) {
   const selectedPlaceOpen = await evaluate(
     browser,
     `Boolean(document.querySelector('button[aria-label="Close place details"]'))`,
@@ -3691,6 +3693,12 @@ async function calculateAmapRouteThroughUi(browser, tripId) {
     "computed route replaces Compute with Edit",
     60_000,
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: [variantId],
+    label: "initial real AMap route confirmed",
+  });
   const initialRoute = await loadPersistedAmapEvidence(tripId);
   assert.ok(
     initialRoute.items.every((item) => initialRoute.stops.some((stop) => stop.item_id === item.id)),
@@ -3773,9 +3781,15 @@ async function calculateAmapRouteThroughUi(browser, tripId) {
       )}`,
     );
   }
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: [variantId],
+    label: "edited real AMap driving route confirmed",
+  });
 }
 
-async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEvidence) {
+async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEvidence, variantId) {
   await addAmapActivityThroughUi(browser, "上海人民广场", 4);
   const selectedPlaceOpen = await evaluate(
     browser,
@@ -3797,6 +3811,12 @@ async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEv
     "route refresh control after adding an activity",
     45_000,
   );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: [variantId],
+    label: "new route activity confirmed",
+  });
   const pendingEvidence = await loadPersistedAmapEvidence(tripId);
   assert.equal(pendingEvidence.items.length, 4);
   assert.equal(
@@ -3855,6 +3875,12 @@ async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEv
       )}`,
     );
   }
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: [variantId],
+    label: "updated AMap route with added activity confirmed",
+  });
   const refreshed = await loadPersistedAmapEvidence(tripId);
   assert.equal(refreshed.stops.length, previousEvidence.stops.length + 1);
   assert.ok(
@@ -3868,7 +3894,7 @@ async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEv
   );
 }
 
-async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId) {
+async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId, variantId) {
   const before = await evaluate(
     browser,
     `({
@@ -3966,6 +3992,12 @@ async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId) {
     throw new Error(
       `Timed out waiting for route recalculated after activity delete; bounded route-recalculation diagnostic: ${JSON.stringify({ ...diagnostic, observedAlerts: [...observedAlerts].slice(-3) })}`,
     );
+  await waitForTripOutbox(browser, tripId, {
+    evaluate,
+    waitFor,
+    domains: [variantId],
+    label: "deleted activity and AMap recalculation confirmed",
+  });
   const persisted = await loadPersistedAmapEvidence(tripId);
   assert.equal(persisted.items.length, before.itemCount - 1);
   assert.equal(persisted.calculations.length, 1);
@@ -4226,10 +4258,18 @@ async function publishThroughUi(browser, tripId) {
       "share publish activation",
       10_000,
     );
+    await waitForTripOutbox(browser, tripId, {
+      evaluate,
+      waitFor,
+      domains: ["sharing"],
+      label: "share publishing confirmation",
+    });
     await waitFor(
       browser,
       `Boolean(document.querySelector('[aria-label="Published shareable page"]')) ||
-       Boolean(document.querySelector('[role="dialog"] [aria-live]'))`,
+       [...document.querySelectorAll('[role="dialog"] [role="alert"]')].some((element) =>
+         element.getClientRects().length && element.textContent?.trim()
+       )`,
       "share publish result",
       60_000,
     );
@@ -4426,7 +4466,7 @@ async function verifyAuthenticatedLandingGuestBoundary(browser) {
   ];
   await evaluate(
     browser,
-    `${JSON.stringify(guestKeys)}.forEach((key) => localStorage.setItem(key, 'stale')); true`,
+    `Object.entries(${JSON.stringify(authenticatedGuestStorageFixture())}).forEach(([key,value]) => localStorage.setItem(key,value)); true`,
   );
   await navigate(browser, "/guest?claim=1");
   await waitFor(
@@ -4435,6 +4475,11 @@ async function verifyAuthenticatedLandingGuestBoundary(browser) {
       ${JSON.stringify(guestKeys)}.every((key) => localStorage.getItem(key) === null)`,
     "CN authenticated guest redirect and storage cleanup",
   );
+  await verifyUnconfirmedGuestPreservation({
+    evaluate: (expression) => evaluate(browser, expression),
+    visit: () => navigate(browser, "/guest?claim=1"),
+    waitFor: (expression, label) => waitFor(browser, expression, label),
+  });
   await navigate(browser, "/");
   await waitFor(
     browser,
@@ -4777,6 +4822,12 @@ async function updateTripTitle(browser, nextTitle) {
     );
   }
   const detailPath = await evaluate(browser, "location.pathname");
+  await waitForTripOutbox(browser, detailPath.split("/")[2], {
+    evaluate,
+    waitFor,
+    domains: ["settings"],
+    label: "Trip settings confirmed before cold navigation",
+  });
   await navigate(browser, detailPath);
   try {
     await waitFor(
@@ -4839,7 +4890,7 @@ async function verifyTabletMatrixViewport(browser, options) {
       alignment.length > 0 && alignment.every(({ delta }) => Math.abs(delta) <= 1),
       `${surface} Matrix first-line alignment: ${JSON.stringify(alignment)}`,
     );
-    const result = await evaluate(
+    const result = await waitFor(
       browser,
       `(async () => {
         const matrix = document.querySelector(${JSON.stringify(matrixSelector)});
@@ -4875,12 +4926,16 @@ async function verifyTabletMatrixViewport(browser, options) {
           if (matrix.scrollLeft > 0 && (targetTop === 0 || matrix.scrollTop > 0)) break;
         }
         await nextFrame();
+        if (!matrix.isConnected || !header.isConnected || rows.some((row) => !row.isConnected))
+          return null;
         const matrixRect = matrix.getBoundingClientRect();
         const headerRect = header.getBoundingClientRect();
         const visibleBodyRow = rows.find((row) => {
           const rect = row.getBoundingClientRect();
           return rect.bottom > headerRect.bottom + 2 && rect.top < matrixRect.bottom - 2;
         });
+        if (!visibleBodyRow)
+          throw new Error('The connected Matrix has no visible body row after scrolling.');
         const frozenBody = visibleBodyRow.querySelector('[role="rowheader"]:first-child');
         const bodyCells = [...visibleBodyRow.querySelectorAll('[role="gridcell"]')];
         const frozenRect = frozenBody.getBoundingClientRect();
@@ -4909,6 +4964,8 @@ async function verifyTabletMatrixViewport(browser, options) {
         });
         matrix.scrollTop = matrix.scrollHeight - matrix.clientHeight;
         await nextFrame();
+        if (!matrix.isConnected || !header.isConnected || rows.some((row) => !row.isConnected))
+          return null;
         const lastRowRect = rows.at(-1).getBoundingClientRect();
         const matrixContentBottom = matrixRect.top + matrix.clientTop + matrix.clientHeight;
         return {
@@ -4942,6 +4999,8 @@ async function verifyTabletMatrixViewport(browser, options) {
           windowScrollY: scrollY,
         };
       })()`,
+      `${surface} ${viewport.label} connected Matrix measurement`,
+      45_000,
     );
     const message = `${surface} ${viewport.label}`;
     assert(result.scrollLeft > 0, `${message} Matrix did not scroll horizontally.`);
@@ -5164,7 +5223,7 @@ async function verifyPublicTabletViewportMatrix(browser, publicToken) {
   );
 }
 
-async function captureMutationForms(browser) {
+async function captureMutationForms(browser, tripId) {
   await openTripMenu(browser);
   await clickButtonText(browser, "Trip settings");
   await waitFor(
@@ -5172,12 +5231,22 @@ async function captureMutationForms(browser) {
     'Boolean(document.querySelector("#trip-title")) && !document.querySelector("#trip-title").matches(":disabled")',
     "fresh Trip settings editor",
   );
-  const updateEntries = await evaluate(
-    browser,
-    `(() => [...new FormData(document.querySelector("#trip-title").form).entries()].map(
-      ([name, value]) => [name, String(value)],
-    ))()`,
+  const fields = await readTripSettingsBrowserFields(browser, { evaluate });
+  const config = loadLiveConfig();
+  const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+  const trips = await controlledData(
+    () => db.from("trips").select("id,timezone,version,content_version").eq("id", tripId),
+    "owned settings authorization baseline",
   );
+  assert.equal(trips.length, 1, "The owned authorization baseline must exist.");
+  const updateInput = {
+    ...fields,
+    dayCount: Number(fields.dayCount),
+    tripId,
+    timezone: trips[0].timezone,
+    expectedVersion: Number(trips[0].version),
+    expectedContentVersion: Number(trips[0].content_version),
+  };
   const cancelDispatched = await evaluate(
     browser,
     `(() => {
@@ -5221,26 +5290,74 @@ async function captureMutationForms(browser) {
     `!document.querySelector('[role="alertdialog"]') && !document.querySelector('input[name="trip_id"]')`,
     "delete confirmation close",
   );
-  return { deleteEntries, updateEntries };
+  return { deleteEntries, updateInput };
 }
 
 async function forgeForm(browser, path, entries, replacements = {}) {
-  return evaluate(
+  const fields = {
+    ...(Array.isArray(entries) ? Object.fromEntries(entries) : entries),
+    ...replacements,
+  };
+  const settings = "title" in fields;
+  const exportedName = settings ? "saveTripSettings" : "runTripBackgroundAction";
+  const manifest = JSON.parse(
+    await readFile(".next/server/server-reference-manifest.json", "utf8"),
+  );
+  const actions = Object.entries(manifest.node).filter(([, action]) =>
+    Object.values(action.workers).some((worker) => worker.exportedName === exportedName),
+  );
+  assert.equal(
+    actions.length,
+    1,
+    `${exportedName} must resolve in the exact compiled application.`,
+  );
+  const input = {
+    tripId: settings ? fields.tripId : fields.trip_id,
+    expectedVersion: Number(settings ? fields.expectedVersion : fields.expected_version),
+    expectedContentVersion: Number(
+      settings ? fields.expectedContentVersion : fields.expected_content_version,
+    ),
+    operationId: randomUUID(),
+  };
+  const args = settings
+    ? [
+        {
+          ...input,
+          title: fields.title,
+          timezone: fields.timezone,
+          currency: fields.currency,
+          startDate: fields.startDate,
+          endDate: fields.endDate,
+          dayCount: fields.dayCount,
+        },
+      ]
+    : [{ kind: "trip.delete", input }];
+  const result = await evaluate(
     browser,
     `(async () => {
-      const entries = ${JSON.stringify(entries)};
-      const replacements = ${JSON.stringify(replacements)};
-      const body = new FormData();
-      for (const [name, value] of entries) body.append(name, name in replacements ? replacements[name] : value);
       const response = await fetch(${JSON.stringify(path)}, {
-        body,
+        body: JSON.stringify(${JSON.stringify(args)}),
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8', 'Next-Action': ${JSON.stringify(actions[0][0])} },
         credentials: "include",
         method: "POST",
         redirect: "manual",
       });
-      return { status: response.status, text: (await response.text()).slice(0, 500) };
+      const text = await response.text();
+      return {
+        status: response.status,
+        hasError: /"error"\\s*:/.test(text),
+        invalidAction: /Failed to find Server Action|invalid.*(?:UUID|input|action)|Sign in|Authentication required/i.test(text),
+      };
     })()`,
   );
+  assert.equal(result.status, 200, `${exportedName} must reach its actual authorization boundary.`);
+  assert.equal(result.hasError, true, `${exportedName} must reject user B's write.`);
+  assert.equal(
+    result.invalidAction,
+    false,
+    `${exportedName} must test the authenticated authorization boundary.`,
+  );
+  return result;
 }
 
 async function deleteTripThroughUi(browser, tripId) {
@@ -5313,6 +5430,22 @@ async function deleteTripThroughUi(browser, tripId) {
   await clickButtonText(browser, "Delete trip");
   await waitFor(
     browser,
+    `!document.querySelector('[role="alertdialog"]')`,
+    "accepted Trip deletion closes",
+  );
+  await assert.rejects(
+    waitForTripOutbox(browser, tripId, {
+      evaluate,
+      waitFor,
+      domains: ["trip-card"],
+      label: "Trip delete session captured conflict",
+    }),
+    /failed; outbox:.*"status":"conflict"/,
+  );
+  await openTripMenu(browser);
+  await clickButtonText(browser, "Delete trip");
+  await waitFor(
+    browser,
     `[...document.querySelectorAll('[role="alertdialog"] button')]
       .some((button) => button.textContent.trim() === "Reload latest" && !button.disabled)`,
     "Trip delete session structured conflict",
@@ -5324,6 +5457,13 @@ async function deleteTripThroughUi(browser, tripId) {
     `document.querySelector('[role="alertdialog"]')?.textContent.includes('Latest trip loaded. You can retry deletion.') &&
       document.querySelector('input[name="expected_version"]')?.value !== ${JSON.stringify(initialDeleteVersion)}`,
     "Trip delete session V2 reload",
+  );
+  assert.equal(
+    await evaluate(
+      browser,
+      `Boolean(document.querySelector('[role="alertdialog"] [role="alert"]'))`,
+    ),
+    false,
   );
   await clickButtonText(browser, "Cancel");
   await waitFor(
@@ -5353,7 +5493,7 @@ async function deleteTripThroughUi(browser, tripId) {
   );
   assert.deepEqual(reopenedSession, {
     expectedVersion: initialDeleteVersion,
-    hasOldConflict: false,
+    hasOldConflict: true,
     hasOldReloadSuccess: false,
   });
   await clickButtonText(browser, "Cancel");
@@ -5378,8 +5518,24 @@ async function deleteTripThroughUi(browser, tripId) {
       .find((button) => button.textContent.trim() === "Delete trip" && !button.disabled)`,
     "final refreshed Trip delete confirmation",
   );
+  await clickButtonText(browser, "Reload latest");
+  await waitFor(
+    browser,
+    `document.querySelector('[role="alertdialog"]')?.textContent.includes('Latest trip loaded. You can retry deletion.') &&
+      Number(document.querySelector('input[name="expected_version"]')?.value) === ${updatedTrip[0].version}`,
+    "final reviewed Trip delete tokens",
+  );
   await clickButtonText(browser, "Delete trip");
   await waitFor(browser, 'location.pathname === "/trips"', "trip deletion", 45_000);
+  assert.equal(
+    (
+      await controlledData(
+        () => db.from("trips").select("id").eq("id", tripId),
+        "UI Trip deletion database confirmation",
+      )
+    ).length,
+    0,
+  );
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
@@ -5540,6 +5696,7 @@ function assertPersistedAmapRoute(evidence) {
         source: leg.geometry?.source,
       },
       { coordinateSystem: "wgs84", provider: "amap", source: "encoded" },
+      `Real AMap leg: ${JSON.stringify({ position: leg.position, mode: leg.mode, fallbackReason: leg.fallbackReason })}`,
     );
     assert.ok(leg.geometry?.encodedPolyline, "The persisted AMap route has no encoded geometry.");
   }
@@ -5717,7 +5874,7 @@ async function run() {
       60_000,
     );
     await verifyMatrixContextMenus(browser);
-    await verifyRapidPasteThenEdit(browser, tripId);
+    await verifyRapidPasteThenEdit(browser, tripId, createdVariant.priorVariantId);
     await uploadAttachmentThroughUi(browser);
     await verifyMobileMapBackNavigation(browser);
     await clickElement(
@@ -5779,18 +5936,23 @@ async function run() {
         `The refreshed AMap marker did not retain WGS-84 place ${place.id}.`,
       );
     }
-    await calculateAmapRouteThroughUi(browser, tripId);
+    await calculateAmapRouteThroughUi(browser, tripId, createdVariant.priorVariantId);
     const routeEvidence = await loadPersistedAmapEvidence(tripId);
     assertPersistedAmapRoute(routeEvidence);
     await assertRealAmapBrowserAdapter(browser);
-    await verifyAddedActivityRefreshesAmapRoute(browser, tripId, routeEvidence);
-    await verifyDeletedActivityLeavesMapAndRoute(browser, tripId);
+    await verifyAddedActivityRefreshesAmapRoute(
+      browser,
+      tripId,
+      routeEvidence,
+      createdVariant.priorVariantId,
+    );
+    await verifyDeletedActivityLeavesMapAndRoute(browser, tripId, createdVariant.priorVariantId);
     const publicToken = await publishThroughUi(browser, tripId);
     const publishedTitle = updatedTitle;
     updatedTitle = `${runLabel}-saved-right-after-share`;
     await updateTripTitle(browser, updatedTitle);
     await verifyTabletFrozenLayers(browser);
-    const forms = await captureMutationForms(browser);
+    const forms = await captureMutationForms(browser, tripId);
 
     await evaluate(browser, "window.__phase3BackNavigationSentinel = true");
     await clickElement(
@@ -5834,6 +5996,12 @@ async function run() {
       "document.querySelector('[role=\"alert\"]')?.textContent.trim() ?? null",
     );
     if (statusError) throw new Error(`Status update failed: ${statusError}`);
+    await waitForTripOutbox(browser, tripId, {
+      evaluate,
+      waitFor,
+      domains: ["trip-card"],
+      label: "Trip status confirmed before cold navigation",
+    });
     await navigate(browser, "/trips?status=done");
     await waitFor(
       browser,
@@ -5854,7 +6022,7 @@ async function run() {
     assert.equal(deniedTripBody.includes(updatedTitle), false);
 
     const forgedTitle = `${runLabel}-forged-by-b`;
-    await forgeForm(browser, `/trips/${tripId}`, forms.updateEntries, { title: forgedTitle });
+    await forgeForm(browser, `/trips/${tripId}`, forms.updateInput, { title: forgedTitle });
     await forgeForm(browser, `/trips/${tripId}`, forms.deleteEntries);
 
     await clearCookies(browser);

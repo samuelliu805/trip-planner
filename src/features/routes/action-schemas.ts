@@ -18,6 +18,7 @@ export const saveRouteSchema = z.object({
   ...telemetryFields,
 });
 export const calculateRouteSchema = z.object({
+  expectedInputSnapshot: z.string().max(20000).optional(),
   expectedPlanVersion: z.number().int().positive(),
   expectedVersion: z.number().int().nonnegative(),
   planId: identitySchema,
@@ -26,6 +27,7 @@ export const calculateRouteSchema = z.object({
   ...telemetryFields,
 });
 export const calculateOverviewRouteSchema = z.object({
+  expectedInputSnapshot: z.string().max(20000).optional(),
   legs: z
     .array(
       z.object({

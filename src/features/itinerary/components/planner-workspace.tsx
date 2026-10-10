@@ -1,8 +1,10 @@
 "use client";
 
+import { PlannerOutboxProvider } from "../planner-outbox-provider";
 import { T } from "@/features/i18n/i18n-provider";
 import { LoaderCircle } from "lucide-react";
-import { useMemo, useState } from "react";
+import { cloneElement, isValidElement, useMemo, useState } from "react";
+import { useLocalPlanNavigation } from "../../variants/use-local-plan-navigation";
 
 import { ArrangeActivitiesSheet } from "./arrange-activities-sheet";
 import { PlannerClearCellsDialog } from "./planner-clear-cells-dialog";
@@ -27,10 +29,30 @@ import { useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
 import type { PlannerDay } from "../types";
 
 export function PlannerWorkspace(props: PlannerWorkspaceProps) {
-  return <PlannerWorkspaceVariant key={props.initialWorkspace.variant.id} {...props} />;
+  const navigation = useLocalPlanNavigation(props.initialWorkspace, props.initialVariants);
+  const workspace = props.guestExperience ? props.initialWorkspace : navigation.workspace;
+  const shareControls = isValidElement<{ activeVariantId: string }>(props.shareControls)
+    ? cloneElement(props.shareControls, { activeVariantId: workspace.variant.id })
+    : props.shareControls;
+  return (
+    <PlannerOutboxProvider
+      key={workspace.variant.id}
+      workspace={workspace}
+      confirmedRead={workspace === props.initialWorkspace}
+    >
+      <PlannerWorkspaceVariant
+        {...props}
+        initialWorkspace={workspace}
+        shareControls={shareControls}
+        onNavigate={navigation.navigate}
+      />
+    </PlannerOutboxProvider>
+  );
 }
 
-function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
+function PlannerWorkspaceVariant(
+  props: PlannerWorkspaceProps & { onNavigate: (variantId: string) => boolean },
+) {
   usePlannerViewportContainment();
   const c = usePlannerWorkspaceController(props);
   const mapSheet = usePlannerMapSheetHistory(c.setMapExpanded);
@@ -76,7 +98,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
       {c.clipboard.requestPending ? (
         <div
           aria-live="polite"
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-background/60 backdrop-blur-[1px]"
+          className="pointer-events-none fixed bottom-4 left-1/2 z-[80] flex -translate-x-1/2 items-center justify-center"
           role="status"
         >
           <div className="flex items-center gap-2 rounded-full border bg-background px-4 py-2.5 text-sm font-medium shadow-lg">
@@ -148,6 +170,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
           ) : (
             <RouteVariantControls
               activeVariantId={c.workspace.variant.id}
+              onNavigate={props.onNavigate}
               comparisonBlockingReason={c.map.comparison.blockingReason}
               onCompare={() => {
                 c.map.enterComparison();
@@ -198,6 +221,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         onDecisionSummaryPanelClose={() => c.map.setDecisionSummaryPanelOpen(false)}
         onEditMapItem={c.editMapItem}
         onMapExpand={mapSheet.open}
+        onReorder={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}
         onMapModeChange={c.changeMapModeAndSelection}
         onMapSelectionClear={c.selectMapMarker}
         onMarkerClick={c.selectMapMarker}

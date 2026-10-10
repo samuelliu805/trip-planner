@@ -99,6 +99,7 @@ export type SaveDayRoutePlanInput = {
 };
 
 export type CalculateDayRouteInput = {
+  expectedInputSnapshot?: string;
   expectedPlanVersion: number;
   expectedVersion: number;
   operationId: string;
@@ -108,6 +109,7 @@ export type CalculateDayRouteInput = {
   variantId: string;
 };
 export type CalculateOverviewRouteInput = {
+  expectedInputSnapshot?: string;
   legs: Array<{ mode: OverviewRouteMode; position: number }>;
   operationId: string;
   telemetryRouteMode?: import("@/lib/telemetry/events").RouteMode;
