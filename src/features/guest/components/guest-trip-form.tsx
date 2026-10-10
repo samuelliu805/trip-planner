@@ -29,7 +29,6 @@ import type { Trip } from "@/platform/contracts/trips";
 import { useDraftScope } from "@/features/editing/draft-scope";
 import { editingStorageKey } from "@/features/editing/draft-storage";
 import { useDurableFields } from "@/features/editing/use-durable-fields";
-import { useDraftAutosave } from "@/features/editing/use-draft-autosave";
 import { LocalDraftStatus } from "@/features/editing/local-draft-status";
 
 export type GuestTripSettings = {
@@ -107,12 +106,6 @@ export function GuestTripForm({
     if (close) editor.onClose();
   }
 
-  const autosave = useDraftAutosave(
-    fields.dirty && !fields.error && dayCount === String(trip.day_count) && parseCurrent().success,
-    JSON.stringify(fields.values),
-    () => save(false),
-  );
-
   return (
     <PlannerEditorForm
       compactActions
@@ -120,7 +113,6 @@ export function GuestTripForm({
       onCancel={editor.onClose}
       onClose={editor.onClose}
       onSave={() => save()}
-      onCompositionChange={autosave.composition}
       pending={false}
       pendingLabel="Saving…"
     >

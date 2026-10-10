@@ -2,7 +2,7 @@
 
 import { Localized, useI18n } from "@/features/i18n/i18n-provider";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { useId, useState, useEffect } from "react";
+import { useId, useState } from "react";
 
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
 import { PlannerEditorHeader } from "@/features/itinerary/components/planner-editor-header";
@@ -98,16 +98,15 @@ export function RouteVariantEditorDialog({
     retry: false,
   });
   const pending = false;
-  const [composing, setComposing] = useState(false);
   const nameId = useId();
 
-  function submit(closeAfter = true) {
+  function submit() {
     setError(undefined);
     const operationId = newTelemetryOperationId();
     try {
       if (!runtime || local.getError())
         throw new Error(
-          local.getError() ?? "This Plan could not be stored locally. Your draft is kept.",
+          local.getError() ?? "This Plan could not be stored locally. Your changes are kept.",
         );
       const source = runtime
         .project()
@@ -129,7 +128,7 @@ export function RouteVariantEditorDialog({
       const snapshot = sourceQuery.data;
       if (mode !== "metadata" && !snapshot)
         throw new Error(
-          sourceQuery.error?.message ?? "The source Plan is still loading. Your draft is kept.",
+          sourceQuery.error?.message ?? "The source Plan is still loading. Your changes are kept.",
         );
       const result =
         mode === "metadata"
@@ -156,35 +155,12 @@ export function RouteVariantEditorDialog({
         setBaseVersion(
           result.variants.find((row) => row.id === activeVariant.id)?.version ?? baseVersion,
         );
-      if (closeAfter) {
-        onOpenChange(false);
-        onSaved?.(result.variantId);
-      }
+      onOpenChange(false);
+      onSaved?.(result.variantId);
     } catch (caught) {
       setConflict(caught instanceof ItineraryMutationError && caught.code === "conflict");
       setError(caught instanceof Error ? caught.message : "The Plan could not be saved.");
     }
-  }
-
-  const canAutosave =
-    mode === "metadata" &&
-    open &&
-    runtime &&
-    !composing &&
-    !local.error &&
-    name.trim().length > 0 &&
-    name.trim().length <= 80;
-  useEffect(() => {
-    if (!canAutosave || !local.hasChanges()) return;
-    const timer = window.setTimeout(() => submit(false), 500);
-    return () => window.clearTimeout(timer);
-    // Changes are keyed to raw fields; a successful durable acceptance advances their baseline.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canAutosave, name, color]);
-  function closeEditor() {
-    if (mode === "metadata" && runtime && !local.getError() && local.hasChanges() && name.trim())
-      submit(false);
-    onOpenChange(false);
   }
 
   async function reloadLatest() {
@@ -221,12 +197,7 @@ export function RouteVariantEditorDialog({
         : "Edit Plan";
 
   return (
-    <PlannerEditorScreen
-      nonBlocking
-      editorKind="variant"
-      onOpenChange={(value) => (value ? onOpenChange(true) : closeEditor())}
-      open={open}
-    >
+    <PlannerEditorScreen editorKind="variant" onOpenChange={onOpenChange} open={open}>
       <PlannerEditorForm
         compactActions
         header={
@@ -240,12 +211,12 @@ export function RouteVariantEditorDialog({
                   : "The Plan name and color identify this version throughout the planner."
             }
             error={error ?? local.error ?? sourceQuery.error?.message}
-            onClose={closeEditor}
+            onClose={() => onOpenChange(false)}
             title={title}
           />
         }
-        onCancel={closeEditor}
-        onClose={closeEditor}
+        onCancel={() => onOpenChange(false)}
+        onClose={() => onOpenChange(false)}
         onSave={() => submit()}
         pending={pending}
         pendingLabel="Saving…"
@@ -289,7 +260,6 @@ export function RouteVariantEditorDialog({
           onNameChange={setName}
           onColorChange={setColor}
           onSourceChange={setSourceVariantId}
-          onCompositionChange={setComposing}
           onUseLatest={() => setLatestVariant(undefined)}
         />
       </PlannerEditorForm>

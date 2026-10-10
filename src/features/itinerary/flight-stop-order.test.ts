@@ -56,8 +56,8 @@ test("two flights in the same Plan day follow dates and times, including overnig
 
 test("ordinary activity gaps stay explicit and new activities default after the final arrival", () => {
   const items = flightStops();
-  const hotel = { id: "hotel", type: "hotel", sort_order: 10 } as ItineraryItem;
-  const museum = { id: "museum", type: "activity", sort_order: 11 } as ItineraryItem;
+  const hotel = { id: "hotel", type: "hotel", sort_order: 10 } as unknown as ItineraryItem;
+  const museum = { id: "museum", type: "activity", sort_order: 11 } as unknown as ItineraryItem;
   assert.equal(itemOrderAnchor([...items, hotel], undefined, "activity"), "beijing-arrival");
   assert.deepEqual(insertedActivityOrderIds([...items, hotel], museum), [
     ...expected,
@@ -109,5 +109,72 @@ test("Shareable presentation and day route use the same two-flight chronological
   assert.deepEqual(
     publicDayRoutePlan({ days: [day] } as PublicItinerary, "day").items.map(({ ref }) => ref),
     expected,
+  );
+});
+
+test("NZ final day sorts whole flights as well as endpoint activities without rewriting saved positions", () => {
+  const late = {
+    id: "akl-sha",
+    type: "flight",
+    start_time: "21:20:00",
+    sort_order: 2,
+    details: { departureDate: "2027-04-10" },
+  } as unknown as ItineraryItem;
+  const early = {
+    id: "chc-akl",
+    type: "flight",
+    start_time: "14:05:00",
+    sort_order: 4,
+    details: { departureDate: "2027-04-10" },
+  } as unknown as ItineraryItem;
+  const items = [
+    stop("chc", early.id, "departure", "2027-04-10", "14:05:00", 0),
+    stop("akl-arrival", early.id, "arrival", "2027-04-10", "15:30:00", 1),
+    late,
+    stop("akl-departure", late.id, "departure", "2027-04-10", "21:20:00", 3),
+    early,
+    stop("sha", late.id, "arrival", "2027-04-11", "15:25:00", 5),
+  ];
+  assert.deepEqual(
+    orderOwnerFlightStops(items)
+      .filter((item) => item.type === "flight")
+      .map((item) => item.id),
+    [early.id, late.id],
+  );
+  assert.deepEqual(
+    items.filter((item) => item.type === "flight").map((item) => item.sort_order),
+    [2, 4],
+  );
+  const day = {
+    items: items.map((item) => ({
+      ref: item.id,
+      type: item.type,
+      startTime: item.start_time,
+      sortOrder: item.sort_order,
+    })),
+  } as PublicItineraryDay;
+  assert.deepEqual(
+    orderedPublicItems(day)
+      .filter((item) => item.type === "flight")
+      .map((item) => item.ref),
+    [early.id, late.id],
+  );
+});
+
+test("whole flight cards use departure dates before times and preserve unrelated item gaps", () => {
+  const flight = (id: string, date: string, time: string) => ({
+    id,
+    type: "flight",
+    start_time: time,
+    details: { departureDate: date },
+  });
+  const items = [
+    flight("late-day", "2027-04-11", "01:00"),
+    { id: "meal", type: "meal" },
+    flight("early-day", "2027-04-10", "21:20"),
+  ];
+  assert.deepEqual(
+    orderOwnerFlightStops(items).map((item) => item.id),
+    ["early-day", "meal", "late-day"],
   );
 });

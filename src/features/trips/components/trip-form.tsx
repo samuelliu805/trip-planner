@@ -6,7 +6,6 @@ import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { useDraftScope } from "@/features/editing/draft-scope";
 import { editingStorageKey } from "@/features/editing/draft-storage";
 import { useDurableFields } from "@/features/editing/use-durable-fields";
-import { useDraftAutosave } from "@/features/editing/use-draft-autosave";
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
 import type { Trip } from "@/platform/contracts/trips";
 import { TripFormFields } from "./trip-form-fields";
@@ -116,13 +115,13 @@ export function TripForm({
     // Read the live draft at delivery; updates must never replace a newer field edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectedTrip]);
-  function save(background = false) {
+  function save() {
     if (!sync) {
-      setError("Trip settings are not ready to sync. Your local draft is kept.");
+      setError("Trip settings are not ready to sync. Your changes are kept.");
       return;
     }
     if (!draft.hasChanges()) {
-      if (!background) editor.onClose();
+      editor.onClose();
       return;
     }
     const values = draft.getValues(),
@@ -137,7 +136,7 @@ export function TripForm({
       operationId: crypto.randomUUID(),
     });
     if (!parsed.success) {
-      if (!background) setError(parsed.error.issues[0]?.message);
+      setError(parsed.error.issues[0]?.message);
       return;
     }
     if (!draft.persist()) return;
@@ -147,26 +146,14 @@ export function TripForm({
       setCurrentTrip(accepted);
       setError(undefined);
       draft.discardIfMatches(signature);
-      if (!background) {
-        onSaved?.();
-        editor.onClose();
-      }
+      onSaved?.();
+      editor.onClose();
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Trip settings could not be saved locally.",
       );
     }
   }
-  // Length changes can remove days: keep the existing explicit Save decision for these.
-  const autosave = useDraftAutosave(
-    Boolean(sync && draft.dirty && Number(draft.values.dayCount) === trip.day_count),
-    JSON.stringify(draft.values),
-    () => save(true),
-  );
-  const close = () => {
-    autosave.flush();
-    editor.onClose();
-  };
   async function reloadLatest() {
     setLoading(true);
     try {
@@ -194,10 +181,9 @@ export function TripForm({
       pending={false}
       pendingLabel="Saving…"
       saveDisabled={!sync}
-      onCancel={close}
-      onClose={close}
+      onCancel={editor.onClose}
+      onClose={editor.onClose}
       onSave={() => save()}
-      onCompositionChange={autosave.composition}
     >
       <div className="flex min-w-0 items-start gap-3 border-b pb-4 sm:gap-4 sm:pb-6">
         <Settings2 aria-hidden="true" className="size-5 shrink-0" />
@@ -205,9 +191,6 @@ export function TripForm({
           <Localized value={editor.title} />
         </SheetTitle>
       </div>
-      <p role="status">
-        <T message={draft.error ? "Local save failed" : draft.saved ? "Saved locally" : "Draft"} />
-      </p>
       {draft.error || error ? (
         <div role="alert">
           <p>{draft.error ?? error}</p>
@@ -221,7 +204,7 @@ export function TripForm({
             <T message="Retry" />
           </Button>
           <Button type="button" variant="outline" onClick={draft.download}>
-            <T message="Download draft" />
+            <T message="Download changes" />
           </Button>
         </div>
       ) : null}
@@ -237,7 +220,7 @@ export function TripForm({
       {latestTrip ? (
         <div className="space-y-2 rounded-lg border p-3" role="status">
           <p>
-            <T message="Latest trip settings loaded. Your local draft is still here." />
+            <T message="Latest trip settings loaded. Your changes are still here." />
           </p>
           <Button
             type="button"
@@ -248,15 +231,13 @@ export function TripForm({
               setLatestTrip(undefined);
             }}
           >
-            <T message="Reapply my draft" />
+            <T message="Reapply my changes" />
           </Button>
           <Button
             type="button"
             onClick={() => {
               if (
-                !window.confirm(
-                  "Replace your local trip-settings draft with the latest saved values?",
-                )
+                !window.confirm("Replace your unsaved trip settings with the latest saved values?")
               )
                 return;
               setCurrentTrip(latestTrip);
@@ -268,7 +249,7 @@ export function TripForm({
               setLatestTrip(undefined);
             }}
           >
-            <T message="Replace draft" />
+            <T message="Use latest values" />
           </Button>
         </div>
       ) : null}
@@ -282,18 +263,6 @@ export function TripForm({
         onEndDateChange={(value) => draft.set("endDate", value)}
         onDateCommit={commitDate}
       />
-      <Button
-        type="button"
-        variant="ghost"
-        onClick={() => {
-          if (window.confirm("Discard this local draft?")) {
-            draft.discard();
-            editor.onClose();
-          }
-        }}
-      >
-        <T message="Discard draft" />
-      </Button>
     </PlannerEditorForm>
   );
 }

@@ -80,7 +80,6 @@ export function ResearchItemDialog({
         </Button>
       ) : null}
       <PlannerEditorScreen
-        nonBlocking
         editorKind="research"
         onOpenChange={(nextOpen) => !nextOpen && closeRequest.current()}
         open={open}

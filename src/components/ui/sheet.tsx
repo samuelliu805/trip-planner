@@ -15,16 +15,18 @@ function SheetContent({
   className,
   children,
   overlayClassName,
+  portalContainer,
   showCloseButton = true,
   side = "right",
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   overlayClassName?: string;
+  portalContainer?: HTMLElement | null;
   showCloseButton?: boolean;
   side?: "right" | "bottom" | "adaptive";
 }) {
   return (
-    <SheetPrimitive.Portal>
+    <SheetPrimitive.Portal container={portalContainer ?? undefined}>
       <SheetPrimitive.Overlay
         className={cn(
           "fixed inset-0 z-[100] bg-black/35 data-[state=open]:animate-in data-[state=closed]:animate-out motion-reduce:animate-none",

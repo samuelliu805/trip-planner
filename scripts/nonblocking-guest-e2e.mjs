@@ -32,6 +32,10 @@ try {
   await page.getByRole("button", { name: "Save & create new", exact: true }).click();
   await search.fill("未完成的 B 中文输入");
   await page.keyboard.press("Escape");
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Keep editing", exact: true })
+    .click();
   await page.locator('[data-guest-save-state="saved"]').first().waitFor();
   const edited = await guest();
   assert.equal(edited.draftId, initial.draftId);
@@ -43,9 +47,7 @@ try {
     edited.workspace.days[0].items.filter((item) => item.title === "未完成的 B 中文输入").length,
     0,
   );
-  await page.getByRole("button", { name: "Add activities on day 1", exact: true }).click();
   assert.equal(await search.inputValue(), "未完成的 B 中文输入");
-  await page.keyboard.press("Escape");
   // The loaded app works offline. Reload uses the available app shell; a cold
   // uncached offline navigation is not represented as service-worker support.
   await context.setOffline(false);
@@ -54,21 +56,64 @@ try {
   await page.getByRole("button", { name: "Add activities on day 1", exact: true }).click();
   assert.equal(await search.inputValue(), "未完成的 B 中文输入");
   await page.keyboard.press("Escape");
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Exit without saving", exact: true })
+    .click();
   await page.getByRole("button", { name: "Trip menu", exact: true }).click();
   await page.getByRole("menuitem", { name: "Trip settings", exact: true }).click();
   const title = page.locator("#guest-trip-title");
   await title.fill("");
-  await page.keyboard.press("Escape");
+  await page.reload();
+  await page.locator("[data-guest-planner]").waitFor();
   await page.getByRole("button", { name: "Trip menu", exact: true }).click();
   await page.getByRole("menuitem", { name: "Trip settings", exact: true }).click();
   assert.equal(await title.inputValue(), "");
   await title.fill("离线旅行设置");
-  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await page.waitForFunction(
     () =>
       JSON.parse(localStorage.getItem("trip-planner:guest-trip:global:active"))?.trip.title ===
       "离线旅行设置",
   );
+  // Actual Matrix, map slot, progressive Order decision and day-header/cell menus.
+  const originalMapBounds = await page.locator(".planner-map-pane").boundingBox();
+  await page.getByRole("button", { name: "Add activities on day 1", exact: true }).click();
+  await search.fill("离线徒步 B");
+  await search.press("Enter");
+  const dockBounds = await page.locator("[data-planner-editor-dock]").boundingBox();
+  const matrixBounds = await page.locator(".planner-matrix").boundingBox();
+  assert.ok(Math.abs(originalMapBounds.width - dockBounds.width) <= 1);
+  assert.ok(matrixBounds.x + matrixBounds.width <= dockBounds.x + 1);
+  assert.equal(await page.getByRole("button", { name: "Quick edit", exact: true }).count(), 0);
+  await page.getByRole("button", { name: "Show map", exact: true }).click();
+  await page.locator(".planner-editor-map-surface").waitFor({ state: "visible" });
+  assert.equal(await page.getByRole("dialog").isVisible(), false);
+  await page.getByRole("button", { name: "Show editor", exact: true }).click();
+  assert.equal(await page.locator('input[id^="item-title-"]').inputValue(), "离线徒步 B");
+  await page.getByRole("button", { name: "Confirm order", exact: true }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.locator('[data-day-header][data-day-number="1"]').click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Reorder day events", exact: true }).click();
+  await page.getByRole("button", { name: /离线徒步 B.*Choose position/ }).click();
+  await page
+    .getByRole("button", { name: "Click to place Activity here", exact: true })
+    .first()
+    .click();
+  await page.waitForFunction(
+    () =>
+      JSON.parse(
+        localStorage.getItem("trip-planner:guest-trip:global:active"),
+      )?.workspace.days[0].items.filter((item) => item.type === "activity")[0]?.title ===
+      "离线徒步 B",
+  );
+  await page.keyboard.press("Escape");
+  await page.locator('[data-cell^="0-"]').last().click({ button: "right" });
+  assert.equal(
+    await page.getByRole("menuitem", { name: "Reorder day events", exact: true }).isEnabled(),
+    true,
+  );
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Ideas & Options", exact: true }).click();
   const quick = page.getByPlaceholder("Paste a link or write an idea", { exact: true });
   await quick.fill("尚未保存的中文 Idea");
@@ -81,7 +126,7 @@ try {
   assert.equal(await quick.inputValue(), "尚未保存的中文 Idea");
   assert.deepEqual(errors, []);
   console.log(
-    "PASS actual Guest route: loaded offline editing, Save & add another, incomplete draft recovery, settings close flush, Plan/Ideas switch and reload.",
+    "PASS actual Guest route: loaded offline editing, Save & add another, unsaved-field refresh recovery, explicit settings Save, day-header and cell reorder, shared map/editor pane, Plan/Ideas switch and reload.",
   );
 } catch (error) {
   primaryFailure = error;

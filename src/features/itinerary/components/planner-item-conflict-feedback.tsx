@@ -23,7 +23,7 @@ export function PlannerItemConflictFeedback({
           message={
             editing
               ? "Reloading replaces only this item and keeps the editor open."
-              : "Reload the latest day and keep this draft open."
+              : "Reload the latest day and keep this editor open."
           }
         />
       </p>

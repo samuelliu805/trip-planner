@@ -8,6 +8,7 @@ import {
   usePlannerOutbox,
 } from "../../../src/features/itinerary/planner-outbox-provider";
 import { PlannerItemEditorDialog } from "../../../src/features/itinerary/components/planner-item-editor-dialog";
+import { PlannerItemRow } from "../../../src/features/itinerary/components/planner-item-row";
 import { PlannerSyncStatus } from "../../../src/features/itinerary/components/planner-sync-status";
 import { PlannerCellContextMenu } from "../../../src/features/itinerary/components/planner-cell-context-menu";
 import { ArrangeActivitiesSheet } from "../../../src/features/itinerary/components/arrange-activities-sheet";
@@ -21,7 +22,10 @@ import {
   useCopyItineraryItems,
   useRemoveTripDay,
 } from "../../../src/features/itinerary/day-mutations";
-import { PlannerInlineFields } from "../../../src/features/itinerary/components/planner-inline-fields";
+import {
+  PlannerEditorDock,
+  PlannerEditorDockTarget,
+} from "../../../src/features/itinerary/components/planner-editor-dock";
 import { useResearchSync } from "../../../src/features/research/use-research-sync";
 import { TripForm } from "../../../src/features/trips/components/trip-form";
 import { updateTripSchema } from "../../../src/features/trips/schema";
@@ -56,7 +60,6 @@ function EditorFixture() {
   const insert = useInsertTripDay(initial.variant.trip_id, initial.variant.id);
   const copy = useCopyItineraryItems(initial.variant.trip_id, initial.variant.id);
   const removeDay = useRemoveTripDay(initial.variant.trip_id, initial.variant.id);
-  const [inline, setInline] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [routes, setRoutes] = React.useState(false);
   const [plans, setPlans] = React.useState(false);
@@ -71,142 +74,171 @@ function EditorFixture() {
     window.__workspace = workspace;
   }, [runtime, workspace, ideas]);
   return (
-    <div>
-      {window.__otherWorkspace ? (
-        <PlannerOutboxProvider workspace={window.__otherWorkspace}>
-          <CrossPlanCopyProbe source={workspace} target={window.__otherWorkspace} />
-        </PlannerOutboxProvider>
-      ) : null}
-      <PlannerSyncStatus mutating={false} />
-      <button onClick={() => setPlaces((value) => !value)}>Toggle place search</button>
-      {places ? <PlaceProbe tripId={initial.variant.trip_id} /> : null}
-      <button onClick={() => setFiles((value) => !value)}>Toggle attachment viewer</button>
-      {files ? <AttachmentProbe workspace={workspace} /> : null}
-      <button onClick={() => setWorkflows((value) => !value)}>Toggle workflows</button>
-      {workflows ? <WorkflowProbe workspace={workspace} /> : null}
-      <button onClick={() => setTripList((value) => !value)}>Toggle trip list</button>
-      {tripList ? <TripListProbe workspace={workspace} /> : null}
-      <button onClick={() => setRoutes((value) => !value)}>Toggle routes fixture</button>
-      <BackgroundProbe workspace={workspace} />
-      {routes ? <RouteProbe workspace={workspace} /> : null}
-      <button onClick={() => setPlans((value) => !value)}>Toggle Plans fixture</button>
-      {plans ? <VariantProbe workspace={workspace} /> : null}
-      <button onClick={() => setSettingsOpen(true)}>Trip settings</button>
-      <TripSettingsEditor open={settingsOpen} onOpenChange={setSettingsOpen} title="Trip settings">
-        <TripForm trip={window.__trip} />
-      </TripSettingsEditor>
-      <button
-        onClick={() =>
-          insert.mutate({
-            tripId: initial.variant.trip_id,
-            variantId: initial.variant.id,
-            beforeDayNumber: 2,
-            expectedDaysVersion: workspace.variant.days_version,
-            operationId: crypto.randomUUID(),
-          })
-        }
-      >
-        Insert day
-      </button>
-      <button
-        onClick={() => {
-          const day = workspace.days[1];
-          removeDay.mutate({
-            tripId: initial.variant.trip_id,
-            variantId: initial.variant.id,
-            dayId: day.id,
-            expectedDaysVersion: workspace.variant.days_version,
-            expectedVersion: day.version,
-            expectedContentVersion: day.content_version,
-            operationId: crypto.randomUUID(),
-          });
-        }}
-      >
-        Delete second day
-      </button>
-      <button
-        onClick={() =>
-          copy.mutate({
-            tripId: initial.variant.trip_id,
-            variantId: initial.variant.id,
-            targetDayId: workspace.days.at(-1).id,
-            sourceItemIds: [day.items[0].id],
-            sourceVersions: [day.items[0].version],
-            expectedItemsVersion: workspace.days.at(-1).items_version,
-            operationId: crypto.randomUUID(),
-          })
-        }
-      >
-        Copy first to last
-      </button>
-      <button
-        onClick={() => {
-          const source = day.items.find((item) => item.details?.ideaResearchItemId);
-          if (!source) return;
-          copy.mutate({
-            tripId: initial.variant.trip_id,
-            variantId: initial.variant.id,
-            targetDayId: workspace.days.at(-1).id,
-            sourceItemIds: [source.id],
-            sourceVersions: [source.version],
-            expectedItemsVersion: workspace.days.at(-1).items_version,
-            operationId: crypto.randomUUID(),
-          });
-        }}
-      >
-        Copy pending Idea to last
-      </button>
-      <button onClick={() => setInline(true)}>Inline edit first</button>
-      {inline ? <PlannerInlineFields item={day.items[0]} onClose={() => setInline(false)} /> : null}
-      <button onClick={() => setEditor({ dayId: day.id, type: "meal" })}>New meal</button>
-      <button
-        onClick={() => setEditor({ dayId: day.id, type: day.items[0].type, item: day.items[0] })}
-      >
-        Edit first
-      </button>
-      <button
-        onClick={() =>
-          setEditor({
-            dayId: workspace.days[1].id,
-            type: "activity",
-            item: workspace.days[1].items[0],
-          })
-        }
-      >
-        Edit other day
-      </button>
-      <p role="alert">{error}</p>
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <div data-test-cell tabIndex={0}>
-            {orderedMatrixItems(day.items).map((item) => (
-              <button
-                data-test-item={item.id}
-                key={item.id}
-                onClick={() => setEditor({ dayId: day.id, type: item.type, item })}
-              >
-                {item.title}
-              </button>
-            ))}
+    <div className="grid min-[1200px]:grid-cols-[minmax(0,1fr)_400px]" style={{ height: "100%" }}>
+      <div>
+        {window.__otherWorkspace ? (
+          <PlannerOutboxProvider workspace={window.__otherWorkspace}>
+            <CrossPlanCopyProbe source={workspace} target={window.__otherWorkspace} />
+          </PlannerOutboxProvider>
+        ) : null}
+        <PlannerSyncStatus mutating={false} />
+        <button onClick={() => setPlaces((value) => !value)}>Toggle place search</button>
+        {places ? <PlaceProbe tripId={initial.variant.trip_id} /> : null}
+        <button onClick={() => setFiles((value) => !value)}>Toggle attachment viewer</button>
+        {files ? <AttachmentProbe workspace={workspace} /> : null}
+        <button onClick={() => setWorkflows((value) => !value)}>Toggle workflows</button>
+        {workflows ? <WorkflowProbe workspace={workspace} /> : null}
+        <button onClick={() => setTripList((value) => !value)}>Toggle trip list</button>
+        {tripList ? <TripListProbe workspace={workspace} /> : null}
+        <button onClick={() => setRoutes((value) => !value)}>Toggle routes fixture</button>
+        <BackgroundProbe workspace={workspace} />
+        {routes ? <RouteProbe workspace={workspace} /> : null}
+        <button onClick={() => setPlans((value) => !value)}>Toggle Plans fixture</button>
+        {plans ? <VariantProbe workspace={workspace} /> : null}
+        <button onClick={() => setSettingsOpen(true)}>Trip settings</button>
+        <TripSettingsEditor
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          title="Trip settings"
+        >
+          <TripForm trip={window.__trip} />
+        </TripSettingsEditor>
+        <button
+          onClick={() =>
+            insert.mutate({
+              tripId: initial.variant.trip_id,
+              variantId: initial.variant.id,
+              beforeDayNumber: 2,
+              expectedDaysVersion: workspace.variant.days_version,
+              operationId: crypto.randomUUID(),
+            })
+          }
+        >
+          Insert day
+        </button>
+        <button
+          onClick={() => {
+            const day = workspace.days[1];
+            removeDay.mutate({
+              tripId: initial.variant.trip_id,
+              variantId: initial.variant.id,
+              dayId: day.id,
+              expectedDaysVersion: workspace.variant.days_version,
+              expectedVersion: day.version,
+              expectedContentVersion: day.content_version,
+              operationId: crypto.randomUUID(),
+            });
+          }}
+        >
+          Delete second day
+        </button>
+        <button
+          onClick={() =>
+            copy.mutate({
+              tripId: initial.variant.trip_id,
+              variantId: initial.variant.id,
+              targetDayId: workspace.days.at(-1).id,
+              sourceItemIds: [day.items[0].id],
+              sourceVersions: [day.items[0].version],
+              expectedItemsVersion: workspace.days.at(-1).items_version,
+              operationId: crypto.randomUUID(),
+            })
+          }
+        >
+          Copy first to last
+        </button>
+        <button
+          onClick={() => {
+            const source = day.items.find((item) => item.details?.ideaResearchItemId);
+            if (!source) return;
+            copy.mutate({
+              tripId: initial.variant.trip_id,
+              variantId: initial.variant.id,
+              targetDayId: workspace.days.at(-1).id,
+              sourceItemIds: [source.id],
+              sourceVersions: [source.version],
+              expectedItemsVersion: workspace.days.at(-1).items_version,
+              operationId: crypto.randomUUID(),
+            });
+          }}
+        >
+          Copy pending Idea to last
+        </button>
+        <button onClick={() => setEditor({ dayId: day.id, type: "meal" })}>New meal</button>
+        <button
+          onClick={() => setEditor({ dayId: day.id, type: day.items[0].type, item: day.items[0] })}
+        >
+          Edit first
+        </button>
+        <button
+          onClick={() =>
+            setEditor({
+              dayId: workspace.days[1].id,
+              type: "activity",
+              item: workspace.days[1].items[0],
+            })
+          }
+        >
+          Edit other day
+        </button>
+        <p role="alert">{error}</p>
+        {workspace.variant.name === "NZ ordering regression" ? (
+          <div data-flight-rows>
+            {orderedMatrixItems(day.items)
+              .filter((item) => item.type === "flight")
+              .map((item) => (
+                <PlannerItemRow
+                  key={item.id}
+                  item={item}
+                  interactive={false}
+                  selected={false}
+                  onCopy={() => {}}
+                  onDelete={() => {}}
+                  onEdit={() => {}}
+                  onSelect={() => {}}
+                />
+              ))}
           </div>
-        </ContextMenuTrigger>
-        <PlannerCellContextMenu
-          canReorder
-          onReorder={() => setArranging(true)}
-          dayMutationPending={false}
-          hasItems
-          isOnlyDay={false}
-          insertDayAfter={() => {}}
-          insertDayBefore={() => {}}
-          onCopyCell={() => {}}
-          onCopyItem={() => {}}
-          onDeleteCell={() => {}}
-          onDeleteDay={() => {}}
-          onDeleteItem={() => {}}
-          onEditItem={() => {}}
-          onPaste={() => {}}
-        />
-      </ContextMenu>
+        ) : null}
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <div data-test-cell tabIndex={0}>
+              {orderedMatrixItems(day.items).map((item) => (
+                <button
+                  data-test-item={item.id}
+                  key={item.id}
+                  onClick={() => setEditor({ dayId: day.id, type: item.type, item })}
+                >
+                  {item.title}
+                </button>
+              ))}
+            </div>
+          </ContextMenuTrigger>
+          <PlannerCellContextMenu
+            canReorder
+            onReorder={() => setArranging(true)}
+            dayMutationPending={false}
+            hasItems
+            isOnlyDay={false}
+            insertDayAfter={() => {}}
+            insertDayBefore={() => {}}
+            onCopyCell={() => {}}
+            onCopyItem={() => {}}
+            onDeleteCell={() => {}}
+            onDeleteDay={() => {}}
+            onDeleteItem={() => {}}
+            onEditItem={() => {}}
+            onPaste={() => {}}
+          />
+        </ContextMenu>
+      </div>
+      <div className="hidden min-h-0 min-[1200px]:block">
+        <PlannerEditorDockTarget>
+          <div data-fixture-map style={{ height: "100%" }}>
+            Map fixture
+          </div>
+        </PlannerEditorDockTarget>
+      </div>
       <PlannerItemEditorDialog
         editor={editor}
         defaultCurrency="USD"
@@ -266,7 +298,11 @@ function OwnedEditorFixture() {
           plannerQueryKey(initial.variant.trip_id, initial.variant.id),
         )}
       >
-        <EditorFixture />
+        <div style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
+          <PlannerEditorDock>
+            <EditorFixture />
+          </PlannerEditorDock>
+        </div>
       </PlannerOutboxProvider>
     </>
   );

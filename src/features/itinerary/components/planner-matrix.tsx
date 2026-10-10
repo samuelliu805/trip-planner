@@ -22,11 +22,7 @@ import { useInitialMatrixScrollPosition } from "@/features/itinerary/hooks/use-i
 import { useMobileMatrixTopContainment } from "@/features/itinerary/hooks/use-mobile-matrix-top-containment";
 import { deriveDayLocality } from "@/features/itinerary/locality";
 import { isMatrixVisibleItem } from "@/features/itinerary/flight-endpoints";
-import {
-  orderedMatrixItems,
-  orderedDestinationActivities,
-  isActivityOrderAnchor,
-} from "../activity-order";
+import { orderedMatrixItems, orderedDayActivities } from "../activity-order";
 
 export function PlannerMatrix({
   compactMapEmptyState,
@@ -134,6 +130,8 @@ export function PlannerMatrix({
                   isLastDay={row === workspace.days.length - 1}
                   onInsert={(position) => void insertDay(position)}
                   onSelect={() => selectDay(row)}
+                  onReorder={() => onReorder(day)}
+                  canReorder={orderedDayActivities(day.items).length > 1}
                   pending={dayMutationPending}
                   selected={selectedDayRow === row}
                 />
@@ -245,14 +243,7 @@ export function PlannerMatrix({
                         </div>
                       </ContextMenuTrigger>
                       <PlannerCellContextMenu
-                        canReorder={
-                          orderedDestinationActivities(day.items).length > 1 &&
-                          items.some(
-                            (item) =>
-                              ["activity", "meal"].includes(item.type) &&
-                              !isActivityOrderAnchor(item),
-                          )
-                        }
+                        canReorder={orderedDayActivities(day.items).length > 1}
                         onReorder={() => onReorder(day)}
                         dayMutationPending={dayMutationPending}
                         hasItems={items.length > 0}

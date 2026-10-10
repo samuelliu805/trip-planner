@@ -8,6 +8,7 @@ import { useLocalPlanNavigation } from "../../variants/use-local-plan-navigation
 
 import { ArrangeActivitiesSheet } from "./arrange-activities-sheet";
 import { PlannerClearCellsDialog } from "./planner-clear-cells-dialog";
+import { PlannerEditorDock } from "./planner-editor-dock";
 import { PlannerMatrix } from "./planner-matrix";
 import {
   PlannerItemSaveFeedbackAlert,
@@ -184,140 +185,146 @@ function PlannerWorkspaceVariant(
         }
         variantId={c.workspace.variant.id}
       />
-      <PlannerMatrix
-        compactMapEmptyState={c.map.compactMapEmptyState}
-        compactMapLines={c.map.compactMapLines}
-        compactMapMarkers={c.map.compactMapMarkers}
-        compactMapViewportKey={c.map.compactMapViewportKey}
-        comparison={c.map.comparison}
-        containerRef={c.containerRef}
-        copyCell={c.clipboard.copyCellToClipboard}
-        copyItem={c.clipboard.copyItemToClipboard}
-        dayCityLayerAvailable={c.map.dayCityLayerAvailable}
-        dayMapLayer={c.map.dayMapLayer}
-        dayMutationPending={c.dayMutationPending}
-        dayRoute={c.dayRoute}
-        decisionSummary={c.map.decisionSummary}
-        decisionSummaryPanelOpen={c.map.decisionSummaryPanelOpen}
-        deleteItem={c.deleteItem}
-        fillDragging={c.fillDragging}
-        fillSourceRight={c.fillSourceRight}
-        focusCell={c.interactions.focusCell}
-        gridTemplate={c.gridTemplate}
-        handleCellKey={c.interactions.handleCellKey}
-        insertDay={c.insertDay}
-        pasteClipboard={c.clipboard.pasteAvailableClipboard}
-        requestClearCell={c.requestClearCell}
-        requestRemoveDay={setDayToRemove}
-        isFillDragging={c.isFillDragging}
-        mapEmptyState={c.map.mapEmptyState}
-        mapLines={c.map.mapLines}
-        mapMarkers={c.map.mapMarkers}
-        mapMode={c.map.mapMode}
-        mapViewportKey={c.map.mapViewportKey}
-        onComparisonSheetOpen={() => c.map.setComparisonSheetOpen(true)}
-        onDayMapLayerChange={c.map.setDayMapLayer}
-        onDecisionSummaryOpen={() => c.map.setDecisionSummaryPanelOpen(true)}
-        onDecisionSummaryPanelClose={() => c.map.setDecisionSummaryPanelOpen(false)}
-        onEditMapItem={c.editMapItem}
-        onMapExpand={mapSheet.open}
-        onReorder={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}
-        onMapModeChange={c.changeMapModeAndSelection}
-        onMapSelectionClear={c.selectMapMarker}
-        onMarkerClick={c.selectMapMarker}
-        openEditorFromDoubleClick={c.interactions.openEditorFromDoubleClick}
-        overviewRoute={c.map.overviewRoute}
-        selectedCount={c.selectedCount}
-        selectedDayRow={c.selectedDayRow}
-        selectedItemId={c.selectedItemId}
-        selectedMapItem={c.map.selectedMapItem}
-        selectionAnchor={c.selectionAnchor}
-        selectionEnd={c.selectionEnd}
-        selectionEndRef={c.selectionEndRef}
-        selectDay={c.interactions.selectDay}
-        selectItem={c.interactions.selectItem}
-        selectContextCell={c.interactions.selectContextCell}
-        setEditor={c.setEditor}
-        setSelectionEnd={c.setSelectionEnd}
-        setSplit={c.setSplit}
-        split={c.split}
-        startFill={c.interactions.startFill}
-        startRangeSelection={c.interactions.startRangeSelection}
-        startResize={c.interactions.startResize}
-        tripTitle={props.trip.title}
-        visibleSelectionBounds={c.visibleSelectionBounds}
-        workspace={c.projectedWorkspace}
-      />
-      {props.guestExperience ? null : (
-        <TripMobileTabBar active="plan" tripId={props.trip.id} variantId={c.workspace.variant.id} />
-      )}
-      <PlannerSheets
-        compactMapEmptyState={c.map.compactMapEmptyState}
-        compactMapLines={c.map.compactMapLines}
-        compactMapMarkers={c.map.compactMapMarkers}
-        compactMapViewportKey={c.map.compactMapViewportKey}
-        comparison={c.map.comparison}
-        comparisonSheetOpen={c.map.comparisonSheetOpen}
-        copyDaysOpen={c.clipboard.copyDaysOpen}
-        copyPending={c.clipboard.requestPending}
-        dayCityLayerAvailable={c.map.dayCityLayerAvailable}
-        dayMapLayer={c.map.dayMapLayer}
-        dayRoute={c.dayRoute}
-        decisionSummary={c.map.decisionSummary}
-        decisionSummarySheetOpen={c.map.decisionSummarySheetOpen}
-        defaultCurrency={props.trip.currency}
-        editor={c.editor}
-        mapEmptyState={c.map.mapEmptyState}
-        mapExpanded={c.mapExpanded}
-        mapLines={c.map.mapLines}
-        mapMarkers={c.map.mapMarkers}
-        mapMode={c.map.mapMode}
-        mapViewportKey={c.map.mapViewportKey}
-        onComparisonSheetOpenChange={(open) => {
-          c.map.setComparisonSheetOpen(open);
-          if (open) c.map.setDecisionSummarySheetOpen(false);
-        }}
-        onCopyDaysOpenChange={c.clipboard.setCopyDaysOpen}
-        onCopyToSelectedDays={() => void c.clipboard.copyToSelectedDays()}
-        onDayMapLayerChange={c.map.setDayMapLayer}
-        onDecisionSummarySheetOpenChange={(open) => {
-          c.map.setDecisionSummarySheetOpen(open);
-          if (open) c.map.setComparisonSheetOpen(false);
-        }}
-        onEditMapItem={c.editMapItem}
-        onEditorClose={() => {
-          c.setEditor(null);
-          c.setDraftItem(null);
-        }}
-        onEditorDraftChange={c.setDraftItem}
-        onInteractionError={c.setInteractionError}
-        onItemSaveFeedback={setItemSaveFeedback}
-        onMapExpandedChange={(open) => {
-          mapSheet.onOpenChange(open);
-          if (
-            !open &&
-            c.map.mapMode === "comparison" &&
-            !c.map.comparisonSheetOpen &&
-            !c.map.decisionSummarySheetOpen
-          )
-            c.map.exitComparison();
-        }}
-        onMapModeChange={c.changeMapModeAndSelection}
-        onMapSelectionClear={c.selectMapMarker}
-        onMarkerClick={c.selectMapMarker}
-        onSettingsOpenChange={c.setSettingsOpen}
-        onTargetDaysChange={c.clipboard.setTargetDays}
-        overviewRoute={c.map.overviewRoute}
-        selectedItem={c.map.selectedMapItem}
-        selectionSourceDayId={c.workspace.days[c.visibleSelectionBounds.top]?.id}
-        settings={props.settings}
-        settingsOpen={c.settingsOpen}
-        shareAttachmentsEnabled={props.shareAttachmentsEnabled}
-        targetDays={c.clipboard.targetDays}
-        tripId={props.trip.id}
-        unavailableTransportModes={c.unavailableTransportModes}
-        workspace={c.workspace}
-      />
+      <PlannerEditorDock>
+        <PlannerMatrix
+          compactMapEmptyState={c.map.compactMapEmptyState}
+          compactMapLines={c.map.compactMapLines}
+          compactMapMarkers={c.map.compactMapMarkers}
+          compactMapViewportKey={c.map.compactMapViewportKey}
+          comparison={c.map.comparison}
+          containerRef={c.containerRef}
+          copyCell={c.clipboard.copyCellToClipboard}
+          copyItem={c.clipboard.copyItemToClipboard}
+          dayCityLayerAvailable={c.map.dayCityLayerAvailable}
+          dayMapLayer={c.map.dayMapLayer}
+          dayMutationPending={c.dayMutationPending}
+          dayRoute={c.dayRoute}
+          decisionSummary={c.map.decisionSummary}
+          decisionSummaryPanelOpen={c.map.decisionSummaryPanelOpen}
+          deleteItem={c.deleteItem}
+          fillDragging={c.fillDragging}
+          fillSourceRight={c.fillSourceRight}
+          focusCell={c.interactions.focusCell}
+          gridTemplate={c.gridTemplate}
+          handleCellKey={c.interactions.handleCellKey}
+          insertDay={c.insertDay}
+          pasteClipboard={c.clipboard.pasteAvailableClipboard}
+          requestClearCell={c.requestClearCell}
+          requestRemoveDay={setDayToRemove}
+          isFillDragging={c.isFillDragging}
+          mapEmptyState={c.map.mapEmptyState}
+          mapLines={c.map.mapLines}
+          mapMarkers={c.map.mapMarkers}
+          mapMode={c.map.mapMode}
+          mapViewportKey={c.map.mapViewportKey}
+          onComparisonSheetOpen={() => c.map.setComparisonSheetOpen(true)}
+          onDayMapLayerChange={c.map.setDayMapLayer}
+          onDecisionSummaryOpen={() => c.map.setDecisionSummaryPanelOpen(true)}
+          onDecisionSummaryPanelClose={() => c.map.setDecisionSummaryPanelOpen(false)}
+          onEditMapItem={c.editMapItem}
+          onMapExpand={mapSheet.open}
+          onReorder={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}
+          onMapModeChange={c.changeMapModeAndSelection}
+          onMapSelectionClear={c.selectMapMarker}
+          onMarkerClick={c.selectMapMarker}
+          openEditorFromDoubleClick={c.interactions.openEditorFromDoubleClick}
+          overviewRoute={c.map.overviewRoute}
+          selectedCount={c.selectedCount}
+          selectedDayRow={c.selectedDayRow}
+          selectedItemId={c.selectedItemId}
+          selectedMapItem={c.map.selectedMapItem}
+          selectionAnchor={c.selectionAnchor}
+          selectionEnd={c.selectionEnd}
+          selectionEndRef={c.selectionEndRef}
+          selectDay={c.interactions.selectDay}
+          selectItem={c.interactions.selectItem}
+          selectContextCell={c.interactions.selectContextCell}
+          setEditor={c.setEditor}
+          setSelectionEnd={c.setSelectionEnd}
+          setSplit={c.setSplit}
+          split={c.split}
+          startFill={c.interactions.startFill}
+          startRangeSelection={c.interactions.startRangeSelection}
+          startResize={c.interactions.startResize}
+          tripTitle={props.trip.title}
+          visibleSelectionBounds={c.visibleSelectionBounds}
+          workspace={c.projectedWorkspace}
+        />
+        {props.guestExperience ? null : (
+          <TripMobileTabBar
+            active="plan"
+            tripId={props.trip.id}
+            variantId={c.workspace.variant.id}
+          />
+        )}
+        <PlannerSheets
+          compactMapEmptyState={c.map.compactMapEmptyState}
+          compactMapLines={c.map.compactMapLines}
+          compactMapMarkers={c.map.compactMapMarkers}
+          compactMapViewportKey={c.map.compactMapViewportKey}
+          comparison={c.map.comparison}
+          comparisonSheetOpen={c.map.comparisonSheetOpen}
+          copyDaysOpen={c.clipboard.copyDaysOpen}
+          copyPending={c.clipboard.requestPending}
+          dayCityLayerAvailable={c.map.dayCityLayerAvailable}
+          dayMapLayer={c.map.dayMapLayer}
+          dayRoute={c.dayRoute}
+          decisionSummary={c.map.decisionSummary}
+          decisionSummarySheetOpen={c.map.decisionSummarySheetOpen}
+          defaultCurrency={props.trip.currency}
+          editor={c.editor}
+          mapEmptyState={c.map.mapEmptyState}
+          mapExpanded={c.mapExpanded}
+          mapLines={c.map.mapLines}
+          mapMarkers={c.map.mapMarkers}
+          mapMode={c.map.mapMode}
+          mapViewportKey={c.map.mapViewportKey}
+          onComparisonSheetOpenChange={(open) => {
+            c.map.setComparisonSheetOpen(open);
+            if (open) c.map.setDecisionSummarySheetOpen(false);
+          }}
+          onCopyDaysOpenChange={c.clipboard.setCopyDaysOpen}
+          onCopyToSelectedDays={() => void c.clipboard.copyToSelectedDays()}
+          onDayMapLayerChange={c.map.setDayMapLayer}
+          onDecisionSummarySheetOpenChange={(open) => {
+            c.map.setDecisionSummarySheetOpen(open);
+            if (open) c.map.setComparisonSheetOpen(false);
+          }}
+          onEditMapItem={c.editMapItem}
+          onEditorClose={() => {
+            c.setEditor(null);
+            c.setDraftItem(null);
+          }}
+          onEditorDraftChange={c.setDraftItem}
+          onInteractionError={c.setInteractionError}
+          onItemSaveFeedback={setItemSaveFeedback}
+          onMapExpandedChange={(open) => {
+            mapSheet.onOpenChange(open);
+            if (
+              !open &&
+              c.map.mapMode === "comparison" &&
+              !c.map.comparisonSheetOpen &&
+              !c.map.decisionSummarySheetOpen
+            )
+              c.map.exitComparison();
+          }}
+          onMapModeChange={c.changeMapModeAndSelection}
+          onMapSelectionClear={c.selectMapMarker}
+          onMarkerClick={c.selectMapMarker}
+          onSettingsOpenChange={c.setSettingsOpen}
+          onTargetDaysChange={c.clipboard.setTargetDays}
+          overviewRoute={c.map.overviewRoute}
+          selectedItem={c.map.selectedMapItem}
+          selectionSourceDayId={c.workspace.days[c.visibleSelectionBounds.top]?.id}
+          settings={props.settings}
+          settingsOpen={c.settingsOpen}
+          shareAttachmentsEnabled={props.shareAttachmentsEnabled}
+          targetDays={c.clipboard.targetDays}
+          tripId={props.trip.id}
+          unavailableTransportModes={c.unavailableTransportModes}
+          workspace={c.workspace}
+        />
+      </PlannerEditorDock>
       <PlannerClearCellsDialog
         conflict={c.interactionConflict}
         error={c.interactionError}
