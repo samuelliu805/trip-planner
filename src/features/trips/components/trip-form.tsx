@@ -25,7 +25,7 @@ export function TripForm({
   surface?: "planner_app_bar" | "trip_list";
   trip: Trip;
 }) {
-  const { locale, t } = useI18n(),
+  const { locale } = useI18n(),
     editor = useTripSettingsEditorContext();
   const sync = useSettingsSync(trip);
   const { data: projectedTrip } = useQuery<Trip>({
@@ -154,13 +154,6 @@ export function TripForm({
       );
     }
   }
-  const close = () => {
-    if (draft.hasChanges()) {
-      if (!window.confirm(t("Exit without saving?"))) return;
-      if (!draft.discard()) return;
-    }
-    editor.onClose();
-  };
   async function reloadLatest() {
     setLoading(true);
     try {
@@ -188,8 +181,8 @@ export function TripForm({
       pending={false}
       pendingLabel="Saving…"
       saveDisabled={!sync}
-      onCancel={close}
-      onClose={close}
+      onCancel={editor.onClose}
+      onClose={editor.onClose}
       onSave={() => save()}
     >
       <div className="flex min-w-0 items-start gap-3 border-b pb-4 sm:gap-4 sm:pb-6">

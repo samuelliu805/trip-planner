@@ -53,7 +53,7 @@ export function RouteVariantEditorDialog({
   tripId: string;
   variants: PlannerVariant[];
 }) {
-  const { locale, t } = useI18n();
+  const { locale } = useI18n();
   const [initialValues] = useState(() =>
     mode === "metadata"
       ? { color: activeVariant.color.toLowerCase(), name: activeVariant.name }
@@ -163,14 +163,6 @@ export function RouteVariantEditorDialog({
     }
   }
 
-  function closeEditor() {
-    if (local.hasChanges()) {
-      if (!window.confirm(t("Exit without saving?"))) return;
-      if (!local.discard()) return;
-    }
-    onOpenChange(false);
-  }
-
   async function reloadLatest() {
     const key = variantListQueryKey(tripId);
     const loaded = await queryClient.fetchQuery({
@@ -205,11 +197,7 @@ export function RouteVariantEditorDialog({
         : "Edit Plan";
 
   return (
-    <PlannerEditorScreen
-      editorKind="variant"
-      onOpenChange={(value) => (value ? onOpenChange(true) : closeEditor())}
-      open={open}
-    >
+    <PlannerEditorScreen editorKind="variant" onOpenChange={onOpenChange} open={open}>
       <PlannerEditorForm
         compactActions
         header={
@@ -223,12 +211,12 @@ export function RouteVariantEditorDialog({
                   : "The Plan name and color identify this version throughout the planner."
             }
             error={error ?? local.error ?? sourceQuery.error?.message}
-            onClose={closeEditor}
+            onClose={() => onOpenChange(false)}
             title={title}
           />
         }
-        onCancel={closeEditor}
-        onClose={closeEditor}
+        onCancel={() => onOpenChange(false)}
+        onClose={() => onOpenChange(false)}
         onSave={() => submit()}
         pending={pending}
         pendingLabel="Saving…"

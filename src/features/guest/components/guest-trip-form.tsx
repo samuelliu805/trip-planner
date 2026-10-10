@@ -46,7 +46,7 @@ export function GuestTripForm({
   onSave: (settings: GuestTripSettings) => boolean;
   trip: Trip;
 }) {
-  const { locale, t } = useI18n();
+  const { locale } = useI18n();
   const editor = useTripSettingsEditorContext();
   const defaults = {
     title: trip.title,
@@ -106,20 +106,12 @@ export function GuestTripForm({
     if (close) editor.onClose();
   }
 
-  function close() {
-    if (fields.hasChanges()) {
-      if (!window.confirm(t("Exit without saving?"))) return;
-      if (!fields.discard()) return;
-    }
-    editor.onClose();
-  }
-
   return (
     <PlannerEditorForm
       compactActions
       header={null}
-      onCancel={close}
-      onClose={close}
+      onCancel={editor.onClose}
+      onClose={editor.onClose}
       onSave={() => save()}
       pending={false}
       pendingLabel="Saving…"

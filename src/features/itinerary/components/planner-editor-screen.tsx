@@ -16,6 +16,7 @@ const subscribeDesktop = (listener: () => void) => {
 export function PlannerEditorScreen({
   children,
   editorKind,
+  editorIdentity,
   initialFocusSelector,
   onDismissReason,
   onOpenChange,
@@ -24,6 +25,7 @@ export function PlannerEditorScreen({
 }: {
   children: ReactNode;
   editorKind?: "research" | "trip-people" | "trip-settings" | "variant";
+  editorIdentity?: string;
   initialFocusSelector?: string;
   onDismissReason?: (reason: "escape" | "overlay") => void;
   onOpenChange: (open: boolean) => void;
@@ -43,7 +45,7 @@ export function PlannerEditorScreen({
   useEffect(() => {
     if (!docked || !open) return;
     setView?.("editor");
-  }, [docked, open, setView]);
+  }, [docked, open, setView, editorIdentity]);
 
   return (
     <Sheet modal={!docked} onOpenChange={onOpenChange} open={open}>

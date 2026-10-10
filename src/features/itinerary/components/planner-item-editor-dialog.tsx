@@ -70,6 +70,7 @@ export function PlannerItemEditorDialog({
   return (
     <PlannerEditorScreen
       nonBlocking
+      editorIdentity={editor?.item?.id ?? `${editor?.dayId}:${editor?.type}:${creationSequence}`}
       onDismissReason={(reason) => {
         dismissReason.current = reason;
       }}

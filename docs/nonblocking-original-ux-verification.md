@@ -1,8 +1,8 @@
 # Nonblocking editing with the original editing flow
 
-This follow-up restores explicit Save, required-field step validation, Confirm order, and Exit without saving. It removes Quick edit and normal draft badges/actions. Durable raw-field recovery and accepted-operation outboxes remain internal; background ACKs, failures and conflicts keep their existing ownership and recovery guarantees.
+This follow-up restores explicit Save, required-field step validation, Confirm order, and Exit without saving. It removes Quick edit and normal draft badges/actions. Itinerary and Ideas retain their existing unsaved-exit confirmation; settings and Plan editors retain fields on close without adding a confirmation flow. Durable raw-field recovery and accepted-operation outboxes remain internal; background ACKs, failures and conflicts keep their existing ownership and recovery guarantees.
 
-At desktop widths of 1200px and above, itinerary editing reuses the existing right map pane and draggable divider. Map/Edit buttons switch that pane without unmounting the form. Closing or saving restores the full map. The left Plan remains interactive. Smaller screens retain the existing focused modal. Trip settings, Ideas and Plan metadata retain their original modal surfaces.
+At desktop widths of 1200px and above, itinerary editing reuses the existing right map pane and draggable divider. Map/Edit buttons switch that pane without unmounting the form. Opening another event from the Plan returns the pane to Edit; previous unsaved fields remain recoverable. Closing or saving restores the full map. The left Plan remains interactive. Smaller screens retain the existing focused modal. Trip settings, Ideas and Plan metadata retain their original modal surfaces.
 
 Right-click menus on day headers and every day cell expose Reorder day events, enabled when that day has multiple activities. Timed anchors retain their existing protections. The Primary badge stays on one line while long Plan names truncate.
 

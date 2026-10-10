@@ -795,7 +795,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.doesNotMatch(tripBarMenu, /emphasis|bg-primary text-primary-foreground/);
   assert.match(tripBarMenu, /focusPanelOnOpen/);
   assert.match(editor, /className="planner-item-dialog p-0"/);
-  assert.match(editor, /usePlannerEditorViewportLock\(open && !floating\)/);
+  assert.match(editor, /usePlannerEditorViewportLock\(open && !docked\)/);
   assert.match(editor, /data-planner-editor-scroll[\s\S]*\{header\}[\s\S]*\{children\}/);
   assert.doesNotMatch(editor, /overscroll-contain/);
   assert.match(itemDialog, /<PlannerEditorScreen/);
@@ -818,8 +818,9 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     /Rename the trip, change its length, or adjust its dates and currency\.|SheetDescription/,
   );
   assert.match(form, /<Settings2/);
-  assert.match(form, /onCancel=\{close\}/);
-  assert.match(form, /const close = \(\) => \{\s*autosave\.flush\(\);\s*editor\.onClose\(\);\s*\}/);
+  assert.match(form, /onCancel=\{editor\.onClose\}/);
+  assert.match(form, /onClose=\{editor\.onClose\}/);
+  assert.doesNotMatch(form, /autosave\.flush|useDraftAutosave/);
   assert.match(form, /gap-3 border-b pb-4 sm:gap-4 sm:pb-6/);
   assert.match(editorForm, /compactActions \? "space-y-6 sm:space-y-10" : "space-y-10"/);
   assert.match(
@@ -3550,7 +3551,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
   assert.match(editorDialog, /<PlannerEditorScreen/);
-  assert.match(editorScreen, /usePlannerEditorViewportLock\(open && !floating\)/);
+  assert.match(editorScreen, /usePlannerEditorViewportLock\(open && !docked\)/);
   assert.match(editorViewportLock, /planner-editor-viewport-locked/);
   assert.match(editorViewportLock, /--planner-editor-viewport-height/);
   assert.match(editorViewportLock, /visualViewport\?\.addEventListener\("scroll", syncViewport\)/);

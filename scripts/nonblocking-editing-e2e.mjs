@@ -2466,10 +2466,14 @@ try {
       assert.equal(await page.locator("[data-fixture-map]").isVisible(), true);
       await page.getByRole("button", { name: "Show editor", exact: true }).click();
       assert.equal(await title(page).inputValue(), "Panel A");
+      await page.getByRole("button", { name: "Show map", exact: true }).click();
+      await page.getByRole("button", { name: "Edit other day", exact: true }).click();
+      await page.getByRole("dialog").waitFor({ state: "visible" });
+      await title(page).fill("Other panel B");
       await saveItem(page);
       assert.equal(await page.locator("[data-fixture-map]").isVisible(), true);
-      await page.getByRole("button", { name: "Edit other day", exact: true }).click();
-      await title(page).fill("Other panel B");
+      await page.getByRole("button", { name: "Edit first", exact: true }).click();
+      assert.equal(await title(page).inputValue(), "Panel A");
       await saveItem(page);
       await synced(page);
       assert.equal(workspace.days[0].items[0].title, "Panel A");
