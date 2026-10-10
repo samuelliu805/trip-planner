@@ -22,7 +22,7 @@ import { measureMatrixContentAlignment } from "./lib/public-sharing-table-conten
 import { stopChild } from "./lib/child-process.mjs";
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { googleFlightsBookingSample } from "./lib/idea-provider-samples.mjs";
-import { clickCloudbaseElement } from "./lib/cloudbase-ui-click.mjs";
+import { clickCloudbaseElement, pressCloudbaseElement } from "./lib/cloudbase-ui-click.mjs";
 import { waitForTripOutbox } from "./lib/browser-outbox-confirmation.mjs";
 import { startLoopbackTlsProxy } from "./lib/loopback-tls-proxy.mjs";
 import {
@@ -3385,26 +3385,7 @@ async function verifyRapidPasteThenEdit(browser, tripId, variantId) {
 }
 
 async function pressElement(browser, elementExpression, label) {
-  await waitFor(
-    browser,
-    `(() => {
-      const element = (${elementExpression});
-      if (!element || !element.getClientRects().length || element.disabled) return false;
-      element.focus();
-      return document.activeElement === element;
-    })()`,
-    `${label} keyboard focus`,
-  );
-  await browser.cdp.send(
-    "Input.dispatchKeyEvent",
-    { code: "Enter", key: "Enter", type: "rawKeyDown", windowsVirtualKeyCode: 13 },
-    browser.sessionId,
-  );
-  await browser.cdp.send(
-    "Input.dispatchKeyEvent",
-    { code: "Enter", key: "Enter", type: "keyUp", windowsVirtualKeyCode: 13 },
-    browser.sessionId,
-  );
+  await pressCloudbaseElement(browser, elementExpression, label, { waitFor });
 }
 
 async function clickButtonText(browser, text) {

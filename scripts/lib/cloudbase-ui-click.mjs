@@ -1,5 +1,25 @@
 import assert from "node:assert/strict";
 
+export async function pressCloudbaseElement(browser, elementExpression, label, { waitFor }) {
+  await waitFor(
+    browser,
+    `(() => {
+      const element = (${elementExpression});
+      if (!element || !element.getClientRects().length || element.disabled) return false;
+      if (!Object.keys(element).some(key => key.startsWith("__reactProps$"))) return false;
+      element.focus();
+      return document.activeElement === element;
+    })()`,
+    `${label} keyboard focus`,
+  );
+  for (const type of ["rawKeyDown", "keyUp"])
+    await browser.cdp.send(
+      "Input.dispatchKeyEvent",
+      { code: "Enter", key: "Enter", type, windowsVirtualKeyCode: 13 },
+      browser.sessionId,
+    );
+}
+
 /** Re-read the selector after scrolling/frame work; React may replace the original node. */
 export async function clickCloudbaseElement(
   browser,
