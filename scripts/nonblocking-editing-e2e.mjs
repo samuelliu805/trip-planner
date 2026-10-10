@@ -3944,7 +3944,7 @@ try {
       );
       await page.getByRole("button", { name: "Edit other day", exact: true }).click();
       await page.locator('input[id^="item-title-"]').fill("Unrelated day B after failure");
-      await page.keyboard.press("Escape");
+      await saveItem(page);
       await page.waitForFunction(() => window.__runtime.queue.operations.length === 0);
       assert.equal(workspace.days[1].items[0].title, "Unrelated day B after failure");
       assert.equal(
@@ -4563,6 +4563,9 @@ try {
     const input = title(page);
     await input.fill("A");
     delay = 3500;
+    await saveItem(page, true);
+    await page.waitForFunction(() => window.__runtime.queue.operations.length === 1);
+    const pendingSave = await page.evaluate(() => window.__runtime.queue.operations[0].id);
     await page.evaluate(() => {
       window.__inputPaint = [];
       document.addEventListener("input", () => {
@@ -4575,6 +4578,7 @@ try {
       );
       window.__longTaskObserver.observe({ type: "longtask" });
     });
+    await input.press("End");
     await input.pressSequentially(" background continuous input", { delay: 10 });
     await page.waitForFunction(() => window.__inputPaint.length >= 20);
     const measured = await page.evaluate(() => ({
@@ -4586,10 +4590,17 @@ try {
     process.stdout.write(
       `PERF trusted input-to-frame p95=${p95.toFixed(1)}ms; samples=${measured.samples.length}; observed long tasks=${measured.longTasks.length}\n`,
     );
-    await page.keyboard.press("Escape");
-    await page.waitForFunction(() => window.__runtime.queue.operations.length === 0, null, {
-      timeout: 15000,
-    });
+    assert.equal(
+      await page.evaluate(
+        (id) => window.__runtime.queue.operations.some((operation) => operation.id === id),
+        pendingSave,
+      ),
+      true,
+      "the first save stays pending throughout input measurement",
+    );
+    await saveItem(page);
+    await synced(page);
+    assert.equal(workspace.days[0].items[0].title, "A background continuous input");
   });
   assert.deepEqual(errors, []);
   process.stdout.write(
