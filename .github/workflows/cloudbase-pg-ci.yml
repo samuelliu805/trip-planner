@@ -42,7 +42,8 @@ jobs:
     if: >-
       github.event_name != 'workflow_dispatch' ||
       (inputs.run_mode != 'phase5' && inputs.run_mode != 'phase6')
-    runs-on: ubuntu-latest
+    # Playwright 1.58.2 WebKit does not support the Ubuntu 26.04 latest image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       APP_REGION: global
