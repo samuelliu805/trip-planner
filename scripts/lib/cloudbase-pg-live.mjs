@@ -40,7 +40,7 @@ export function loadLiveConfig() {
 }
 
 export function initializeLiveClient(config) {
-  if (cloudbase.version !== "3.9.0") throw new Error("CloudBase JS SDK version drift");
+  if (cloudbase.version !== "3.11.0") throw new Error("CloudBase JS SDK version drift");
   cloudbase.useAdapters(nodeAdapter);
   const app = cloudbase.init({
     env: config.CLOUDBASE_ENV_ID,

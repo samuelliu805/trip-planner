@@ -115,8 +115,8 @@ async function createTrip(db, title) {
   ) {
     dataOrThrow(rpc, "fixture create_trip_v3");
   }
-  // SDK 3.9.0 currently tries to JSON.parse a scalar UUID response. The RPC commits first, so
-  // resolve the fixture through the unique controlled title under the same RLS session.
+  // Resolve by the unique controlled title after the RPC commits. This also tolerates SDK
+  // releases that attempt to JSON.parse a scalar UUID response under the same RLS session.
   const created = rows(await db.from("trips").select("id").eq("title", title), "fixture lookup");
   if (created.length !== 1) throw new Error("create_trip fixture lookup mismatch");
   return created[0].id;

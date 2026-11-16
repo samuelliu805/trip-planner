@@ -569,4 +569,6 @@ Completed with valid test-account access and the required Google Maps/Places and
    - ✅ Phase 6B P0.5: Trip App Bar, Context Bar, and progressive Matrix actions — DONE
 8. Future work is deliberately unsequenced: provider launch, structural/date-shift planning flows, extraction/attachments, offline conflict handling, deployment, and operational polish.
 
-Each phase is independently scoped. Deferred export and Travel Book concepts are not the current next sequence.
+Each phase is independently scoped. Published Share Pages support anonymous JSON/CSV exports and
+clipboard/download actions; see [Public itinerary export](docs/public-itinerary-export.md).
+Travel Book concepts remain deferred.

@@ -52,7 +52,7 @@ let publicDatabase: CloudBaseDatabase | undefined;
 
 function registerAdapter() {
   if (adaptersRegistered) return;
-  if ((cloudbase as typeof cloudbase & { version?: string }).version !== "3.9.0") {
+  if ((cloudbase as typeof cloudbase & { version?: string }).version !== "3.11.0") {
     throw new PlatformOperationError(
       "provider_unavailable",
       "The CloudBase runtime version does not match the validated adapter version.",
