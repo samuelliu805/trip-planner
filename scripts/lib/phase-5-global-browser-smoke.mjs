@@ -11,6 +11,7 @@ import { join } from "node:path";
 
 import { verifyCrossVariantClipboard } from "./cross-variant-clipboard-browser.mjs";
 import { measureMatrixContentAlignment } from "./public-sharing-table-content.mjs";
+import { verifyPublicItineraryExports } from "./public-itinerary-export-live.mjs";
 import { stopChild } from "./child-process.mjs";
 import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
 import { startLoopbackTlsProxy } from "./loopback-tls-proxy.mjs";
@@ -2645,6 +2646,10 @@ export async function runGlobalBrowserSmoke(options) {
         `${error instanceof Error ? error.message : error}; bounded page diagnostic: ${JSON.stringify(diagnostic)}`,
       );
     }
+    await verifyPublicItineraryExports(applicationBaseUrl, options.publicToken, {
+      title: options.intendedTitle,
+      forbidden: [options.privateTitle],
+    });
     const publicBody = await evaluate(browser, "document.body.innerText");
     assert.doesNotMatch(publicBody, new RegExp(options.privateTitle));
     assert.equal(await evaluate(browser, 'location.pathname.startsWith("/share/")'), true);

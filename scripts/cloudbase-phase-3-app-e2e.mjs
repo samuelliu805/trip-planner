@@ -19,6 +19,7 @@ import {
 import { runCloudBaseSdkCall } from "./lib/cloudbase-phase-4-live-requests.mjs";
 import { verifyCrossVariantClipboard } from "./lib/cross-variant-clipboard-browser.mjs";
 import { measureMatrixContentAlignment } from "./lib/public-sharing-table-content.mjs";
+import { verifyPublicItineraryExports } from "./lib/public-itinerary-export-live.mjs";
 import { stopChild } from "./lib/child-process.mjs";
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { googleFlightsBookingSample } from "./lib/idea-provider-samples.mjs";
@@ -6039,6 +6040,10 @@ async function run() {
     );
 
     await clearCookies(browser);
+    await verifyPublicItineraryExports(baseUrl, publicToken, {
+      title: updatedTitle,
+      forbidden: [publishedTitle, forgedTitle],
+    });
     await navigate(browser, `/share/${publicToken}`);
     await waitFor(
       browser,

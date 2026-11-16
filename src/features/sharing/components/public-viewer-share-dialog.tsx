@@ -21,6 +21,7 @@ import { formatShareImageExpiry } from "../long-image/expiration";
 import { localizeGeneratedPublicDescription } from "../public-copy";
 import { downloadShareImageParts } from "./share-image-download";
 import { ShareLinkActions } from "./share-tools";
+import { PublicItineraryExportActions } from "./public-itinerary-export-actions";
 
 export function PublicViewerShareDialog({
   itinerary,
@@ -80,6 +81,7 @@ export function PublicViewerShareDialog({
               url={url}
             />
           </section>
+          <PublicItineraryExportActions publicUrl={url} />
           <section className="space-y-3 border-t pt-5" aria-labelledby="trip-image-heading">
             <h3 className="text-sm font-semibold" id="trip-image-heading">
               <T message={" Trip image "} />

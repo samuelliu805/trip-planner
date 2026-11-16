@@ -3,6 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 import { startPublicSharingDesignRuntime } from "./lib/public-sharing-design-runtime.mjs";
 import { checkPublicSharingExports } from "./lib/public-sharing-export-checks.mjs";
+import { checkPublicItineraryDataExports } from "./lib/public-itinerary-export-checks.mjs";
 const directory = process.env.PUBLIC_SHARING_DESIGN_ARTIFACT_DIR;
 if (directory) await mkdir(directory, { recursive: true });
 const app = await startPublicSharingDesignRuntime();
@@ -23,6 +24,7 @@ try {
   });
   await page.goto(`${app.baseUrl}/share/11111111-1111-4111-8111-111111111111`);
   await page.locator(".itinerary-edition").first().waitFor();
+  await checkPublicItineraryDataExports(page, app);
   await checkPublicSharingExports(page, directory);
   if (forbidden.length) throw new Error("Export requested protected media: " + forbidden.join(","));
 } finally {
