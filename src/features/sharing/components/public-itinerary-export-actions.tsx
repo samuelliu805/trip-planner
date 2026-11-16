@@ -1,15 +1,17 @@
 "use client";
 
-import { Copy, Download, Link, LoaderCircle } from "lucide-react";
-import { useState } from "react";
+import { Check, Copy, Download, LoaderCircle } from "lucide-react";
+import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Localized, T } from "@/features/i18n/i18n-provider";
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 
 import { publicItineraryExportUrl, type ItineraryExportFormat } from "../itinerary-export";
 import { copyTextToClipboard } from "./copy-to-clipboard";
 
 export function PublicItineraryExportActions({ publicUrl }: { publicUrl: string }) {
+  const id = useId();
+  const { t } = useI18n();
   const [format, setFormat] = useState<ItineraryExportFormat>("json");
   const [copying, setCopying] = useState(false);
   const [status, setStatus] = useState<string>();
@@ -36,21 +38,18 @@ export function PublicItineraryExportActions({ publicUrl }: { publicUrl: string 
   }
 
   return (
-    <section className="min-w-0 space-y-3 border-t pt-5" aria-labelledby="itinerary-export-heading">
-      <h3 className="text-sm font-semibold" id="itinerary-export-heading">
+    <section className="min-w-0 space-y-3 border-t pt-5" aria-labelledby={`${id}-heading`}>
+      <h3 className="text-sm font-semibold" id={`${id}-heading`}>
         <T message="Export itinerary" />
       </h3>
-      <p className="text-sm text-muted-foreground">
-        <T message="Copy itinerary data or a public export link for AI agents. No sign-in required." />
-      </p>
       <div className="flex min-w-0 items-center gap-3 text-sm">
-        <label className="shrink-0" htmlFor="public-itinerary-export-format">
+        <label className="shrink-0" htmlFor={`${id}-format`}>
           <T message="Export format" />
         </label>
         <select
           className="min-h-11 min-w-0 flex-1 rounded-md border bg-background px-3"
           disabled={copying}
-          id="public-itinerary-export-format"
+          id={`${id}-format`}
           onChange={(event) => {
             setFormat(event.target.value as ItineraryExportFormat);
             setStatus(undefined);
@@ -65,38 +64,43 @@ export function PublicItineraryExportActions({ publicUrl }: { publicUrl: string 
           </option>
         </select>
       </div>
-      <input
-        aria-label="Public export URL"
-        data-i18n-aria-label="Public export URL"
-        className="min-h-11 w-full min-w-0 rounded-md border bg-muted/30 px-3 text-sm"
-        onFocus={(event) => event.target.select()}
-        readOnly
-        value={exportUrl}
-      />
-      <Button
-        aria-busy={copying}
-        className="min-h-11 w-full"
-        disabled={copying}
-        onClick={() => void copy(true)}
-        type="button"
-      >
-        {copying ? (
-          <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-        ) : (
-          <Copy aria-hidden="true" className="size-4" />
-        )}
-        <T message="Copy itinerary data" />
-      </Button>
-      <div className="grid min-w-0 grid-cols-2 gap-2">
+      <div className="flex min-w-0 overflow-hidden rounded-md border bg-muted/30">
+        <input
+          aria-label={t("Public export URL")}
+          className="min-h-11 min-w-0 flex-1 bg-transparent px-3 text-sm"
+          onFocus={(event) => event.target.select()}
+          readOnly
+          value={exportUrl}
+        />
         <Button
-          className="min-h-11 min-w-0"
+          aria-label={t("Copy export link")}
+          className="min-h-11 w-11 shrink-0 rounded-none border-l p-0"
           disabled={copying}
           onClick={() => void copy(false)}
           type="button"
-          variant="outline"
+          variant="ghost"
         >
-          <Link aria-hidden="true" className="size-4" />
-          <T message="Copy export link" />
+          {status === "Export link copied." ? (
+            <Check aria-hidden="true" className="size-4" />
+          ) : (
+            <Copy aria-hidden="true" className="size-4" />
+          )}
+        </Button>
+      </div>
+      <div className="grid min-w-0 grid-cols-2 gap-2">
+        <Button
+          aria-busy={copying}
+          className="min-h-11 min-w-0"
+          disabled={copying}
+          onClick={() => void copy(true)}
+          type="button"
+        >
+          {copying ? (
+            <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+          ) : (
+            <Copy aria-hidden="true" className="size-4" />
+          )}
+          <T message="Copy data" />
         </Button>
         <Button asChild className="min-h-11 min-w-0" variant="outline">
           <a download={`itinerary.${format}`} href={`${exportUrl}&download=1`}>
@@ -105,7 +109,7 @@ export function PublicItineraryExportActions({ publicUrl }: { publicUrl: string 
           </a>
         </Button>
       </div>
-      <p aria-live="polite" className="text-xs text-muted-foreground">
+      <p aria-live="polite" className={status ? "text-xs text-muted-foreground" : "sr-only"}>
         {status ? <Localized value={status} /> : null}
       </p>
     </section>

@@ -17,6 +17,7 @@ try {
   ].find((path) => path && existsSync(path));
   browser = await chromium.launch({ executablePath, args: ["--no-sandbox"] });
   const page = await browser.newPage();
+  page.setDefaultNavigationTimeout(90_000);
   const forbidden = [];
   page.on("request", (r) => {
     if (/must-not-be|public-place-photo|googleapis|openai.com|anthropic/.test(r.url()))

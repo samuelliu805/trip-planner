@@ -31,6 +31,7 @@ import { OwnerLongImageSettings } from "./owner-long-image-settings";
 import { useSharePageEditor } from "./use-share-page-editor";
 import { LocalDraftStatus } from "@/features/editing/local-draft-status";
 import { PublicSharePagePicker } from "./public-share-page-picker";
+import { PublicItineraryExportActions } from "./public-itinerary-export-actions";
 
 export function PublicShareDialog({
   activeVariantId,
@@ -199,6 +200,9 @@ export function PublicShareDialog({
               pending={pending}
               publicUrl={publicUrl}
             />
+            {activeLink ? (
+              <PublicItineraryExportActions key={activeLink.publicToken} publicUrl={publicUrl} />
+            ) : null}
             <PublicShareSettingsFields
               existingPage={Boolean(activeLink)}
               longImagePanel={

@@ -2,11 +2,9 @@ export const sharingZhCN: Record<string, string> = {
   JSON: "JSON",
   CSV: "CSV",
   "Export itinerary": "导出行程",
-  "Copy itinerary data or a public export link for AI agents. No sign-in required.":
-    "复制行程数据或公开导出链接，供 AI agent 读取，无需登录。",
   "Export format": "导出格式",
   "Public export URL": "公开导出链接",
-  "Copy itinerary data": "复制行程数据",
+  "Copy data": "复制数据",
   "Copy export link": "复制导出链接",
   "Download data": "下载数据",
   "Itinerary copied.": "已复制行程数据。",

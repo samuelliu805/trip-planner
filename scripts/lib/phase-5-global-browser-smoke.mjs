@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { verifyCrossVariantClipboard } from "./cross-variant-clipboard-browser.mjs";
 import { measureMatrixContentAlignment } from "./public-sharing-table-content.mjs";
 import { verifyPublicItineraryExports } from "./public-itinerary-export-live.mjs";
+import { verifyEditorItineraryExport } from "./editor-itinerary-export-checks.mjs";
 import { stopChild } from "./child-process.mjs";
 import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
 import { startLoopbackTlsProxy } from "./loopback-tls-proxy.mjs";
@@ -386,6 +387,15 @@ async function verifyHardNewTabShare(browser, publicToken) {
       .find((link) => link.getClientRects().length && link.textContent.trim() === "Open page"))`,
     "published Share Page open action",
   );
+  await verifyEditorItineraryExport({
+    browser,
+    evaluate,
+    waitFor,
+    publicUrl: new URL(
+      `/share/${publicToken}`,
+      await evaluate(browser, "location.origin"),
+    ).toString(),
+  });
   const contract = await evaluate(
     browser,
     `(() => {

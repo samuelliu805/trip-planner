@@ -29,7 +29,34 @@ export async function checkPublicItineraryDataExports(page, app) {
       .filter({ visible: true })
       .click();
     await dialog.waitFor();
-    await dialog.getByRole("button", { name: "Copy itinerary data", exact: true }).click();
+    const section = dialog.getByRole("region", { name: "Export itinerary", exact: true });
+    const layout = await section.evaluate((node) => {
+      const input = node.querySelector("input[readonly]");
+      const copyLink = input.parentElement.querySelector("button");
+      const copyData = [...node.querySelectorAll("button")].find(
+        (button) => button.textContent.trim() === "Copy data",
+      );
+      const download = node.querySelector("a[download]");
+      return {
+        linkCopyLabel: copyLink.getAttribute("aria-label"),
+        inlineLinkCopy:
+          Math.abs(input.getBoundingClientRect().top - copyLink.getBoundingClientRect().top) <= 1,
+        actionRow:
+          copyData.parentElement === download.parentElement &&
+          Math.abs(copyData.getBoundingClientRect().top - download.getBoundingClientRect().top) <=
+            1,
+        extraCopy: [...node.querySelectorAll("p")].filter(
+          (paragraph) => !paragraph.hasAttribute("aria-live"),
+        ).length,
+      };
+    });
+    assert.deepEqual(layout, {
+      linkCopyLabel: "Copy export link",
+      inlineLinkCopy: true,
+      actionRow: true,
+      extraCopy: 0,
+    });
+    await dialog.getByRole("button", { name: "Copy data", exact: true }).click();
     await dialog.getByText("Itinerary copied.", { exact: true }).waitFor();
     assert.equal(JSON.parse(await readClipboard()).schemaVersion, 1);
     const geometry = await dialog.evaluate((node) => {
@@ -62,7 +89,7 @@ export async function checkPublicItineraryDataExports(page, app) {
   await dialog.getByText("Export link copied.", { exact: true }).waitFor();
   assert.equal(await readClipboard(), exportUrl);
   await dialog.getByLabel("Export format", { exact: true }).selectOption("csv");
-  await dialog.getByRole("button", { name: "Copy itinerary data", exact: true }).click();
+  await dialog.getByRole("button", { name: "Copy data", exact: true }).click();
   await dialog.getByText("Itinerary copied.", { exact: true }).waitFor();
   assert.ok((await readClipboard()).startsWith('"schema_version","trip_title"'));
   const downloading = page.waitForEvent("download");
@@ -73,7 +100,7 @@ export async function checkPublicItineraryDataExports(page, app) {
   // A page left open before revocation must not copy a stale itinerary snapshot.
   app.setFixture({ available: false });
   try {
-    await dialog.getByRole("button", { name: "Copy itinerary data", exact: true }).click();
+    await dialog.getByRole("button", { name: "Copy data", exact: true }).click();
     await dialog
       .getByText("Could not copy the export. Try downloading it instead.", { exact: true })
       .waitFor();
