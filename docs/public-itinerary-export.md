@@ -9,8 +9,9 @@ GET /share/{publicToken}/export?format=csv
 ```
 
 Add `download=1` to request a file attachment. JSON is the default and is recommended for AI agents.
-The public page's **Share itinerary → Export itinerary** section offers JSON/CSV selection,
-**Copy itinerary data**, **Copy export link**, and **Download data**. Copying data reads the endpoint
+Both the public page's **Share itinerary** dialog and the editor's **Share trip** dialog offer
+**Export itinerary** for a published page: JSON/CSV selection, a link with a copy button, and
+**Copy data** / **Download data** side by side. Copying data reads the endpoint
 again so a revoked page cannot be copied from an old browser snapshot.
 
 JSON has `schemaVersion: 1`, `trip`, `variant`, `metadata`, `citySequence`, `days`, and `savedRoutes`.

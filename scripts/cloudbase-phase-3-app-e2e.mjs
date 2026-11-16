@@ -20,6 +20,7 @@ import { runCloudBaseSdkCall } from "./lib/cloudbase-phase-4-live-requests.mjs";
 import { verifyCrossVariantClipboard } from "./lib/cross-variant-clipboard-browser.mjs";
 import { measureMatrixContentAlignment } from "./lib/public-sharing-table-content.mjs";
 import { verifyPublicItineraryExports } from "./lib/public-itinerary-export-live.mjs";
+import { verifyEditorItineraryExport } from "./lib/editor-itinerary-export-checks.mjs";
 import { compiledServerActionId } from "./lib/compiled-server-action.mjs";
 import { stopChild } from "./lib/child-process.mjs";
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
@@ -4319,6 +4320,7 @@ async function publishThroughUi(browser, tripId) {
   assert.ok(publicUrl, "The published page URL was not rendered by the application UI.");
   const token = new URL(publicUrl).pathname.split("/").filter(Boolean).at(-1);
   assert.ok(token, "The application UI returned an invalid public page URL.");
+  await verifyEditorItineraryExport({ browser, evaluate, waitFor, publicUrl });
   const openPage = await evaluate(
     browser,
     `(() => {
