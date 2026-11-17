@@ -166,6 +166,24 @@ after(async () => {
   await pool.end();
 });
 
+test("OAuth missing rows and consumed requests stay absent with the observed CloudBase SQL NULL transport shape", async () => {
+  const cloudbaseNullRpc: Rpc = async (name, args) => {
+    const result = await rpc(name, args);
+    return { ...result, data: result.data === null ? {} : result.data };
+  };
+  const transported = oauthModel(cloudbaseNullRpc, config);
+  assert.equal(await transported.model.getClient("missing-client", undefined), false);
+  assert.equal(await transported.model.getAuthorizationCode("missing-code"), false);
+  assert.equal(await transported.model.getAccessToken!("missing-access"), false);
+  assert.equal(await transported.model.getRefreshToken!("missing-refresh"), false);
+  const hash = credentialHash(randomUUID());
+  const parameters = { client_id: clientId, state: randomUUID() };
+  assert.equal(await transported.store("request_save", { hash, parameters }), true);
+  assert.deepEqual(await transported.store("request_get", { hash }), parameters);
+  assert.deepEqual(await transported.store("request_consume", { hash }), parameters);
+  assert.equal(await transported.store("request_consume", { hash }), null);
+  assert.equal(await transported.store("request_get", { hash }), null);
+});
 test("unauthenticated, forged, wrong issuer/resource, expired and read-only credentials are rejected", async () => {
   await assert.rejects(
     invokeTool(

@@ -11,8 +11,18 @@ type Stored = Record<string, unknown> & {
   scopes: string[];
 };
 export function oauthModel(rpc: Rpc, config: { resource: string; issuer: string }) {
-  const store = (action: string, input: Record<string, unknown>) =>
-    callRpc(rpc, "ai_oauth_store_v1", { action, input });
+  const store = async (action: string, input: Record<string, unknown>) => {
+    const result = await callRpc(rpc, "ai_oauth_store_v1", { action, input });
+    // CloudBase SDK 3.11.0 represents a scalar SQL NULL as {}. No successful
+    // OAuth store operation returns an empty object; preserve missing/replayed
+    // credentials and consumed browser requests as null on both providers.
+    return result &&
+      typeof result === "object" &&
+      !Array.isArray(result) &&
+      Object.keys(result).length === 0
+      ? null
+      : result;
+  };
   async function get(kind: string, token: string) {
     return (await store(`${kind}_get`, {
       hash: credentialHash(token),
