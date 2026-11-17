@@ -686,7 +686,9 @@ test("Real MCP transport initializes and calls tools, rejects missing auth, enfo
     rpc,
     config,
   );
-  assert.equal(value(await called.json()).result.structuredContent.user_id, A);
+  const accountResult = value(await called.json()).result.structuredContent;
+  assert.equal(accountResult.user_id, A);
+  assert.equal(accountResult.url, `${config.origin}/account/ai`);
   await assert.rejects(
     invoke("idea_save_many", {
       idempotency_key: randomUUID(),

@@ -6,6 +6,21 @@ import { boundedBody, errorResponse, privateHeaders, rateLimit } from "./http";
 import { credentialHash, oauthModel } from "./oauth-model";
 import { AiError, callRpc, invokeTool, type Rpc } from "./service";
 import { toolSchemas, type ToolName } from "./schemas";
+import type { Json } from "@/types/database";
+
+function webLinks(value: Json, resource: string): Json {
+  if (Array.isArray(value)) return value.map((item) => webLinks(item, resource));
+  if (value && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        key === "url" && typeof item === "string" && item.startsWith("/")
+          ? new URL(item, resource).toString()
+          : webLinks(item ?? null, resource),
+      ]),
+    );
+  return value;
+}
 
 const descriptions: Record<ToolName, string> = {
   account_get:
@@ -61,7 +76,10 @@ export function createMcpServer(
   }));
   server.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
     try {
-      const value = await invokeTool(rpc, params.name, params.arguments ?? {}, authorization);
+      const value = webLinks(
+        await invokeTool(rpc, params.name, params.arguments ?? {}, authorization),
+        authorization.resource,
+      );
       const structuredContent =
         value && typeof value === "object" && !Array.isArray(value) ? value : { value };
       return {
