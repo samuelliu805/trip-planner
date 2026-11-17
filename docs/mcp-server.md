@@ -10,6 +10,8 @@
 
 原 Research/Idea 依附某个 Trip，保留原功能。`saved_ideas` 是新增个人收藏库，允许没有日期或 Trip。行程保存独立快照与 `saved_idea_id`，同一 Idea 可用于多个 Trip。改快照不修改收藏，改收藏不修改快照。网页入口：`/ideas`、`/account/ai`，Trip 菜单中的“复制给 AI 的任务”只包含 ID 和任务要求。
 
+本次按用户确认保留两个入口，不合并数据模型。个人收藏网页支持手动新增名称/区域、编辑名称/区域/备注，以及归档/恢复；通过 MCP 行程工具引用到 Trip。原 Trip 内 Ideas 继续使用原有编辑、比较方案与加入 Plan 流程。个人收藏目前没有接入旧 Ideas 编辑器的手动选入 Trip 流程。
+
 ## OAuth
 
 现有网页登录不是第三方授权。新增授权服务使用维护中的 `@node-oauth/oauth2-server`，只开放 Authorization Code（强制 S256 PKCE）和刷新流程，禁用密码、隐式和客户端凭据 grant。
@@ -46,6 +48,8 @@ MCP_ALLOW_LOCAL_HTTP=0
 ```
 
 生产/Preview 必须是公网 HTTPS，发现、MCP、OAuth 路径不能落入 Vercel 登录保护。优先给测试部署配置单独的公网自定义域名，不把自动化 bypass secret 放入用户配置。现有浏览器登录的 site URL、安全域名、上游 OAuth callback 也必须使用正确区域和地址。服务端 Origin 校验使用明确 allowlist；无 Origin 的原生/服务端客户端可以连接。反向代理必须覆盖外部传入的 X-Forwarded-For，另有每凭据数据库限流。`MCP_ALLOW_LOCAL_HTTP=1` 仅供 loopback 本地测试，不允许用于 Vercel。
+
+仓库受保护 Global CI 将已验证绑定到 Vercel 项目的 `https://mcp-preview.therewego.world` 配置为唯一的 `PHASE5_TRUSTED_CUSTOM_PREVIEW_ORIGIN`。仍须有同 SHA 的 GitHub/Vercel Preview 部署，以及 `/api/health` 的精确 release SHA；不接受其他自定义域名或相似域名。该公开测试域名的健康检查和浏览器测试不发送 Vercel 平台 bypass 凭据，其他受保护 Vercel Preview 继续使用原有流程。
 
 可选预注册（固定回调示例，按客户端实际显示的地址修改）：
 
@@ -116,6 +120,8 @@ npm run check:backend-provider-boundary
 `test:mcp` 启动独立 PostgreSQL 17 容器，对两个区域分别运行完整真实迁移和业务 RPC，用真实 OAuth 库进行 code/PKCE/token/refresh/revoke，并用官方 SDK 测初始化和工具调用。准备 A/B 及 owner/collaborator、只读 scope，测试并发首写、越权、撤销、预览事务回滚、网页服务双向读取、日期、冲突、undo、请求限额。容器销毁后独立检查 residue。managed auth/storage schema 是本地适配器，不代表已测试真实区域登录服务；不依赖模型 Key，不用模型 mock。
 
 区域全量发布门禁仍需 `npm run test:e2e:preflight`、Global/CN live E2E、清理和 residue 检查，或同 SHA 的必需 CI。真实客户端的自然语言与浏览器流程另行验收，不能由这里的 SDK/脚本代替。
+
+Supabase 安全顾问的预期项目：私有 OAuth/审计表启用 RLS 且无客户端 policy，刻意默认拒绝；`ai_connections_v1` / `ai_web_invoke_v1` 与现有业务 RPC 一样允许 authenticated 执行 SECURITY DEFINER，函数内重新确定当前身份、所有权和协作权限。anon 无 MCP 调用权限，OAuth 存储仅 service_role 可执行。对应顾问说明：[无 policy 的 RLS 表](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)、[authenticated 可执行的 definer 函数](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable)。应审查函数权限与内部校验，而非为消除提示放开私有表。
 
 ## 回滚及限制
 

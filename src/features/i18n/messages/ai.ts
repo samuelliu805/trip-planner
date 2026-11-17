@@ -26,6 +26,8 @@ export const aiZhCN: Record<string, string> = {
   "Client setup": "客户端接入",
   "Official instructions": "官方说明",
   "Pending real-client acceptance": "待真实客户端验收",
+  "Verified on Codex Desktop 26.1111.21308, Cloud mode (2026-11-17). Other modes are unverified.":
+    "Codex Desktop 26.1111.21308 的 Cloud 模式已于 2026-11-17 通过真实验收；其他模式待验收。",
   "Save ideas without dates or a trip, then use them in multiple trips.":
     "无需日期或所属旅行即可收藏 Idea，并在多个旅行中使用。",
   Region: "区域",

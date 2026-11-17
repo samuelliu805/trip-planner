@@ -1,6 +1,6 @@
 # 客户端接入教程
 
-核对官方文档日期：2026-11-17。当前所有客户端仍需真实 E2E，详情见 [矩阵](mcp-e2e.md)。菜单可能随客户端版本、账号、工作区政策变化；没有入口时记录“待验收/当前账号不支持”，不要跳过 OAuth 改用共享 token。
+核对官方文档日期：2026-11-17。Codex Desktop 26.1111.21308 的 Cloud 对话已通过真实 E2E；其他客户端和运行模式见 [矩阵](mcp-e2e.md)。菜单可能随客户端版本、账号、工作区政策变化；没有入口时记录“待验收/当前账号不支持”，不要跳过 OAuth 改用共享 token。
 
 先在产品“连接你的 AI”页面确认公网 MCP URL，例如 `https://PUBLIC_ORIGIN/mcp`。选择 OAuth；浏览器内登录 Trip Planner，查看客户端名及回调地址，选择 scope、个人 Idea 权限和指定/全部 Trip 范围。写入需要对应 write scope；Trip 中引用个人 Idea 也需要 ideas:read。创建新 Trip 需要明确授权全部行程。密码和验证码只输入浏览器登录页面，工具中不提供这些信息，也不需要模型 API Key。
 
@@ -25,6 +25,19 @@ url = "https://PUBLIC_ORIGIN/mcp"
 Desktop 在 MCP 设置中添加远程地址并登录；如果该版本共享 CLI 配置，重载后检查 `/mcp` 中的状态。网页/Cloud 模式是否接受任意远程服务器取决于当前产品能力及组织策略，不能将 CLI 的通过结果直接当作网页已支持。
 
 启用 DCR 可让客户端注册实际的随机 loopback 回调。预注册时按客户端显示的**完整**回调地址配置，包含端口和路径。当前 Codex 文档有 `--oauth-client-id` 和 `mcp_oauth_callback_port`；不同 issuer 识别能力会改变回调路径，不能复制一个猜测地址。不要使用 `bearer_token_env_var` 配置产品授权，以免绕开浏览器范围选择与独立撤销。
+
+### 授权成功但对话没有工具
+
+先重启客户端并新建对话，单独调用 `account_get`，成功后再执行业务任务。本次 Desktop 的 Cloud 会话在重启前未加载工具，重启后已实际完成业务调用；完整结果见验收矩阵。记录实际 Local/Cloud 模式，分别核对 MCP 配置、网络和认证，不能由某次工具未加载就推断整个模式不支持。模型在 shell 中请求 URL 的结果不能代替 MCP 工具调用。
+
+当前官方文档中，可选 MCP 的初始工具目录默认只等待 1000 毫秒（顶层 `mcp_optional_startup_grace_ms`）。需要排查启动时，可在**现有该服务器配置块**中临时加入：
+
+```toml
+required = true
+startup_timeout_sec = 30
+```
+
+重启客户端并新建对话；必需服务若启动失败，会显示具体错误。检查服务器是否 enabled、是否有误设的 enabled_tools/disabled_tools，以及 Settings/MCP 的实际状态。排查结束可移除 `required`，避免服务器不可用时阻塞其他任务。不要粘贴 OAuth 存储文件或令牌到聊天中。
 
 ## ChatGPT 网页 / Desktop
 
