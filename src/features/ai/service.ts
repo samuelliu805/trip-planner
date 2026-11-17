@@ -32,6 +32,19 @@ export class AiError extends Error {
     super(message);
   }
 }
+function normalizeRevisions(value: Json): Json {
+  if (Array.isArray(value)) return value.map(normalizeRevisions);
+  if (value && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        key === "revision" && typeof item === "number"
+          ? String(item)
+          : normalizeRevisions(item ?? null),
+      ]),
+    );
+  return value;
+}
 export async function callRpc(rpc: Rpc, name: string, args: Record<string, unknown>) {
   const { data, error } = await rpc(name, args);
   if (error) {
@@ -46,7 +59,7 @@ export async function callRpc(rpc: Rpc, name: string, args: Record<string, unkno
             : "SERVICE_UNAVAILABLE");
     throw new AiError(code);
   }
-  return data as Json;
+  return normalizeRevisions(data as Json);
 }
 export async function invokeTool(
   rpc: Rpc,

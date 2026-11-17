@@ -8,7 +8,7 @@ export const clientGuides = [
   {
     name: "ChatGPT",
     guide:
-      "Use a custom remote MCP app in developer mode when available for your account. Choose OAuth and the MCP URL, then review permissions in your browser.",
+      "Open ChatGPT Plugins, select +, then Add custom MCP server. Enter the MCP URL, choose OAuth with dynamic registration, create and install the plugin, then review permissions in your browser.",
     docs: "https://platform.openai.com/docs/guides/developer-mode",
     status: "Pending real-client acceptance",
   },

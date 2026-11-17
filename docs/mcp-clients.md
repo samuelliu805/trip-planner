@@ -28,7 +28,7 @@ Desktop 在 MCP 设置中添加远程地址并登录；如果该版本共享 CLI
 
 ## ChatGPT 网页 / Desktop
 
-官方说明：[Developer mode](https://platform.openai.com/docs/guides/developer-mode)。本次文档描述在开发者设置启用相关能力后，通过 “Add custom MCP server”，填写 Server URL，选择 OAuth，审核风险提示后 “Create as a plugin”。若当前界面使用 Apps/Connectors 等名称，按账号当时界面和官方文档操作。组织管理员可能限制该能力。
+官方说明：[Add custom MCP server](https://platform.openai.com/docs/guides/developer-mode)。该文档当前指向 [ChatGPT Plugins](https://chatgpt.com/plugins)：点击加号 → “Add custom MCP server”，填写 Server URL，选择 OAuth，审核风险提示后 “Create as a plugin”，随后安装插件。组织管理员的权限和 Lockdown 策略可能限制该能力；以当前官方文档和账号界面为准。
 
 填写本产品 `/mcp` 地址。服务未声明 CIMD；使用 DCR，或由部署者预注册该 ChatGPT 应用的实际回调。仅支持公共客户端 `none`，若该账号只允许 confidential secret，记为当前模式不支持。授权后在聊天中明确启用对应应用，再运行下文任务。Desktop 是否展示同一自定义应用需在其实际版本验证，不由网页结果推断。
 
