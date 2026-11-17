@@ -109,7 +109,7 @@ const bundle = await build({
                 "export const useRouter=()=>({refresh(){},push(path){(window.__navigation??=[]).push(path)},replace(path){(window.__navigation??=[]).push(path)}});export const usePathname=()=>location.pathname;export const useSearchParams=()=>new URLSearchParams(location.search);",
               "trip-cover": "export function TripCoverPhoto(){return null}",
               "pdf-viewer": "export function ContinuousPdfViewer(){return null}",
-              link: "import React from 'react';export default function Link(p){return <a {...p}/>}",
+              link: "import React from 'react';export default function Link(p){return <a {...p}/>};export function useLinkStatus(){return {pending:false}}",
               places:
                 "import React from 'react';export function PlaceAutocomplete(p){return <input aria-label={p.label||'Place search'} onChange={e=>p.onQueryChange?.(e.target.value)}/>} ",
               attachments:
@@ -1941,6 +1941,58 @@ try {
       await page.waitForFunction(() => window.__runtime);
       await page.getByRole("button", { name: "Trip settings", exact: true }).click();
       assert.equal(await field.inputValue(), "Settings B");
+    },
+  );
+  await scenario(
+    "trip settings immediately update list cards and Ideas headers before ACK",
+    async (page) => {
+      delay = 3000;
+      await page.evaluate(() => {
+        window.__settingsBarProbe = true;
+      });
+      await page.getByRole("button", { name: "Toggle trip list", exact: true }).click();
+      const card = page.locator("[data-trip-card]");
+      await card.getByRole("button", { name: /^Actions for / }).click();
+      await page.getByRole("menuitem", { name: "Edit trip", exact: true }).click();
+      await page.getByRole("textbox", { name: "Trip name" }).fill("Immediate settings title");
+      await saveItem(page);
+      await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
+      await card
+        .getByRole("heading", { name: "Immediate settings title", exact: true })
+        .waitFor({ state: "visible", timeout: 750 });
+      await page
+        .locator('[data-trip-settings-bar-probe] span[title="Immediate settings title"]')
+        .waitFor({ state: "visible", timeout: 750 });
+      assert.equal(tripSettings.version, 1, "Labels must update before the delayed server ACK");
+      await card.getByRole("button", { name: /^Actions for / }).click();
+      await page.getByRole("menuitem", { name: "Edit trip", exact: true }).click();
+      await page.getByRole("textbox", { name: "Trip name" }).fill("Newer settings title");
+      await saveItem(page);
+      await page.getByRole("dialog").waitFor({ state: "hidden", timeout: 750 });
+      await card
+        .getByRole("heading", { name: "Newer settings title", exact: true })
+        .waitFor({ state: "visible", timeout: 750 });
+      await page
+        .locator('[data-trip-settings-bar-probe] span[title="Newer settings title"]')
+        .waitFor({ state: "visible", timeout: 750 });
+      await page.waitForFunction(
+        () =>
+          document.querySelector("[data-sync-status]")?.getAttribute("data-sync-status") ===
+          "Synced",
+        null,
+        { timeout: 15000 },
+      );
+      assert.equal(tripSettings.title, "Newer settings title");
+      await card
+        .getByRole("heading", { name: "Newer settings title", exact: true })
+        .waitFor({ state: "visible" });
+      await page.reload();
+      await page.waitForFunction(() => window.__runtime);
+      await page.getByRole("button", { name: "Toggle trip list", exact: true }).click();
+      await page
+        .locator("[data-trip-card]")
+        .getByRole("heading", { name: "Newer settings title", exact: true })
+        .waitFor({ state: "visible" });
     },
   );
   for (const restore of ["reload", "pageshow"])

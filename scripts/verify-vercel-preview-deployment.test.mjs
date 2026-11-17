@@ -164,6 +164,65 @@ test("uses the immutable source SHA even when a pull request workflow SHA differ
   );
 });
 
+test("accepts a Vercel bot custom alias only when its exact origin is explicitly trusted", () => {
+  const origin = "https://mcp-preview.therewego.world";
+  const environment = { PHASE5_TRUSTED_CUSTOM_PREVIEW_ORIGIN: origin };
+  const comment = (url) => ({
+    body: `[Preview](${url})`,
+    performed_via_github_app: { slug: "vercel" },
+    user: { login: "vercel[bot]" },
+  });
+  assert.equal(selectVercelPreviewCommentOrigin([comment(origin)]), undefined);
+  assert.equal(selectVercelPreviewCommentOrigin([comment(origin)], environment), origin);
+  for (const untrusted of [
+    "https://mcp-preview.therewego.world.attacker.invalid",
+    "https://therewego.world",
+    "http://mcp-preview.therewego.world",
+    "https://mcp-preview.therewego.world:444",
+    "https://user:password@mcp-preview.therewego.world",
+  ]) {
+    assert.equal(selectVercelPreviewCommentOrigin([comment(untrusted)], environment), undefined);
+  }
+  assert.equal(
+    selectVercelPreviewCommentOrigin(
+      [{ ...comment(origin), performed_via_github_app: { slug: "other" } }],
+      environment,
+    ),
+    undefined,
+  );
+  assert.deepEqual(previewCandidateOrigins(environment, "https://exact.vercel.app", origin), [
+    origin,
+    "https://exact.vercel.app",
+  ]);
+});
+
+test("custom aliases still require the exact release and never receive a platform bypass secret", async () => {
+  const origin = "https://mcp-preview.therewego.world";
+  const environment = {
+    PHASE5_TRUSTED_CUSTOM_PREVIEW_ORIGIN: origin,
+    VERCEL_AUTOMATION_BYPASS_SECRET: "test-bypass",
+  };
+  for (const release of [sha, "b".repeat(40)]) {
+    assert.equal(
+      await previewOriginMatchesExactSha(origin, sha, environment, async (url, options) => {
+        assert.equal(url.origin, origin);
+        assert.equal(options.headers, undefined);
+        return Response.json({ status: "ok" }, { headers: { "x-trip-planner-release": release } });
+      }),
+      release === sha,
+    );
+  }
+  let untrustedRequests = 0;
+  assert.equal(
+    await previewOriginMatchesExactSha("https://attacker.invalid", sha, environment, async () => {
+      untrustedRequests++;
+      return Response.json({ status: "ok" }, { headers: { "x-trip-planner-release": sha } });
+    }),
+    false,
+  );
+  assert.equal(untrustedRequests, 0, "Untrusted origins must not receive a request");
+});
+
 test("rejects a candidate SHA that differs from the immutable source SHA before lookup", async () => {
   await assert.rejects(
     () =>

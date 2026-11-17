@@ -96,6 +96,9 @@ export const loadIdeaVariantPlans = (tripId) => call("idea-plans", { tripId });
 export const runTripBackgroundAction = (intent) => call(intent.kind, intent.input);
 export const runAttachmentBackgroundAction = (intent) => call("attachment-mutate", intent.input);
 export const countActiveSharePages = async () => 0;
+export const logout = async () => {
+  throw new Error("Sign-out is outside this settings fixture.");
+};
 export const loadTripDeleteSnapshot = (tripId) => call("trip-snapshot", { tripId });
 export const loadTripStatusSnapshot = (tripId) => call("trip-snapshot", { tripId });
 export const loadResearchItem = (input) => call("research-load", input);

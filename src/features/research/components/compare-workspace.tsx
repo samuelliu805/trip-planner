@@ -16,6 +16,7 @@ import { researchDecisionSlotKey } from "../decision-slot";
 import { isReadyToCompare } from "../readiness";
 import { matchingPlanResearchItems, parseResearchCategoryRouteSegment } from "../urls";
 import { researchWorkspaceQueryKey, useResearchWorkspace } from "../research-query";
+import { usePublishedTripSettings } from "@/features/trips/use-live-trip";
 import type {
   ResearchCategory,
   ResearchItem,
@@ -36,6 +37,7 @@ export function CompareWorkspace({
   initialSelections,
   plan,
   tripId,
+  tripVersion,
 }: {
   activeCategory: ResearchCategory;
   context?: { dayId?: string; itemId?: string };
@@ -46,6 +48,7 @@ export function CompareWorkspace({
   initialSelections: VariantResearchSelection[];
   plan: ResearchPlanSnapshot;
   tripId: string;
+  tripVersion?: number;
 }) {
   const [sort, setSort] = useState<ResearchSort>("recent");
   const queryClient = useQueryClient();
@@ -88,7 +91,11 @@ export function CompareWorkspace({
           variantId: currentPlan.variantId,
         })
       : items;
-  const defaultCurrencyForTrip = defaultCurrency;
+  const settings = usePublishedTripSettings(tripId);
+  const defaultCurrencyForTrip =
+    tripVersion !== undefined && settings && settings.version >= tripVersion
+      ? settings.currency
+      : defaultCurrency;
 
   function saveItem(saved: ResearchItem) {
     const previous = items.find((item) => item.id === saved.id);

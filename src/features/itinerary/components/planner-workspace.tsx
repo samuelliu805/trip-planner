@@ -28,12 +28,15 @@ import { usePlannerViewTelemetry } from "../hooks/use-planner-view-telemetry";
 import { usePlannerMapSheetHistory } from "../hooks/use-planner-map-sheet-history";
 import { useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
 import type { PlannerDay } from "../types";
+import { useLiveTrip } from "@/features/trips/use-live-trip";
+import type { Trip } from "@/platform/contracts/trips";
 
 export function PlannerWorkspace(props: PlannerWorkspaceProps) {
+  const trip = useLiveTrip(props.trip, !props.guestExperience);
   const navigation = useLocalPlanNavigation(props.initialWorkspace, props.initialVariants);
   const workspace = props.guestExperience ? props.initialWorkspace : navigation.workspace;
-  const shareControls = isValidElement<{ activeVariantId: string }>(props.shareControls)
-    ? cloneElement(props.shareControls, { activeVariantId: workspace.variant.id })
+  const shareControls = isValidElement<{ activeVariantId: string; trip: Trip }>(props.shareControls)
+    ? cloneElement(props.shareControls, { activeVariantId: workspace.variant.id, trip })
     : props.shareControls;
   return (
     <PlannerOutboxProvider
@@ -43,6 +46,7 @@ export function PlannerWorkspace(props: PlannerWorkspaceProps) {
     >
       <PlannerWorkspaceVariant
         {...props}
+        trip={trip}
         initialWorkspace={workspace}
         shareControls={shareControls}
         onNavigate={navigation.navigate}

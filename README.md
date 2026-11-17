@@ -1,5 +1,7 @@
 # Trip Planner
 
+Remote MCP implementation and operations: [server](docs/mcp-server.md), [client setup](docs/mcp-clients.md), [acceptance matrix](docs/mcp-e2e.md), and [repository inventory](docs/mcp-inventory.md). MCP is disabled by default until additive migrations and a public HTTPS origin are configured. Client compatibility is claimed only after real-client acceptance.
+
 Trip Planner is a responsive, spreadsheet-style workspace for building complex trips from normalized days, itinerary items, persisted places, route variants, and optional manual routes for each active-variant day.
 
 ## Current status

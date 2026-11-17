@@ -140,7 +140,9 @@
     [
       "apply_idea_request_v2(uuid,uuid,uuid,uuid,uuid,uuid,uuid,integer,jsonb,bigint,bigint,bigint,bigint,uuid)",
       "member_guard"
-    ]
+    ],
+    ["ai_connections_v1(text,uuid)", "member_guard"],
+    ["ai_web_invoke_v1(text,jsonb)", "member_guard"]
   ],
   "anonymous": [
     ["get_public_city_photo_sources_v1(uuid)", "public_token_snapshot"],

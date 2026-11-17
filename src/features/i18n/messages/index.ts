@@ -1,4 +1,5 @@
 import { authAccountZhCN } from "./auth-account.ts";
+import { aiZhCN } from "./ai.ts";
 import { attachmentsZhCN } from "./attachments.ts";
 import { commonZhCN } from "./common.ts";
 import { dynamicPlannerZhCN } from "./dynamic-planner.ts";
@@ -15,6 +16,7 @@ import { landingZhCN } from "./landing.ts";
 import { validationErrorsZhCN } from "./validation-errors.ts";
 
 export const zhCNMessages: Record<string, string> = {
+  ...aiZhCN,
   ...commonZhCN,
   ...authAccountZhCN,
   ...attachmentsZhCN,

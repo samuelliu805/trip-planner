@@ -49,6 +49,24 @@ export function TripMenuAccountActions({
             className="min-h-11 w-full justify-start px-3 font-normal"
             variant="ghost"
           >
+            <Link href="/account/ai" onClick={onNavigate}>
+              <T message="Connect your AI" />
+            </Link>
+          </Button>
+          <Button
+            asChild
+            className="min-h-11 w-full justify-start px-3 font-normal"
+            variant="ghost"
+          >
+            <Link href="/ideas" onClick={onNavigate}>
+              <T message="Personal ideas" />
+            </Link>
+          </Button>
+          <Button
+            asChild
+            className="min-h-11 w-full justify-start px-3 font-normal"
+            variant="ghost"
+          >
             <Link href="/account" onClick={onNavigate}>
               <UserRound aria-hidden="true" className="size-4 shrink-0" />{" "}
               <span className="truncate">{accountEmail}</span>
@@ -67,6 +85,16 @@ export function TripMenuAccountActions({
         </>
       ) : (
         <>
+          <DropdownMenuItem asChild>
+            <Link href="/account/ai">
+              <T message="Connect your AI" />
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/ideas">
+              <T message="Personal ideas" />
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/account">
               <UserRound aria-hidden="true" className="size-4 shrink-0" />{" "}
