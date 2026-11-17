@@ -952,7 +952,14 @@ async function waitForRealGoogleMap(browser, baseUrl, tripId) {
   );
 }
 
-export function previewProtectionHeaders(secret, setCookie = false) {
+export function previewProtectionHeaders(
+  secret,
+  setCookie = false,
+  origin,
+  environment = process.env,
+) {
+  if (origin && new URL(origin).origin === environment.PHASE5_TRUSTED_CUSTOM_PREVIEW_ORIGIN)
+    return {};
   const value = secret?.trim();
   if (!value) throw new Error("VERCEL_AUTOMATION_BYPASS_SECRET is required for Global Preview.");
   return {
@@ -1000,8 +1007,10 @@ export async function requireAuthorizedCleanup(response) {
 }
 
 async function establishPreviewBypass(browser, baseUrl, secret) {
+  const headers = previewProtectionHeaders(secret, true, baseUrl);
+  if (!headers["x-vercel-protection-bypass"]) return;
   const response = await fetch(new URL("/login", baseUrl), {
-    headers: previewProtectionHeaders(secret, true),
+    headers,
     redirect: "manual",
     signal: AbortSignal.timeout(15_000),
   });
@@ -2543,7 +2552,7 @@ export async function runGlobalBrowserSmoke(options) {
   try {
     if (remotePreview) {
       const response = await fetch(new URL("/login", applicationBaseUrl), {
-        headers: previewProtectionHeaders(bypassSecret),
+        headers: previewProtectionHeaders(bypassSecret, false, applicationBaseUrl),
         signal: AbortSignal.timeout(15_000),
       });
       if (!response.ok) throw new Error(`Global Preview returned ${response.status} for /login.`);
@@ -2693,7 +2702,9 @@ export async function runGlobalBrowserSmoke(options) {
       "public long-image sharing option",
     );
 
-    const protectionHeaders = remotePreview ? previewProtectionHeaders(bypassSecret) : {};
+    const protectionHeaders = remotePreview
+      ? previewProtectionHeaders(bypassSecret, false, applicationBaseUrl)
+      : {};
     const unauthorizedCleanup = await fetch(
       new URL("/api/cron/share-image-cleanup", applicationBaseUrl),
       {
@@ -2709,7 +2720,11 @@ export async function runGlobalBrowserSmoke(options) {
     );
     await requireAuthorizedCleanup(authorizedCleanup);
     if (deploymentBaseUrl && deploymentBaseUrl !== applicationBaseUrl) {
-      const deployedHeaders = previewProtectionHeaders(process.env.VERCEL_AUTOMATION_BYPASS_SECRET);
+      const deployedHeaders = previewProtectionHeaders(
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+        false,
+        deploymentBaseUrl,
+      );
       const deployedUnauthorized = await fetch(
         new URL("/api/cron/share-image-cleanup", deploymentBaseUrl),
         { headers: { ...deployedHeaders, authorization: "Bearer wrong" } },

@@ -43,7 +43,7 @@ export function classifyPreviewStatuses(payload) {
   return { state: "pending" };
 }
 
-function approvedVercelOrigin(value, label) {
+function approvedVercelOrigin(value, label, environment = {}) {
   let url;
   try {
     url = new URL(value);
@@ -52,7 +52,11 @@ function approvedVercelOrigin(value, label) {
   }
   if (
     url.protocol !== "https:" ||
-    !(url.hostname === "vercel.app" || url.hostname.endsWith(".vercel.app")) ||
+    !(
+      url.hostname === "vercel.app" ||
+      url.hostname.endsWith(".vercel.app") ||
+      url.origin === environment.PHASE5_TRUSTED_CUSTOM_PREVIEW_ORIGIN
+    ) ||
     url.username ||
     url.password ||
     url.port ||
@@ -65,7 +69,7 @@ function approvedVercelOrigin(value, label) {
   return url.origin;
 }
 
-export function selectVercelPreviewCommentOrigin(payload) {
+export function selectVercelPreviewCommentOrigin(payload, environment = {}) {
   if (!Array.isArray(payload)) throw new Error("GitHub Preview comments response was invalid.");
   const comments = [...payload].sort((left, right) =>
     String(right?.updated_at ?? "").localeCompare(String(left?.updated_at ?? "")),
@@ -79,7 +83,7 @@ export function selectVercelPreviewCommentOrigin(payload) {
       continue;
     for (const match of comment.body.matchAll(/\[Preview\]\((https:\/\/[^\s)]+)\)/gu)) {
       try {
-        return approvedVercelOrigin(match[1], "Vercel bot Preview URL");
+        return approvedVercelOrigin(match[1], "Vercel bot Preview URL", environment);
       } catch {
         // Ignore malformed or non-Vercel links even when they appear in a bot comment.
       }
@@ -91,15 +95,15 @@ export function selectVercelPreviewCommentOrigin(payload) {
 export function previewBrowserOrigin(environment, deploymentOrigin) {
   const configured = environment.PHASE5_GLOBAL_PREVIEW_URL?.trim();
   return configured
-    ? approvedVercelOrigin(configured, "Configured Global Preview URL")
-    : approvedVercelOrigin(deploymentOrigin, "GitHub Preview deployment URL");
+    ? approvedVercelOrigin(configured, "Configured Global Preview URL", environment)
+    : approvedVercelOrigin(deploymentOrigin, "GitHub Preview deployment URL", environment);
 }
 
 export function previewCandidateOrigins(environment, deploymentOrigin, commentOrigin) {
   const exactDeployment = approvedVercelOrigin(deploymentOrigin, "GitHub Preview deployment URL");
   const configured = previewBrowserOrigin(environment, exactDeployment);
   const comment = commentOrigin
-    ? approvedVercelOrigin(commentOrigin, "Vercel bot Preview URL")
+    ? approvedVercelOrigin(commentOrigin, "Vercel bot Preview URL", environment)
     : undefined;
   return [...new Set([comment, configured, exactDeployment].filter(Boolean))];
 }
@@ -110,10 +114,16 @@ export async function previewOriginMatchesExactSha(
   environment = process.env,
   fetchImpl = fetch,
 ) {
-  const bypassSecret = environment.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
-  const headers = bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : undefined;
   try {
-    const response = await fetchImpl(new URL("/api/health", origin), {
+    const approved = approvedVercelOrigin(origin, "Global Preview URL", environment);
+    const hostname = new URL(approved).hostname;
+    const platformOrigin = hostname === "vercel.app" || hostname.endsWith(".vercel.app");
+    // The explicitly approved custom alias is public. Never forward the platform
+    // bypass credential to a custom origin, even when its release SHA is valid.
+    const bypassSecret = environment.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+    const headers =
+      platformOrigin && bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : undefined;
+    const response = await fetchImpl(new URL("/api/health", approved), {
       cache: "no-store",
       headers,
       signal: AbortSignal.timeout(20_000),
@@ -192,7 +202,7 @@ export async function verifyVercelPreview(environment = process.env) {
             `/repos/${encodedRepository}/issues/${pullRequestNumber}/comments?per_page=100`,
             token,
           );
-          commentOrigin = selectVercelPreviewCommentOrigin(comments);
+          commentOrigin = selectVercelPreviewCommentOrigin(comments, environment);
           if (!commentOrigin) {
             process.stdout.write("Waiting for the Vercel bot stable Preview alias.\n");
             await new Promise((resolve) => setTimeout(resolve, 15_000));

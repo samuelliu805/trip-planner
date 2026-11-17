@@ -119,6 +119,8 @@ jobs:
       PHASE5_EXPECT_SUPABASE_CAPTCHA: ${{ vars.PHASE5_EXPECT_SUPABASE_CAPTCHA }}
       PHASE5_GOOGLE_ALLOWED_HOSTNAME: trip-planner-ivory-one.vercel.app
       PHASE5_REQUIRE_BROWSER_SMOKE: "1"
+      # Explicitly verified Vercel alias; the health response must still match the candidate SHA.
+      PHASE5_TRUSTED_CUSTOM_PREVIEW_ORIGIN: https://mcp-preview.therewego.world
       STORAGE_PROVIDER: supabase
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_DEV_SECRET_KEY }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}

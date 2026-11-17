@@ -53,6 +53,52 @@ test("accepts only bounded cookie name/value pairs from the protected Preview re
   );
 });
 
+test("the explicitly public custom Preview does not need or receive platform bypass headers", () => {
+  const origin = "https://mcp-preview.therewego.world";
+  const environment = { PHASE5_TRUSTED_CUSTOM_PREVIEW_ORIGIN: origin };
+  assert.deepEqual(previewProtectionHeaders("controlled-bypass", true, origin, environment), {});
+  assert.deepEqual(previewProtectionHeaders(undefined, false, origin, environment), {});
+  assert.deepEqual(
+    previewProtectionHeaders(
+      "controlled-bypass",
+      false,
+      "https://protected.vercel.app",
+      environment,
+    ),
+    { "x-vercel-protection-bypass": "controlled-bypass" },
+  );
+});
+
+test("public-share session clearing does not request a bypass cookie from the trusted public alias", async () => {
+  const originalFetch = globalThis.fetch;
+  const previousOrigin = process.env.PHASE5_TRUSTED_CUSTOM_PREVIEW_ORIGIN;
+  const origin = "https://mcp-preview.therewego.world";
+  const calls = [];
+  process.env.PHASE5_TRUSTED_CUSTOM_PREVIEW_ORIGIN = origin;
+  globalThis.fetch = async () => {
+    throw new Error("Public alias must not receive a bypass request");
+  };
+  try {
+    await clearBrowserSessionForPublicShare(
+      {
+        sessionId: "test-session",
+        cdp: {
+          async send(method) {
+            calls.push(method);
+          },
+        },
+      },
+      origin,
+      "controlled-bypass",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousOrigin === undefined) delete process.env.PHASE5_TRUSTED_CUSTOM_PREVIEW_ORIGIN;
+    else process.env.PHASE5_TRUSTED_CUSTOM_PREVIEW_ORIGIN = previousOrigin;
+  }
+  assert.deepEqual(calls, ["Network.clearBrowserCookies"]);
+});
+
 test("classifies cleanup authorization without exposing credential values", async () => {
   await assert.rejects(
     () =>
