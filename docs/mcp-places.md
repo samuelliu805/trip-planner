@@ -59,6 +59,8 @@ Google 数据不等于可以任意复制的自有地点库。Place ID、临时�
 
 `npm run test:mcp` 使用两个隔离 PostgreSQL 17 容器、完整区域迁移、真实 OAuth/MCP/业务服务，外部地图 HTTP 使用固定响应；覆盖授权、跨连接隔离、地点解析、真实 place 外键、dry-run 回滚、来源独立、过期/撤销及并发配额。它不声称已访问真实 Google。
 
-只运行失败的地图阶段：`MCP_TEST_NAME_PATTERN=Maps npm run test:mcp`。配置真实区域服务端 Places Key 后，可运行 `MCP_PLACES_LIVE=1 MCP_TEST_NAME_PATTERN='Maps real provider' npm run test:mcp`；该检查才实际访问提供商，并仍把业务写入放在销毁后审计的独立数据库中。不要把 Key 写进命令行。真实客户端扩展验收必须另行记录，不能用脚本代替。
+只运行失败的地图阶段：`MCP_TEST_NAME_PATTERN=Maps npm run test:mcp`。配置真实区域服务端 Places Key 后，可运行 `MCP_PLACES_LIVE=1 MCP_TEST_PROVIDER_ONLY=supabase MCP_TEST_NAME_PATTERN='Maps real provider' npm run test:mcp`（CN 将 `supabase` 改为 `cloudbase`）；该检查才实际访问提供商，并仍把业务写入放在销毁后审计的独立数据库中。不要把 Key 写进命令行。真实客户端扩展验收必须另行记录，不能用脚本代替。
 
 关闭 `MCP_PLACES_ENABLED` 可立即停止公开地图查询和隐藏两个工具；不删除收藏或行程位置。保留四个增量迁移及现有代码作为首选回滚方式；如需撤销某个连接，在产品连接页撤销。不要回滚已应用迁移或直接删除共享 Places 数据。
+
+2026-11-17 的真实 Google MCP 查询、持久化与清理证据，以及原生客户端扩展状态见 [验收记录](mcp-e2e.md#地点扩展独立验收) 和 [PR #140](https://github.com/samuelliu805/trip-planner/pull/140)。
