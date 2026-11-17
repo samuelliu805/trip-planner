@@ -19,6 +19,9 @@ import {
 import { runCloudBaseSdkCall } from "./lib/cloudbase-phase-4-live-requests.mjs";
 import { verifyCrossVariantClipboard } from "./lib/cross-variant-clipboard-browser.mjs";
 import { measureMatrixContentAlignment } from "./lib/public-sharing-table-content.mjs";
+import { verifyPublicItineraryExports } from "./lib/public-itinerary-export-live.mjs";
+import { verifyEditorItineraryExport } from "./lib/editor-itinerary-export-checks.mjs";
+import { compiledServerActionId } from "./lib/compiled-server-action.mjs";
 import { stopChild } from "./lib/child-process.mjs";
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { googleFlightsBookingSample } from "./lib/idea-provider-samples.mjs";
@@ -4317,6 +4320,7 @@ async function publishThroughUi(browser, tripId) {
   assert.ok(publicUrl, "The published page URL was not rendered by the application UI.");
   const token = new URL(publicUrl).pathname.split("/").filter(Boolean).at(-1);
   assert.ok(token, "The application UI returned an invalid public page URL.");
+  await verifyEditorItineraryExport({ browser, evaluate, waitFor, publicUrl });
   const openPage = await evaluate(
     browser,
     `(() => {
@@ -5303,14 +5307,7 @@ async function forgeForm(browser, path, entries, replacements = {}) {
   const manifest = JSON.parse(
     await readFile(".next/server/server-reference-manifest.json", "utf8"),
   );
-  const actions = Object.entries(manifest.node).filter(([, action]) =>
-    Object.values(action.workers).some((worker) => worker.exportedName === exportedName),
-  );
-  assert.equal(
-    actions.length,
-    1,
-    `${exportedName} must resolve in the exact compiled application.`,
-  );
+  const actionId = compiledServerActionId(manifest, exportedName);
   const input = {
     tripId: settings ? fields.tripId : fields.trip_id,
     expectedVersion: Number(settings ? fields.expectedVersion : fields.expected_version),
@@ -5337,7 +5334,7 @@ async function forgeForm(browser, path, entries, replacements = {}) {
     `(async () => {
       const response = await fetch(${JSON.stringify(path)}, {
         body: JSON.stringify(${JSON.stringify(args)}),
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8', 'Next-Action': ${JSON.stringify(actions[0][0])} },
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8', 'Next-Action': ${JSON.stringify(actionId)} },
         credentials: "include",
         method: "POST",
         redirect: "manual",
@@ -6039,6 +6036,10 @@ async function run() {
     );
 
     await clearCookies(browser);
+    await verifyPublicItineraryExports(baseUrl, publicToken, {
+      title: updatedTitle,
+      forbidden: [publishedTitle, forgedTitle],
+    });
     await navigate(browser, `/share/${publicToken}`);
     await waitFor(
       browser,

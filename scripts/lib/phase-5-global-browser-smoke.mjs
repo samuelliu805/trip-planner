@@ -11,6 +11,8 @@ import { join } from "node:path";
 
 import { verifyCrossVariantClipboard } from "./cross-variant-clipboard-browser.mjs";
 import { measureMatrixContentAlignment } from "./public-sharing-table-content.mjs";
+import { verifyPublicItineraryExports } from "./public-itinerary-export-live.mjs";
+import { verifyEditorItineraryExport } from "./editor-itinerary-export-checks.mjs";
 import { stopChild } from "./child-process.mjs";
 import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
 import { startLoopbackTlsProxy } from "./loopback-tls-proxy.mjs";
@@ -385,6 +387,15 @@ async function verifyHardNewTabShare(browser, publicToken) {
       .find((link) => link.getClientRects().length && link.textContent.trim() === "Open page"))`,
     "published Share Page open action",
   );
+  await verifyEditorItineraryExport({
+    browser,
+    evaluate,
+    waitFor,
+    publicUrl: new URL(
+      `/share/${publicToken}`,
+      await evaluate(browser, "location.origin"),
+    ).toString(),
+  });
   const contract = await evaluate(
     browser,
     `(() => {
@@ -2645,6 +2656,10 @@ export async function runGlobalBrowserSmoke(options) {
         `${error instanceof Error ? error.message : error}; bounded page diagnostic: ${JSON.stringify(diagnostic)}`,
       );
     }
+    await verifyPublicItineraryExports(applicationBaseUrl, options.publicToken, {
+      title: options.intendedTitle,
+      forbidden: [options.privateTitle],
+    });
     const publicBody = await evaluate(browser, "document.body.innerText");
     assert.doesNotMatch(publicBody, new RegExp(options.privateTitle));
     assert.equal(await evaluate(browser, 'location.pathname.startsWith("/share/")'), true);
