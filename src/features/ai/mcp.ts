@@ -49,6 +49,7 @@ const descriptions: Record<ToolName, string> = {
     "Undo your recorded change only if its resources still match the saved revision. Rechecks current scopes and trip membership; refuses to overwrite later changes. Undo of creation archives the resource.",
 };
 const readTools = new Set(["account_get", "trip_list", "trip_get", "idea_search"]);
+const additiveTools = new Set(["trip_create", "idea_save_many"]);
 export function createMcpServer(
   rpc: Rpc,
   authorization: { hash: string; resource: string; issuer: string },
@@ -68,7 +69,7 @@ export function createMcpServer(
       inputSchema: z.toJSONSchema(schema) as { type: "object" },
       annotations: {
         readOnlyHint: readTools.has(name),
-        destructiveHint: ["itinerary_apply_changes", "change_undo"].includes(name),
+        destructiveHint: !readTools.has(name) && !additiveTools.has(name),
         idempotentHint: true,
         openWorldHint: false,
       },

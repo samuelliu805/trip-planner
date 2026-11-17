@@ -3656,6 +3656,7 @@
     "ai_idea_service(text,jsonb)",
     "ai_item_snapshot(uuid)",
     "ai_itinerary_service(jsonb)",
+    "ai_preview_idea_revisions(jsonb)",
     "ai_trip_revision(uuid)",
     "ai_trip_service(text,jsonb)",
     "ai_undo(jsonb)",

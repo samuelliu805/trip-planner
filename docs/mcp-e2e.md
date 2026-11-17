@@ -10,7 +10,7 @@
 
 现有 Vercel 项目 `trip-planner` 位于 `team_nZGqZiDqqoQWWKVm0SdCUMGx`，项目 ID `prj_51kZNlaZEWGpQo6a1Gn0p9jr9wbd`。检查到 `ssoProtection=all_except_custom_domains`；普通 Preview URL 不能直接作为真实客户端 OAuth 端点。需可公开访问的受控测试 origin、正确区域数据库和站点登录回调配置。
 
-已完成的部署检查：用户已添加 DNSPod CNAME，专用域名 `mcp-preview.therewego.world` 已有 HTTPS。用户明确授权仅该域名的 Vercel 平台认证例外，已生效。Supabase 项目 `ewyefmnadibnampbeyzc` 已应用全部五个新增迁移，迁移 API 自动时间戳已对齐仓库版本，后续 CLI 不会重复应用。已查询确认 anon 无 `ai_invoke_v1` 权限，authenticated 无 `ai_oauth_store_v1` 权限，service_role 有调用权限。
+已完成的部署检查：用户已添加 DNSPod CNAME，专用域名 `mcp-preview.therewego.world` 已有 HTTPS。用户明确授权仅该域名的 Vercel 平台认证例外，已生效。Supabase 项目 `ewyefmnadibnampbeyzc` 已应用六个新增迁移（包含引用 Idea revision 的预览校验），迁移 API 自动时间戳对齐仓库版本，后续 CLI 不会重复应用。已查询确认 anon 无 `ai_invoke_v1` 权限，authenticated 无 `ai_oauth_store_v1` 权限，service_role 有调用权限。
 
 公网脚本实际观察：资源发现 HTTP 200、未带凭据的 MCP HTTP 401/`INVALID_TOKEN`、公共客户端动态注册 HTTP 201。它们仅是部署协议检查，不计真实客户端通过。新的 Next.js 16.4.6 候选在合入主分支后重新部署，最终 SHA/CI 以 PR 结果为准。
 

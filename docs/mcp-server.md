@@ -60,19 +60,20 @@ MCP_ALLOW_LOCAL_HTTP=0
 ]
 ```
 
-先部署以下五个共享迁移生成的区域版本，再启用端点：
+先部署以下六个共享迁移生成的区域版本，再启用端点：
 
 1. `20261117090000_mcp_authorization.sql`
 2. `20261117091000_personal_idea_library.sql`
 3. `20261117092000_mcp_itinerary_service.sql`
 4. `20261117093000_mcp_business_gateway.sql`
 5. `20261117094000_mcp_scoped_invocation.sql`
+6. `20261117095000_mcp_preview_idea_revisions.sql`
 
 遵守仓库统一迁移流程：编辑 `database/shared/migrations`，运行 `npm run build:database-pg-migrations` 和 `npm run build:cloudbase-pg-rpc-surface`，提交生成的 Supabase/CloudBase 文件及 catalog。不要编辑冻结 baseline。Supabase 使用项目已配置的 CLI migration deploy 流程，CN 使用现有受控 workflow；不要跳过目标环境校验、迁移账本、清理或 residue audit。
 
 ## 工具及一致性
 
-共 12 个工具：`account_get`、`trip_list/get/create/update/archive`、`idea_search/save_many/update/archive`、`itinerary_apply_changes`、`change_undo`。读取工具有 `readOnlyHint=true`；写入有幂等语义，批量行程/撤销标为可能破坏性修改。annotations 仅是客户端提示，服务端始终授权。
+共 12 个工具：`account_get`、`trip_list/get/create/update/archive`、`idea_search/save_many/update/archive`、`itinerary_apply_changes`、`change_undo`。读取工具有 `readOnlyHint=true`；写入有幂等语义。创建/批量收藏为增量写入；更新、归档、批量行程和撤销均标为可能破坏性修改，即使操作可以恢复。annotations 仅是客户端提示，服务端始终授权。
 
 可编辑资源返回 revision。Idea revision 为整数的字符串形式；Trip revision 是现有 `version:content_version`，任何相关网页修改都会使旧版本失效。更新必须提交 `expected_revision`；冲突不得覆盖，重新读后重做决定。归档 Trip 复用产品现有 Completed (`status=done`) 状态，恢复设 `trip_update.patch.archived=false`；Idea 同样用 `idea_update.patch.archived=false`。
 
@@ -80,7 +81,7 @@ MCP_ALLOW_LOCAL_HTTP=0
 
 `idea_save_many` 最多 50 条，只需 name。稳定地点 ID 使用 `provider:id` 格式；链接去 fragment 和常见跟踪参数、排序查询参数后去重。原来源链接、来源类型、notes、reason、tags 保留。新来源默认待核实；缺 region 可保存，并出现在 `needs_completion`。同稳定 ID 或规范化链接返回 duplicate，不覆盖备注；名称相似返回候选，仍保存为独立收藏。明确返回 `created/duplicates/needs_completion/failed`。输入结构不合法时请求返回 `INVALID_INPUT`；数据库可识别的单条保存失败进入 failed。
 
-行程修改必须先 `dry_run=true`，包含最多 50 条 add/update/move/remove。返回 10 分钟有效 preview ID、规范化变更（新 item ID 已分配）、基础 revision 和提议快照。dry-run 在数据库子事务中执行真实校验，再完整回滚；只保存预览和重试结果，不保存正式行程。提交提供同 Trip、基础 revision、preview ID、`dry_run=false` 和新的幂等 key，可省略 changes；如带 changes，必须与规范化预览完全一致。预览绑定用户和连接；基础版本变化后不可使用。提交在一个事务中执行，任何失败全部回滚。
+行程修改必须先 `dry_run=true`，包含最多 50 条 add/update/move/remove。返回 10 分钟有效 preview ID、规范化变更（新 item ID 已分配）、基础 revision 和提议快照。dry-run 在数据库子事务中执行真实校验，再完整回滚；只保存预览和重试结果，不保存正式行程。提交提供同 Trip、基础 revision、preview ID、`dry_run=false` 和新的幂等 key，可省略 changes；如带 changes，必须与规范化预览完全一致。预览绑定用户、连接、Trip revision 及引用 Idea 的 revision；其中任何资源变化后不可使用旧预览。提交对来源 Idea 加共享行锁，保证版本检查与实际复制的内容一致。提交在一个事务中执行，任何失败全部回滚。
 
 V1 可管理 activity/meal，不跨 Plan 移动已有 item。复杂 flight/stay/transport 仍需现有专用编辑器。删除带附件、Day route 或旧 Research 关联的 item 会明确拒绝，防止通用操作破坏复合业务数据。移除普通 item 的快照与链接可撤销。没有永久删除 Trip/Idea 的工具。
 

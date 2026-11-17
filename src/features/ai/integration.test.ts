@@ -320,6 +320,59 @@ test("Trip creation is visible through web services; B IDs and resource ranges a
     /RESOURCE_FORBIDDEN/,
   );
 });
+test("Changing a referenced Idea after preview invalidates commit without changing the trip", async () => {
+  const idea = (
+    await invoke("idea_save_many", {
+      ideas: [{ name: "Preview source", notes: "Before preview" }],
+      idempotency_key: randomUUID(),
+    })
+  ).created[0];
+  const trip = await invoke("trip_create", {
+    title: "Idea preview revision test",
+    timezone: "Asia/Tokyo",
+    day_count: 1,
+    idempotency_key: randomUUID(),
+  });
+  const day = (await invoke("trip_get", { trip_id: trip.trip.id, section: "days" })).days[0];
+  const args = {
+    trip_id: trip.trip.id,
+    expected_revision: trip.revision,
+    dry_run: true,
+    changes: [{ op: "add", day_id: day.id, idea_id: idea.id }],
+  };
+  const preview = await invoke("itinerary_apply_changes", {
+    ...args,
+    idempotency_key: randomUUID(),
+  });
+  await invokeTool(webA, "idea_update", {
+    idea_id: idea.id,
+    expected_revision: idea.revision,
+    patch: { notes: "Edited on the web after preview" },
+    idempotency_key: randomUUID(),
+  });
+  await assert.rejects(
+    invoke("itinerary_apply_changes", {
+      trip_id: trip.trip.id,
+      expected_revision: trip.revision,
+      preview_id: preview.preview_id,
+      idempotency_key: randomUUID(),
+    }),
+    /PREVIEW_INVALID/,
+  );
+  assert.equal(
+    (await invoke("trip_get", { trip_id: trip.trip.id, section: "items" })).items.length,
+    0,
+  );
+  const fresh = await invoke("itinerary_apply_changes", { ...args, idempotency_key: randomUUID() });
+  await invoke("itinerary_apply_changes", {
+    trip_id: trip.trip.id,
+    expected_revision: trip.revision,
+    preview_id: fresh.preview_id,
+    idempotency_key: randomUUID(),
+  });
+  const saved = await invoke("trip_get", { trip_id: trip.trip.id, section: "items" });
+  assert.equal(saved.items[0].notes, "Edited on the web after preview");
+});
 test("Preview/apply is transactional, Idea references are independent, moves, stale web revisions, undo, archive and restore", async () => {
   const trip = await invoke("trip_get", { trip_id: tripId });
   const changes = [
@@ -693,7 +746,33 @@ test("Real MCP transport initializes and calls tools, rejects missing auth, enfo
     rpc,
     config,
   );
-  assert.equal(value(await listed.json()).result.tools.length, 12);
+  const tools = value(await listed.json()).result.tools as Array<{
+    name: string;
+    annotations: { readOnlyHint: boolean; destructiveHint: boolean };
+  }>;
+  assert.equal(tools.length, 12);
+  for (const name of ["account_get", "trip_list", "trip_get", "idea_search"]) {
+    assert.equal(tools.find((tool) => tool.name === name)?.annotations.readOnlyHint, true);
+  }
+  for (const name of ["trip_create", "idea_save_many"]) {
+    assert.deepEqual(tools.find((tool) => tool.name === name)?.annotations, {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
+  }
+  for (const name of [
+    "trip_update",
+    "trip_archive",
+    "idea_update",
+    "idea_archive",
+    "itinerary_apply_changes",
+    "change_undo",
+  ]) {
+    assert.equal(tools.find((tool) => tool.name === name)?.annotations.readOnlyHint, false);
+    assert.equal(tools.find((tool) => tool.name === name)?.annotations.destructiveHint, true);
+  }
   const called = await handleMcp(
     request({
       jsonrpc: "2.0",
