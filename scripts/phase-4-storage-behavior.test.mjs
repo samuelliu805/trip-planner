@@ -99,6 +99,11 @@ test("cleanup jobs never overlap RPC calls on a shared backend", async () => {
             data: { creationReceipts: 0, deletionReceipts: 0, operations: 0 },
             error: null,
           };
+        if (name === "ai_place_cleanup_v1")
+          return {
+            data: { deleted_lookups: 0, deleted_quotas: 0 },
+            error: null,
+          };
         if (name === "expired_share_image_cleanup_batch_v1") return { data: [], error: null };
         if (name === "finalize_expired_share_image_cleanup_v1") return { data: 0, error: null };
         if (name === "asset_cleanup_batch_v2") return { data: [], error: null };
@@ -115,12 +120,14 @@ test("cleanup jobs never overlap RPC calls on a shared backend", async () => {
   assert.equal(maximumActive, 1);
   assert.deepEqual(calls, [
     "cleanup_collaboration_replay_v1",
+    "ai_place_cleanup_v1",
     "expired_share_image_cleanup_batch_v1",
     "finalize_expired_share_image_cleanup_v1",
     "asset_cleanup_batch_v2",
     "untracked_asset_storage_batch_v1",
   ]);
   assert.deepEqual(result, {
+    aiPlaces: { deletedLookups: 0, deletedQuotas: 0, error: null },
     assets: { deletedAssets: 0, deletedFiles: 0, error: null, untrackedFiles: 0 },
     backlog: false,
     collaborationReplay: {

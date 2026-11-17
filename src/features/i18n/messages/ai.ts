@@ -1,4 +1,11 @@
 export const aiZhCN: Record<string, string> = {
+  "Map location resolved": "地图地点已解析",
+  "Location needs confirmation": "地点待确认",
+  "User-provided location": "用户提供的地点",
+  "Open map location": "在地图上打开地点",
+  "Remove saved location": "移除收藏中的地点",
+  "Allow map lookups using Trip Planner's map service. Limits apply; no Google API key is needed.":
+    "允许通过 Trip Planner 的地图服务查询地点。查询有额度限制，无需提供 Google API Key。",
   "Connect your AI": "连接你的 AI",
   "Personal ideas": "个人 Idea 收藏",
   "Your AI extracts and plans. Trip Planner saves structured data. No model API key is required.":

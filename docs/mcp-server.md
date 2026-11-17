@@ -29,7 +29,7 @@
 
 访问令牌为高熵 opaque token，15 分钟到期；刷新令牌 30 天，单次使用后轮换。数据库只保存 SHA-256 摘要，不存原始 code/access/refresh token。JWT、错误签名、错误 issuer/resource 的令牌不能冒用 opaque 凭据。授权与 token 绑定配置的 issuer 和资源 `/mcp`，不能由请求 Host 决定。客户端参数中的 `user_id` 不被接受；用户来自有效凭据。
 
-每个浏览器授权产生独立 connection。scope 至少覆盖 `trips:read/write`、`ideas:read/write`，用户明确选择指定 Trip 或有权限访问的全部现有/未来 Trip。个人 Idea 权限与 Trip 范围分开显示。scope 不替代协作权限；当前协作关系每次重新查询。原系统只有 owner 和 collaborator，二者可编辑；只读连接由只读 scope 表达，不新增不受原业务支持的 viewer 角色。新建 Trip 需要全部 Trip 的明确授权。
+每个浏览器授权产生独立 connection。scope 覆盖 `trips:read/write`、`ideas:read/write`，可选地点查询 scope 为 `places:read`（需单独启用），用户明确选择指定 Trip 或有权限访问的全部现有/未来 Trip。个人 Idea 权限与 Trip 范围分开显示。scope 不替代协作权限；当前协作关系每次重新查询。原系统只有 owner 和 collaborator，二者可编辑；只读连接由只读 scope 表达，不新增不受原业务支持的 viewer 角色。新建 Trip 需要全部 Trip 的明确授权。
 
 撤销行锁与调用事务串行：已提交撤销后，下一次业务调用拒绝旧 access token，refresh token 也无法恢复。进行中的调用可能在撤销之前完成；撤销请求返回后不会再开始有权限的旧令牌调用。重试命中幂等结果之前同样重新授权。其他连接不受影响。拒绝、取消、错误 PKCE 不产生可使用的 access/refresh token。
 
@@ -77,13 +77,13 @@ MCP_ALLOW_LOCAL_HTTP=0
 
 ## 工具及一致性
 
-共 12 个工具：`account_get`、`trip_list/get/create/update/archive`、`idea_search/save_many/update/archive`、`itinerary_apply_changes`、`change_undo`。读取工具有 `readOnlyHint=true`；写入有幂等语义。创建/批量收藏为增量写入；更新、归档、批量行程和撤销均标为可能破坏性修改，即使操作可以恢复。annotations 仅是客户端提示，服务端始终授权。
+默认 12 个工具（开启地点扩展后增加 `place_search` / `place_resolve`，共 14 个，详见 [地点支持](mcp-places.md)）：`account_get`、`trip_list/get/create/update/archive`、`idea_search/save_many/update/archive`、`itinerary_apply_changes`、`change_undo`。读取工具有 `readOnlyHint=true`；写入有幂等语义。创建/批量收藏为增量写入；更新、归档、批量行程和撤销均标为可能破坏性修改，即使操作可以恢复。annotations 仅是客户端提示，服务端始终授权。
 
 可编辑资源返回 revision。Idea revision 为整数的字符串形式；Trip revision 是现有 `version:content_version`，任何相关网页修改都会使旧版本失效。更新必须提交 `expected_revision`；冲突不得覆盖，重新读后重做决定。归档 Trip 复用产品现有 Completed (`status=done`) 状态，恢复设 `trip_update.patch.archived=false`；Idea 同样用 `idea_update.patch.archived=false`。
 
 `trip_get` 默认只返回摘要，可指定 `section=days/items`、`day_id`、`variant_id`，用 `cursor`/`limit` 分页。所有列表最多 50 条。日期是 PostgreSQL `date` / ISO `YYYY-MM-DD`，时间是当地 wall-clock，Trip timezone 是 IANA 名称，不通过 UTC 时间戳表示旅行日期。
 
-`idea_save_many` 最多 50 条，只需 name。稳定地点 ID 使用 `provider:id` 格式；链接去 fragment 和常见跟踪参数、排序查询参数后去重。原来源链接、来源类型、notes、reason、tags 保留。新来源默认待核实；缺 region 可保存，并出现在 `needs_completion`。同稳定 ID 或规范化链接返回 duplicate，不覆盖备注；名称相似返回候选，仍保存为独立收藏。明确返回 `created/duplicates/needs_completion/failed`。输入结构不合法时请求返回 `INVALID_INPUT`；数据库可识别的单条保存失败进入 failed。
+`idea_save_many` 最多 50 条，只需 name。稳定地点 ID 使用 `provider:id` 格式；链接去 fragment 和常见跟踪参数、排序查询参数后去重。原来源链接、来源类型、notes、reason、tags 保留。新来源默认待核实；缺 region 可保存，并出现在 `needs_completion`。同稳定 ID 或规范化链接返回 duplicate；明确不同的稳定 ID 可来自同一来源，不覆盖备注；名称相似返回候选，仍保存为独立收藏。明确返回 `created/duplicates/needs_completion/failed`。输入结构不合法时请求返回 `INVALID_INPUT`；数据库可识别的单条保存失败进入 failed。
 
 行程修改必须先 `dry_run=true`，包含最多 50 条 add/update/move/remove。返回 10 分钟有效 preview ID、规范化变更（新 item ID 已分配）、基础 revision 和提议快照。dry-run 在数据库子事务中执行真实校验，再完整回滚；只保存预览和重试结果，不保存正式行程。提交提供同 Trip、基础 revision、preview ID、`dry_run=false` 和新的幂等 key，可省略 changes；如带 changes，必须与规范化预览完全一致。预览绑定用户、连接、Trip revision 及引用 Idea 的 revision；其中任何资源变化后不可使用旧预览。提交对来源 Idea 加共享行锁，保证版本检查与实际复制的内容一致。提交在一个事务中执行，任何失败全部回滚。
 

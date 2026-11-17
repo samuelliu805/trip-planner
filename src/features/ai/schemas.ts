@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ideaLocationSchema, itemLocationSchema } from "./place-schemas";
 
 const id = z.uuid();
 const revision = z.string().min(1).max(100);
@@ -31,7 +32,8 @@ const idea = z
       .refine((url) => /^https?:\/\//.test(url))
       .optional(),
     source_kind: z.enum(["user", "web", "chat", "screenshot"]).default("user"),
-    stable_place_id: z.string().min(3).max(300).optional(),
+    stable_place_id: z.string().min(3).max(512).optional(),
+    location: ideaLocationSchema.optional(),
   })
   .strict();
 const tripPatch = {
@@ -62,6 +64,7 @@ const itemFields = z
       .nullable()
       .optional(),
     scheduleKind: z.enum(["none", "all_day", "period", "approximate", "exact", "range"]).optional(),
+    location: itemLocationSchema.nullable().optional(),
   })
   .strict();
 const change = z
@@ -76,6 +79,18 @@ const change = z
 
 export const toolSchemas = {
   account_get: z.object({}).strict(),
+  place_search: z
+    .object({
+      query: z.string().trim().min(1).max(80),
+      limit: z.number().int().min(1).max(5).default(5),
+    })
+    .strict(),
+  place_resolve: z
+    .object({
+      provider_place_id: z.string().regex(/^[A-Za-z0-9_-]{1,300}$/),
+      search_id: id.optional(),
+    })
+    .strict(),
   trip_list: z.object({ ...page, include_archived: z.boolean().default(false) }).strict(),
   trip_get: z
     .object({
@@ -132,6 +147,7 @@ export const toolSchemas = {
           reason: text.nullable().optional(),
           tags: z.array(z.string().max(60)).max(20).optional(),
           archived: z.boolean().optional(),
+          location: ideaLocationSchema.nullable().optional(),
         })
         .strict(),
     })

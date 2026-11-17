@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 239,
+  "publicFunctionCount": 241,
   "catalog": [
     {
       "schema": "public",
@@ -37,6 +37,32 @@
       "arguments": [
         { "name": "action", "type": "text" },
         { "name": "input", "type": "jsonb" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "ai_place_cleanup_v1(integer)",
+      "arguments": [{ "name": "batch_size", "type": "integer" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "ai_place_finish_v1(text,text,text,uuid,jsonb)",
+      "arguments": [
+        { "name": "access_hash", "type": "text" },
+        { "name": "expected_resource", "type": "text" },
+        { "name": "expected_issuer", "type": "text" },
+        { "name": "lookup_id", "type": "uuid" },
+        { "name": "result", "type": "jsonb" }
       ],
       "returns": "jsonb",
       "securityDefiner": true,
@@ -3654,8 +3680,12 @@
     "ai_dispatch(text,jsonb)",
     "ai_execute_items(uuid,jsonb,boolean)",
     "ai_idea_service(text,jsonb)",
+    "ai_item_location(uuid,jsonb,jsonb,text)",
     "ai_item_snapshot(uuid)",
     "ai_itinerary_service(jsonb)",
+    "ai_location_reference(jsonb)",
+    "ai_location_status(jsonb)",
+    "ai_place_start(text,jsonb)",
     "ai_preview_idea_revisions(jsonb)",
     "ai_trip_revision(uuid)",
     "ai_trip_service(text,jsonb)",

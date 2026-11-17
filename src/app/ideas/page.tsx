@@ -6,11 +6,12 @@ import { T } from "@/features/i18n/i18n-provider";
 import { browserAiRpc } from "@/features/ai/database.server";
 import { invokeTool } from "@/features/ai/service";
 import { editLibraryIdea, saveLibraryIdea } from "@/features/ai/web-actions";
+import { placeMapUrl } from "@/features/ai/places-links";
 
 type Idea = {
   id: string;
   name: string;
-  revision: number;
+  revision: string;
   region: string | null;
   notes: string | null;
   source_url: string | null;
@@ -18,6 +19,9 @@ type Idea = {
   archived: boolean;
   reason: string | null;
   tags: string[];
+  needs_completion: boolean;
+  location_status: "none" | "resolved" | "needs_resolution" | "user_provided";
+  location_ref: { provider: "google" | "amap" | "custom"; providerPlaceId?: string } | null;
 };
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Personal ideas", robots: { index: false, follow: false } };
@@ -71,8 +75,35 @@ export default async function IdeasPage({
         <article className="space-y-3 rounded-xl border p-4" key={idea.id} id={idea.id}>
           <h2 className="break-words text-xl font-semibold">{idea.name}</h2>
           <p className="text-sm">
-            <T message={idea.region ? "Unverified source" : "Needs completion"} />
+            <T message={idea.needs_completion ? "Needs completion" : "Unverified source"} />
           </p>
+          {idea.location_status === "resolved" && (
+            <p>
+              <T message="Map location resolved" />
+            </p>
+          )}
+          {idea.location_status === "needs_resolution" && (
+            <p>
+              <T message="Location needs confirmation" />
+            </p>
+          )}
+          {idea.location_status === "user_provided" && (
+            <p>
+              <T message="User-provided location" />
+            </p>
+          )}
+          {idea.location_ref &&
+            idea.location_ref.provider !== "custom" &&
+            idea.location_ref.providerPlaceId && (
+              <a
+                className="inline-flex min-h-11 items-center underline"
+                href={placeMapUrl(idea.location_ref.provider, idea.location_ref.providerPlaceId)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <T message="Open map location" />
+              </a>
+            )}
           {idea.source_url && (
             <a
               className="break-all underline"
@@ -121,6 +152,12 @@ export default async function IdeasPage({
               <input name="archived" type="checkbox" defaultChecked={idea.archived} />
               <T message="Archived" />
             </label>
+            {idea.location_ref && (
+              <label className="flex min-h-11 items-center gap-3">
+                <input name="clear_location" type="checkbox" />
+                <T message="Remove saved location" />
+              </label>
+            )}
             <button className="min-h-11 rounded-lg border px-4">
               <T message="Save changes" />
             </button>

@@ -75,3 +75,7 @@ claude mcp login trip-planner
 7. 在 `/account/ai` 撤销该连接，然后让同客户端再次读取私人 Trip；必须失败。其他独立连接应仍有效。
 
 每步记录结果和必要脱敏截图，只保存业务测试数据、版本、日期和错误码；不保存 cookie、Authorization、code、token、HAR 凭据或密码页面。至少一客户端需要完成“批量调整 → 网页核对 → 撤销”完整流程，才具备真实客户端发布验收证据。
+
+## 地点扩展
+
+启用后重新授权并选择 `places:read`，客户端可使用 `place_search` / `place_resolve`。用户不用提供 Google Key。先搜索并确认地点，再把 `selection_id` 带入收藏及行程写入；只有来源链接时先保存，不猜坐标。完整示例、有效期和限额见 [地点文档](mcp-places.md)。各客户端的地图扩展实际验收另记，原有文本流程通过不等于地点扩展通过。

@@ -19,7 +19,10 @@ await build({
 });
 const docker = (...args) =>
   execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-for (const provider of ["supabase", "cloudbase"]) {
+const selectedProvider = process.env.MCP_TEST_PROVIDER_ONLY;
+if (selectedProvider && !["supabase", "cloudbase"].includes(selectedProvider))
+  throw new Error("MCP_TEST_PROVIDER_ONLY must be supabase or cloudbase");
+for (const provider of selectedProvider ? [selectedProvider] : ["supabase", "cloudbase"]) {
   const container = `trip-mcp-${provider}-${process.pid}`;
   const password = randomBytes(24).toString("hex");
   const sql = (source) => {
@@ -80,16 +83,21 @@ for (const provider of ["supabase", "cloudbase"]) {
       }
     }
     const port = docker("port", container, "5432/tcp").trim().split(":").at(-1);
-    const result = spawnSync(process.execPath, ["--test", entry], {
-      cwd: root,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        MCP_TEST_DATABASE_URL: `postgres://postgres:${password}@127.0.0.1:${port}/postgres`,
-        MCP_TEST_PROVIDER: provider,
+    const namePattern = process.env.MCP_TEST_NAME_PATTERN;
+    const result = spawnSync(
+      process.execPath,
+      ["--test", ...(namePattern ? [`--test-name-pattern=${namePattern}`] : []), entry],
+      {
+        cwd: root,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          MCP_TEST_DATABASE_URL: `postgres://postgres:${password}@127.0.0.1:${port}/postgres`,
+          MCP_TEST_PROVIDER: provider,
+        },
+        maxBuffer: 4 * 1024 * 1024,
       },
-      maxBuffer: 4 * 1024 * 1024,
-    });
+    );
     if (result.status !== 0)
       throw new Error(`${provider}: ${result.stdout.slice(-11000)}\n${result.stderr.slice(-3000)}`);
     console.log(`${provider}: real PostgreSQL + OAuth library + MCP SDK integration passed.`);

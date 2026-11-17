@@ -1,5 +1,13 @@
 import type { Json } from "@/types/database";
 import { isToolName, parseToolInput } from "./schemas";
+import type { PlacesToolName } from "./place-schemas";
+
+export type AiAuthorization = { hash: string; resource: string; issuer: string };
+export type PlacesToolRunner = (
+  tool: PlacesToolName,
+  input: Record<string, unknown>,
+  authorization: AiAuthorization,
+) => Promise<Json>;
 
 export type Rpc = (
   name: string,
@@ -23,6 +31,14 @@ const knownCodes = [
   "CHANGE_ALREADY_UNDONE",
   "COMPOUND_ITEM_REQUIRES_WEB_EDITOR",
   "LINKED_ITEM_REQUIRES_WEB_EDITOR",
+  "PLACE_LOOKUP_EXPIRED",
+  "PLACE_NOT_IN_SEARCH",
+  "PLACE_LOOKUP_PENDING",
+  "PLACE_RATE_LIMITED",
+  "PLACE_QUOTA_EXCEEDED",
+  "PLACE_RESOLUTION_REQUIRED",
+  "PLACE_SELECTION_MISMATCH",
+  "PLACE_PROVIDER_UNAVAILABLE",
 ];
 export class AiError extends Error {
   constructor(
@@ -65,14 +81,16 @@ export async function invokeTool(
   rpc: Rpc,
   tool: string,
   input: unknown,
-  authorization?: {
-    hash: string;
-    resource: string;
-    issuer: string;
-  },
+  authorization?: AiAuthorization,
+  places?: PlacesToolRunner,
 ) {
   if (!isToolName(tool)) throw new AiError("UNKNOWN_TOOL");
   const args = parseToolInput(tool, input);
+  if (tool === "place_search" || tool === "place_resolve") {
+    if (!authorization) throw new AiError("INSUFFICIENT_SCOPE");
+    if (!places) throw new AiError("PLACE_PROVIDER_UNAVAILABLE");
+    return places(tool, args, authorization);
+  }
   return callRpc(
     rpc,
     authorization ? "ai_invoke_v1" : "ai_web_invoke_v1",

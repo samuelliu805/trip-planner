@@ -205,18 +205,43 @@ export async function cleanupCollaborationReplay(backend, limit = 1000) {
     : { deleted, error: null };
 }
 
+export async function cleanupAiPlaceLookups(backend, limit = 1000) {
+  const result = await rpcWithRetry(backend.database, "ai_place_cleanup_v1", {
+    batch_size: limit,
+  });
+  const deleted = result.data;
+  if (
+    result.error ||
+    !deleted ||
+    !Number.isInteger(deleted.deleted_lookups) ||
+    deleted.deleted_lookups < 0 ||
+    !Number.isInteger(deleted.deleted_quotas) ||
+    deleted.deleted_quotas < 0
+  )
+    return { deletedLookups: 0, deletedQuotas: 0, error: "AI place cleanup unavailable" };
+  return {
+    deletedLookups: deleted.deleted_lookups,
+    deletedQuotas: deleted.deleted_quotas,
+    error: null,
+  };
+}
+
 export async function runCleanupJobs(backend, limit = 100) {
   const collaborationReplay = await cleanupCollaborationReplay(backend, Math.max(1000, limit));
+  const aiPlaces = await cleanupAiPlaceLookups(backend, 1000);
   const shareImages = await cleanupExpiredShareImages(backend, limit);
   const assets = await drainAssetDeletionQueue(backend, limit);
   return {
+    aiPlaces,
     assets,
     backlog:
       shareImages.revokedImages >= limit ||
       assets.deletedAssets >= limit ||
-      assets.untrackedFiles >= limit,
+      assets.untrackedFiles >= limit ||
+      aiPlaces.deletedLookups >= 1000 ||
+      aiPlaces.deletedQuotas >= 1000,
     collaborationReplay,
-    error: collaborationReplay.error ?? shareImages.error ?? assets.error,
+    error: collaborationReplay.error ?? aiPlaces.error ?? shareImages.error ?? assets.error,
     shareImages,
   };
 }

@@ -61,6 +61,11 @@ export default async function ConsentPage({
                 {scope}
               </label>
             ))}
+            {parameters.scope.split(" ").includes("places:read") && (
+              <p className="text-sm text-muted-foreground">
+                <T message="Allow map lookups using Trip Planner's map service. Limits apply; no Google API key is needed." />
+              </p>
+            )}
           </fieldset>
           <fieldset className="space-y-2">
             <legend className="font-semibold">
