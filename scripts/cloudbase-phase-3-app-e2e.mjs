@@ -4825,6 +4825,13 @@ async function updateTripTitle(browser, nextTitle) {
       `${error instanceof Error ? error.message : error} ${JSON.stringify(diagnostics)}`,
     );
   }
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('.trip-app-bar span')].find((node) =>
+    node.textContent.trim() === ${JSON.stringify(nextTitle)} && node.getBoundingClientRect().width > 1 &&
+    node.getBoundingClientRect().height > 1))`,
+    "Trip title updates without reloading",
+  );
   const detailPath = await evaluate(browser, "location.pathname");
   await waitForTripOutbox(browser, detailPath.split("/")[2], {
     evaluate,

@@ -44,6 +44,7 @@ import { tripStatusOf, tripStatusToggle } from "@/features/trips/status";
 import type { TripListEntry } from "@/features/trips/types";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { researchCategoryHref } from "@/features/research/urls";
+import { useLiveTrip } from "../use-live-trip";
 
 function tripDateSummary(trip: TripListEntry, locale: "en" | "zh-CN") {
   if (trip.start_date && trip.end_date) {
@@ -78,11 +79,12 @@ function PrimaryRouteSummary({ trip }: { trip: TripListEntry }) {
 
 export function TripCard({
   sharingEnabled,
-  trip,
+  trip: initialTrip,
 }: {
   sharingEnabled: boolean;
   trip: TripListEntry;
 }) {
+  const trip = useLiveTrip(initialTrip);
   const { locale, t } = useI18n();
   const router = useRouter();
   const [editorOpen, setEditorOpen] = useState(false);
@@ -116,11 +118,13 @@ export function TripCard({
     .at(-1);
   const projectedStatus = (pendingStatus?.intent as { input: { status: string } } | undefined)
     ?.input.status;
+  const currentStatusSnapshot =
+    statusSnapshot && statusSnapshot.version >= initialTrip.version ? statusSnapshot : undefined;
   const status = tripStatusOf({
     ...trip,
-    status: projectedStatus ?? statusSnapshot?.status ?? trip.status,
+    status: projectedStatus ?? currentStatusSnapshot?.status ?? trip.status,
   });
-  const statusVersion = statusSnapshot?.version ?? trip.version;
+  const statusVersion = Math.max(currentStatusSnapshot?.version ?? 0, trip.version);
   const toggle = tripStatusToggle(status);
   const onDeletePendingChange = () => {};
 
@@ -306,13 +310,14 @@ export function TripCard({
       </Card>
 
       <TripSettingsEditor onOpenChange={setEditorOpen} open={editorOpen} title="Trip settings">
+        {/* The queue seed stays authoritative; the card above uses the optimistic projection. */}
         <TripForm
-          key={trip.version}
+          key={initialTrip.version}
           onSaved={() => {
             setEditorOpen(false);
           }}
           surface="trip_list"
-          trip={trip}
+          trip={initialTrip}
         />
       </TripSettingsEditor>
       <TripPeopleEditor

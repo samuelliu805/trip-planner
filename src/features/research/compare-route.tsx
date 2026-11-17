@@ -90,16 +90,8 @@ export async function ResearchCompareRoute({
               />
             ) : null
           }
-          title={trip.title}
-          tripId={trip.id}
-          tripContentVersion={trip.content_version}
+          trip={trip}
           tripRole={trip.role}
-          tripVersion={trip.version}
-          variantControls={
-            <span className="block truncate text-sm font-semibold" title={trip.title}>
-              {trip.title}
-            </span>
-          }
           variantId={resolution.activeVariant.id}
           settings={<TripForm trip={trip} />}
         />
@@ -117,6 +109,7 @@ export async function ResearchCompareRoute({
           key={`${resolution.activeVariant.id}:${planState.currentApplicationIds.join(",")}`}
           plan={planResult.data}
           tripId={trip.id}
+          tripVersion={trip.version}
         />
       </PlannerMapProvider>
     </TripDetailRoute>
