@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { aiConfig } from "@/features/ai/config";
 import { privilegedAiRpc } from "@/features/ai/database.server";
-import { errorResponse, privateHeaders, rateLimit } from "@/features/ai/http";
+import { oauthErrorResponse, privateHeaders, rateLimit } from "@/features/ai/http";
 import { credentialHash } from "@/features/ai/oauth-model";
 import { pendingAiCookie, validateAuthorization } from "@/features/ai/oauth-request.server";
 
@@ -28,6 +28,6 @@ export async function GET(request: Request) {
     });
     return response;
   } catch (error) {
-    return errorResponse(error);
+    return oauthErrorResponse(error);
   }
 }

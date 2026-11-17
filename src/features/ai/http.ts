@@ -62,3 +62,22 @@ export function errorResponse(error: unknown) {
     { status, headers: { ...privateHeaders, ...(status === 429 ? { "Retry-After": "60" } : {}) } },
   );
 }
+
+/** OAuth endpoints use RFC error identifiers; business tool codes remain uppercase. */
+export function oauthErrorResponse(error: unknown, fallback = "invalid_request") {
+  const response = errorResponse(error);
+  const codes: Record<string, string> = {
+    INVALID_CLIENT: "invalid_client",
+    INVALID_SCOPE: "invalid_scope",
+    INVALID_RESOURCE: "invalid_target",
+    INVALID_REDIRECT_URI: "invalid_redirect_uri",
+    UNSUPPORTED_GRANT_TYPE: "unsupported_grant_type",
+    RATE_LIMITED: "temporarily_unavailable",
+    SERVICE_UNAVAILABLE: "temporarily_unavailable",
+  };
+  const code = error instanceof AiError ? (codes[error.code] ?? fallback) : fallback;
+  return Response.json(
+    { error: code, error_description: "The authorization request could not be completed." },
+    { status: response.status, headers: response.headers },
+  );
+}

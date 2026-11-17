@@ -1,7 +1,7 @@
 import OAuth2Server from "@node-oauth/oauth2-server";
 import { aiConfig } from "@/features/ai/config";
 import { privilegedAiRpc } from "@/features/ai/database.server";
-import { boundedBody, errorResponse, privateHeaders, rateLimit } from "@/features/ai/http";
+import { boundedBody, oauthErrorResponse, privateHeaders, rateLimit } from "@/features/ai/http";
 import { oauthModel } from "@/features/ai/oauth-model";
 import { ensurePreregistered } from "@/features/ai/oauth-registration";
 import { AiError } from "@/features/ai/service";
@@ -51,6 +51,6 @@ export async function POST(request: Request) {
       );
     }
   } catch (error) {
-    return errorResponse(error);
+    return oauthErrorResponse(error);
   }
 }

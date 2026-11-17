@@ -1,6 +1,6 @@
 import { aiConfig } from "@/features/ai/config";
 import { privilegedAiRpc } from "@/features/ai/database.server";
-import { boundedBody, errorResponse, privateHeaders, rateLimit } from "@/features/ai/http";
+import { boundedBody, oauthErrorResponse, privateHeaders, rateLimit } from "@/features/ai/http";
 import { oauthModel } from "@/features/ai/oauth-model";
 import { registerClient } from "@/features/ai/oauth-registration";
 
@@ -17,6 +17,6 @@ export async function POST(request: Request) {
     );
     return Response.json(client, { status: 201, headers: privateHeaders });
   } catch (error) {
-    return errorResponse(error);
+    return oauthErrorResponse(error, "invalid_client_metadata");
   }
 }
