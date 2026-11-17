@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PullUpPanel } from "@/components/ui/pull-up-panel";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
+import { CopyAiTask } from "@/features/ai/copy-task";
 
 import { TripMenuAccountActions } from "./trip-menu-account-actions";
 
@@ -42,6 +43,7 @@ export function TripBarMenu({
   onInviteTrip,
   onShareTrip,
   onTripSettings,
+  tripId,
 }: {
   accountEmail: string;
   deletePending?: boolean;
@@ -54,6 +56,7 @@ export function TripBarMenu({
   onInviteTrip?: () => void;
   onShareTrip?: () => void;
   onTripSettings?: () => void;
+  tripId?: string;
 }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const quickActions: TripMobileQuickAction[] = [
@@ -90,6 +93,7 @@ export function TripBarMenu({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
+            {!guest && tripId ? <CopyAiTask tripId={tripId} /> : null}
             {extraItems ? <>{extraItems}</> : null}
             {extraItems && (onShareTrip || onTripSettings || onDeleteTrip) ? (
               <DropdownMenuSeparator />
@@ -185,6 +189,7 @@ export function TripBarMenu({
             <div className="border-b py-3">{mobileMenuItems(runMobileAction)}</div>
           ) : null}
           <div className="space-y-1 pt-3">
+            {!guest && tripId ? <CopyAiTask tripId={tripId} mobile /> : null}
             <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <T message={" Trip "} />
             </p>

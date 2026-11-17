@@ -261,6 +261,7 @@ export function TripAppBar({
             {!guestExperience ? <PlannerSyncStatus mutating={mutating} tripId={tripId} /> : null}
             {actions}
             <TripBarMenu
+              tripId={tripId}
               accountEmail={accountEmail}
               deletePending={deletePending}
               extraItems={menuItems}

@@ -80,6 +80,8 @@ jobs:
           NONBLOCKING_DB_UPGRADE=1 npm run test:database:nonblocking
           NONBLOCKING_DB_PROVIDER=cloudbase npm run test:database:nonblocking
           NONBLOCKING_DB_PROVIDER=cloudbase NONBLOCKING_DB_UPGRADE=1 npm run test:database:nonblocking
+      - name: Verify MCP authorization and business services on isolated regional PostgreSQL
+        run: npm run test:mcp
       - name: Verify sharing designs, gestures, and export in Chromium
         run: CHROME_PATH=/usr/bin/google-chrome npm run test:e2e:sharing-design
       - name: Verify first day navigation in WebKit

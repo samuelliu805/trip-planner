@@ -78,6 +78,8 @@ jobs:
           npm run check:cloudbase-pg-baseline
           npm run check:cloudbase-pg-rpc-surface
           npm run check:database-pg-migrations
+      - name: Verify MCP authorization and business services on isolated regional PostgreSQL
+        run: npm run test:mcp
       - name: Require a clean generated diff
         run: |
           git diff --check

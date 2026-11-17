@@ -1,7 +1,62 @@
 {
   "version": 1,
-  "publicFunctionCount": 235,
+  "publicFunctionCount": 239,
   "catalog": [
+    {
+      "schema": "public",
+      "signature": "ai_connections_v1(text,uuid)",
+      "arguments": [
+        { "name": "action", "type": "text" },
+        { "name": "connection_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "ai_invoke_v1(text,text,text,text,jsonb)",
+      "arguments": [
+        { "name": "access_hash", "type": "text" },
+        { "name": "expected_resource", "type": "text" },
+        { "name": "expected_issuer", "type": "text" },
+        { "name": "tool", "type": "text" },
+        { "name": "args", "type": "jsonb" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "ai_oauth_store_v1(text,jsonb)",
+      "arguments": [
+        { "name": "action", "type": "text" },
+        { "name": "input", "type": "jsonb" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "ai_web_invoke_v1(text,jsonb)",
+      "arguments": [
+        { "name": "tool", "type": "text" },
+        { "name": "args", "type": "jsonb" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
     {
       "schema": "public",
       "signature": "apply_idea_choice_confirmed_v1(uuid,uuid,uuid,uuid,uuid,integer,uuid)",
@@ -3596,6 +3651,14 @@
   ],
   "privateHelpers": [
     "add_public_amap_route_geometry_v1(uuid,jsonb)",
+    "ai_dispatch(text,jsonb)",
+    "ai_execute_items(uuid,jsonb,boolean)",
+    "ai_idea_service(text,jsonb)",
+    "ai_item_snapshot(uuid)",
+    "ai_itinerary_service(jsonb)",
+    "ai_trip_revision(uuid)",
+    "ai_trip_service(text,jsonb)",
+    "ai_undo(jsonb)",
     "app_current_user_id()",
     "append_trip_history(uuid,uuid,text,jsonb)",
     "append_trip_history_v2(uuid,uuid,text,text,uuid,text,jsonb)",
