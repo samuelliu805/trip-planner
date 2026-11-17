@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { parisPublicItinerary } from "../../src/features/landing/landing-public-fixture.ts";
 
 export async function verifyFirstDayNavigation({ page, app, token }) {
+  const hydrationProbeOnly = process.env.PUBLIC_SHARING_NAVIGATION_PROBE === "1";
   await page.addInitScript(() => {
     window.publicDayTouchLog = [];
     document.addEventListener(
@@ -32,6 +33,7 @@ export async function verifyFirstDayNavigation({ page, app, token }) {
     );
   });
   for (const template of ["ethereal", "journal"]) {
+    if (hydrationProbeOnly && template !== "journal") continue;
     const fixture = structuredClone(parisPublicItinerary);
     fixture.settings.templateId = template;
     fixture.settings.showPlacePhotos = true;
@@ -47,6 +49,10 @@ export async function verifyFirstDayNavigation({ page, app, token }) {
     });
     fixture.trip.dayCount = fixture.days.length;
     app.setFixture(fixture);
+    if (template === "journal") {
+      await verifyBlockedHydrationTap({ page, app, token, fixture });
+      if (hydrationProbeOnly) return;
+    }
     for (const [width, height] of [
       [390, 844],
       [430, 932],
@@ -103,6 +109,62 @@ export async function verifyFirstDayNavigation({ page, app, token }) {
       `PASS ${template} first touch, repeated and keyboard day jumps from Overview/Timeline at six viewports`,
     );
   }
+}
+
+async function verifyBlockedHydrationTap({ page, app, token, fixture }) {
+  await page.addInitScript(() => {
+    if (!new URL(location.href).searchParams.has("hydration-probe")) return;
+    document.addEventListener(
+      "click",
+      (event) => {
+        const button =
+          event.target instanceof Element
+            ? event.target.closest("button[data-public-day-target]")
+            : null;
+        const root = button?.closest(".public-itinerary-shell");
+        // React can stop a discrete event at its container while a boundary is
+        // dehydrated. Keep that propagation boundary deterministic in this case.
+        if (root && root.dataset.publicReaderReady !== "true") event.stopPropagation();
+      },
+      true,
+    );
+  });
+  let release;
+  const scripts = new Promise((resolve) => {
+    release = resolve;
+  });
+  const hold = async (route) => {
+    await scripts;
+    await route.fallback();
+  };
+  const pattern = "**/_next/static/**/*.js*";
+  await page.route(pattern, hold);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  try {
+    await page.goto(`${app.baseUrl}/share/${token}?view=timeline&hydration-probe=1`, {
+      waitUntil: "commit",
+    });
+    const root = page.locator(".public-itinerary-shell");
+    const day = page.locator("#public-timeline-panel .edition-dates button").nth(1);
+    await day.waitFor({ state: "visible" });
+    assert.notEqual(await root.getAttribute("data-public-reader-ready"), "true");
+    await day.tap();
+    assert.equal(
+      await root.evaluate((node) => node.publicDayIntent),
+      fixture.days[1].ref,
+      "First tap is retained even when hydration stops propagation before the reader",
+    );
+  } finally {
+    release();
+    await page.unroute(pattern, hold);
+  }
+  await page.locator('.public-itinerary-shell[data-public-reader-ready="true"]').waitFor();
+  await assertJump(page, fixture.days[1].ref, {
+    template: "journal",
+    width: 1440,
+    initialView: "hydration-boundary",
+  });
+  console.log("PASS first day tap survives a blocked hydration boundary before scripts load");
 }
 
 async function assertJump(page, ref, context) {
