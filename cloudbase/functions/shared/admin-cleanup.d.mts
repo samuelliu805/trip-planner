@@ -43,6 +43,7 @@ export function runCleanupJobs(
   backend: CleanupBackend,
   limit?: number,
 ): Promise<{
+  aiPlaces: { deletedLookups: number; deletedQuotas: number; error: string | null };
   assets: AssetCleanupResult;
   backlog: boolean;
   collaborationReplay: {

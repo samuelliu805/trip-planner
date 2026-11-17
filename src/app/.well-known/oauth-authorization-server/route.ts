@@ -1,4 +1,4 @@
-import { aiConfig, aiScopes } from "@/features/ai/config";
+import { aiConfig, availableAiScopes } from "@/features/ai/config";
 import { errorResponse, privateHeaders } from "@/features/ai/http";
 
 export async function GET() {
@@ -18,7 +18,7 @@ export async function GET() {
         code_challenge_methods_supported: ["S256"],
         token_endpoint_auth_methods_supported: ["none"],
         revocation_endpoint_auth_methods_supported: ["none"],
-        scopes_supported: aiScopes,
+        scopes_supported: availableAiScopes(),
         client_id_metadata_document_supported: false,
       },
       { headers: { ...privateHeaders, "Access-Control-Allow-Origin": "*" } },

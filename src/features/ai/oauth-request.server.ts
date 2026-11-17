@@ -1,7 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { z } from "zod";
-import { aiConfig, aiScopes } from "./config";
+import { aiConfig, availableAiScopes } from "./config";
 import { privilegedAiRpc } from "./database.server";
 import { credentialHash, oauthModel } from "./oauth-model";
 import { ensurePreregistered } from "./oauth-registration";
@@ -14,7 +14,11 @@ export const authorizationSchema = z
     redirect_uri: z.url().max(2000),
     response_type: z.literal("code"),
     state: z.string().min(1).max(2000),
-    scope: z.string().min(1).max(200).default(aiScopes.join(" ")),
+    scope: z
+      .string()
+      .min(1)
+      .max(200)
+      .default(() => availableAiScopes().join(" ")),
     code_challenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
     code_challenge_method: z.literal("S256"),
     resource: z.string().optional(),
@@ -27,7 +31,7 @@ export async function validateAuthorization(input: unknown) {
   if (parameters.resource && parameters.resource !== config.resource)
     throw new AiError("INVALID_RESOURCE");
   const scopes = [...new Set(parameters.scope.split(" "))];
-  if (!scopes.every((scope) => (aiScopes as readonly string[]).includes(scope)))
+  if (!scopes.every((scope) => (availableAiScopes() as readonly string[]).includes(scope)))
     throw new AiError("INVALID_SCOPE");
   const oauth = oauthModel(privilegedAiRpc(), config);
   await ensurePreregistered(oauth, parameters.client_id);

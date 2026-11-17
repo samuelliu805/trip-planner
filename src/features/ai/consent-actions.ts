@@ -8,6 +8,7 @@ import { z } from "zod";
 import { getAuthProvider } from "@/platform/composition/server";
 import { credentialHash } from "./oauth-model";
 import { loadAuthorization, pendingAiCookie } from "./oauth-request.server";
+import { aiScopes } from "./config";
 
 export async function completeAuthorization(form: FormData) {
   const nonce = String(form.get("request_id") ?? "");
@@ -19,7 +20,7 @@ export async function completeAuthorization(form: FormData) {
   const approved = z
     .array(z.string())
     .min(allowed ? 1 : 0)
-    .max(4)
+    .max(aiScopes.length)
     .parse(form.getAll("scopes"));
   if (approved.some((scope) => !parameters.scope.split(" ").includes(scope)))
     throw new Error("INVALID_SCOPE");

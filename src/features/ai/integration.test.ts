@@ -8,6 +8,7 @@ import { credentialHash, oauthModel } from "./oauth-model";
 import { registerClient } from "./oauth-registration";
 import { invokeTool, type Rpc } from "./service";
 import { handleMcp } from "./mcp";
+import { registerPlaceIntegrationTests } from "./places.integration.test";
 
 const pool = new pg.Pool({ connectionString: process.env.MCP_TEST_DATABASE_URL });
 const originalFetch = globalThis.fetch;
@@ -161,6 +162,7 @@ before(async () => {
   access = issued.token.accessToken;
   refresh = issued.token.refreshToken!;
 });
+
 after(async () => {
   globalThis.fetch = originalFetch;
   await pool.end();
@@ -811,3 +813,5 @@ test("Real MCP transport initializes and calls tools, rejects missing auth, enfo
   assert.equal(second.headers.get("retry-after"), "60");
   assert.equal(outboundRequests, 0, "No model inference or other outbound HTTP was requested");
 });
+
+registerPlaceIntegrationTests({ pool, rpc, webA, webB, issue, config, originalFetch });

@@ -1,4 +1,4 @@
-import { aiConfig, aiScopes } from "@/features/ai/config";
+import { aiConfig, availableAiScopes } from "@/features/ai/config";
 import { errorResponse, privateHeaders } from "@/features/ai/http";
 
 export async function GET(
@@ -13,7 +13,7 @@ export async function GET(
       {
         resource,
         authorization_servers: [issuer],
-        scopes_supported: aiScopes,
+        scopes_supported: availableAiScopes(),
         bearer_methods_supported: ["header"],
         resource_name: "Trip Planner",
       },

@@ -1,4 +1,21 @@
-export const aiScopes = ["trips:read", "trips:write", "ideas:read", "ideas:write"] as const;
+export const aiScopes = [
+  "trips:read",
+  "trips:write",
+  "ideas:read",
+  "ideas:write",
+  "places:read",
+] as const;
+
+export function availableAiScopes() {
+  return aiScopes.filter(
+    (scope) => scope !== "places:read" || process.env.MCP_PLACES_ENABLED === "1",
+  );
+}
+
+function boundedLimit(value: string | undefined, fallback: number, maximum: number) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, maximum) : fallback;
+}
 
 export function aiConfig() {
   if (process.env.MCP_ENABLED !== "1") throw new Error("MCP_DISABLED");
@@ -20,5 +37,11 @@ export function aiConfig() {
     issuer: url.origin,
     resource: `${url.origin}/mcp`,
     rateLimit: Math.min(600, Math.max(1, Number(process.env.MCP_RATE_LIMIT_PER_MINUTE) || 60)),
+    placesEnabled: process.env.MCP_PLACES_ENABLED === "1",
+    placeLimits: {
+      minute: boundedLimit(process.env.MCP_PLACES_PER_MINUTE, 5, 30),
+      daily: boundedLimit(process.env.MCP_PLACES_PER_DAY, 100, 1000),
+      globalDaily: boundedLimit(process.env.MCP_PLACES_GLOBAL_PER_DAY, 1000, 10000),
+    },
   };
 }

@@ -29,6 +29,7 @@ export async function editLibraryIdea(form: FormData) {
       region: form.get("region") || null,
       notes: form.get("notes") || null,
       archived: form.get("archived") === "on",
+      ...(form.get("clear_location") === "on" ? { location: null } : {}),
     },
   });
   revalidatePath("/ideas");
