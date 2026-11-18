@@ -1,4 +1,22 @@
 export const aiZhCN: Record<string, string> = {
+  UTC: "UTC",
+  "Use the same address for every region you authorize.": "一个地址，连接你已授权的区域账号。",
+  "MCP address": "MCP 连接地址",
+  "Add this address in your AI client, then authorize in your browser.":
+    "在 AI 客户端添加上方地址，再按浏览器提示完成授权。",
+  "Data regions": "数据区域",
+  Default: "默认",
+  "Permissions and access": "权限与访问范围",
+  "All accessible trips": "全部可访问行程",
+  "Selected trips": "指定行程",
+  "New trips and ideas use the default region.": "新行程与收藏默认保存到所选区域。",
+  "Choose a default data region.": "选择新内容默认保存的区域。",
+  "Read trips": "读取行程",
+  "Create and edit trips": "创建与编辑行程",
+  "Read personal ideas": "读取个人收藏",
+  "Save and edit personal ideas": "保存与编辑个人收藏",
+  "Search places": "查询地图地点",
+  "Awaiting connection": "等待完成连接",
   "Revoke CN authorization": "撤销 CN 区域授权",
   "Browser authorization is required for each regional account you bind.":
     "绑定每个区域账号时，都需要在浏览器中单独授权。",
