@@ -34,9 +34,11 @@ export default async function AiConnectionsPage() {
     }
   })();
   const connections = config
-    ? ((await callRpc(await browserAiRpc(), "ai_connections_v1", {
-        action: "list",
-      })) as Connection[])
+    ? (
+        (await callRpc(await browserAiRpc(), "ai_connections_v1", {
+          action: "list",
+        })) as Connection[]
+      ).filter((connection) => !connection.revoked_at)
     : [];
   const regionalAccounts =
     process.env.MCP_REGIONAL_GATEWAY_ENABLED === "1"
