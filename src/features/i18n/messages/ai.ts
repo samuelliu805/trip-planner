@@ -1,7 +1,7 @@
 export const aiZhCN: Record<string, string> = {
   "Revoke CN authorization": "撤销 CN 区域授权",
-  "Global verified on Codex Desktop 26.1111.21308, Cloud mode (2026-11-17). Dual-region acceptance is pending.":
-    "Codex Desktop 26.1111.21308 的 Cloud 模式已于 2026-11-17 完成 Global 验收；双区域流程待验收。",
+  "Browser authorization is required for each regional account you bind.":
+    "绑定每个区域账号时，都需要在浏览器中单独授权。",
   REGIONAL_API_DISABLED: "此区域的内部 API 尚未启用",
   MCP_MOVED: "请改用统一 MCP 地址",
   "Use the unified MCP address. Bind your CN account in website connection settings.":

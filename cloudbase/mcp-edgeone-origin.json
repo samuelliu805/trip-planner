@@ -1,0 +1,11 @@
+{
+  "ZoneId": "zone-3xk7xejk8f85",
+  "DomainName": "cn.therewego.world",
+  "OriginInfo": {
+    "OriginType": "IP_DOMAIN",
+    "Origin": "trip-planner-cn-dev-d3bz94038b26.tcbaccess-in.tencentcloudbase.com",
+    "HostHeader": "cn.therewego.world"
+  },
+  "OriginProtocol": "HTTPS",
+  "HttpsOriginPort": 443
+}

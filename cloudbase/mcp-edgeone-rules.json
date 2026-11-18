@@ -1,0 +1,57 @@
+{
+  "ZoneId": "zone-3xk7xejk8f85",
+  "Rules": [
+    {
+      "RuleName": "Unified MCP CN discovery and authenticated origin",
+      "Status": "enable",
+      "Description": [
+        "Only the legacy CN authorization-server discovery migrates to the unified issuer.",
+        "Authenticated CN requests bypass edge caching."
+      ],
+      "Branches": [
+        {
+          "Condition": "${http.request.host} in ['cn.therewego.world']",
+          "Actions": [
+            {
+              "Name": "Cache",
+              "CacheParameters": {
+                "NoCache": {
+                  "Switch": "on"
+                }
+              }
+            }
+          ],
+          "SubRules": [
+            {
+              "Branches": [
+                {
+                  "Condition": "${http.request.uri.path} in ['/.well-known/oauth-authorization-server']",
+                  "Actions": [
+                    {
+                      "Name": "AccessURLRedirect",
+                      "AccessURLRedirectParameters": {
+                        "StatusCode": 307,
+                        "Protocol": "https",
+                        "HostName": {
+                          "Action": "custom",
+                          "Value": "therewego.world"
+                        },
+                        "URLPath": {
+                          "Action": "custom",
+                          "Value": "/.well-known/oauth-authorization-server"
+                        },
+                        "QueryString": {
+                          "Action": "ignore"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

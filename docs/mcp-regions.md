@@ -91,15 +91,28 @@ request/response bodies and time out explicitly. Platform bypass secrets stay ou
 
 Verify CN browser/server selectors, CloudBase env/region/PG target, complete migration ledger and
 RPC ACLs, AMap browser key/security proxy/server key, site URL, safe login domains and exact Run
-release SHA. Explicitly route CloudBase's reserved OAuth discovery path to the application;
-`INVALID_ENV` is a failed check. CN discovery redirects to the trusted unified discovery; old
+release SHA. Route the legacy authorization-server discovery path at the edge, before the
+CloudBase reserved-path handler; `INVALID_ENV` is a failed check. CN discovery redirects to
+the trusted unified discovery; old
 `/mcp` and OAuth action endpoints return `410 MCP_MOVED`, without publishing a second issuer.
 
-CloudBase CLI 3.8.1 rejects reserved paths locally, while the platform's verified route API accepts
-the explicit migration route. The reviewed dev-target request is
-`cloudbase/mcp-legacy-discovery-route.json`. Check it with `tcb api tcb VerifyHTTPServiceRoute`,
-then apply with `tcb api tcb CreateHTTPServiceRoute`, passing the file as `--body` and the approved
-dev environment as `--env-id`. This adds only the exact discovery route and retains `/` routing.
+For EdgeOne, match both host `cn.therewego.world` and the exact path
+`/.well-known/oauth-authorization-server`. Return `307` to
+`https://therewego.world/.well-known/oauth-authorization-server`, dropping the original query.
+Other CN requests use HTTPS/443 to the approved CloudBase HTTP service's `OriginDomain`, obtained
+from `DescribeHTTPServiceRoute`, with `Host: cn.therewego.world`. Keep the public CN hostname out
+of the upstream address to avoid a DNS loop. Disable caching for the authenticated CN host and
+deploy its existing valid certificate before switching its CNAME to EdgeOne. Preserve the prior
+CNAME for rollback and verify login, server actions and signed regional calls after switching.
+The reviewed dev-target requests are `cloudbase/mcp-edgeone-origin.json` for
+`ModifyAccelerationDomain` and `cloudbase/mcp-edgeone-rules.json` for `CreateL7AccRules`.
+Read back the existing domain and rules first; update the matching rule rather than creating
+duplicates. These files contain no credentials and do not change DNS or install a certificate.
+
+`cloudbase/mcp-legacy-discovery-route.json` records the exact CloudBase route probe. CLI 3.8.1
+rejects this reserved path locally; the platform API accepts it, but public requests still hit
+`INVALID_ENV`. An accepted route configuration does not establish working discovery. Release
+requires the actual edge response and unified issuer/resource, separately from application health.
 
 Expired private OAuth, preview, rate, binding-request, cursor and regional-credential records
 need operational expiry cleanup. Preserve durable receipts and audit history. Never delete
