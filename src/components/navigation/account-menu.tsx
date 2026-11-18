@@ -1,6 +1,15 @@
 "use client";
 
-import { ChevronDown, Lightbulb, Settings2, Sparkles, UserRound } from "lucide-react";
+import {
+  ChevronDown,
+  Languages,
+  Lightbulb,
+  LogOut,
+  MoreHorizontal,
+  Settings2,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,22 +20,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { T, useI18n } from "@/features/i18n/i18n-provider";
+import { otherLocale } from "@/features/i18n/config";
+import { logout } from "@/features/auth/actions";
 
 export function AccountMenu({ identityLabel }: { identityLabel: string }) {
-  const { t } = useI18n();
+  const { locale, setLocale, t } = useI18n();
+  const nextLocale = otherLocale(locale);
+  const languageLabel = nextLocale === "zh-CN" ? "简体中文" : "English";
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           aria-label={t("Account menu")}
+          data-i18n-aria-label="Account menu"
           className="min-h-11 min-w-11 px-2 sm:px-3"
           title={identityLabel}
           variant="ghost"
         >
-          <UserRound aria-hidden="true" className="size-4 shrink-0" />
-          <span className="hidden max-w-28 truncate min-[480px]:inline sm:max-w-64">
-            {identityLabel}
-          </span>
+          <MoreHorizontal aria-hidden="true" className="size-5 sm:hidden" />
+          <UserRound aria-hidden="true" className="hidden size-4 shrink-0 sm:block" />
+          <span className="hidden max-w-64 truncate sm:inline">{identityLabel}</span>
           <ChevronDown aria-hidden="true" className="hidden size-3 shrink-0 sm:block" />
         </Button>
       </DropdownMenuTrigger>
@@ -53,6 +66,28 @@ export function AccountMenu({ identityLabel }: { identityLabel: string }) {
             <T message="Connect your AI" />
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          aria-label={t("Switch to {language}", { language: languageLabel })}
+          className="min-h-11 rounded-lg"
+          onSelect={() => setLocale(nextLocale)}
+        >
+          <Languages aria-hidden="true" className="size-4 text-muted-foreground" />
+          {languageLabel}
+        </DropdownMenuItem>
+        <form action={logout}>
+          <input name="surface" type="hidden" value="global_header" />
+          <DropdownMenuItem
+            asChild
+            className="min-h-11 w-full rounded-lg"
+            onSelect={(event) => event.preventDefault()}
+          >
+            <button aria-label={t("Log out")} data-i18n-aria-label="Log out" type="submit">
+              <LogOut aria-hidden="true" className="size-4 text-muted-foreground" />
+              <T message="Log out" />
+            </button>
+          </DropdownMenuItem>
+        </form>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -6147,6 +6147,16 @@ async function run() {
     );
     await deleteTripThroughUi(browser, tripId);
     await navigate(browser, "/trips");
+    await waitForReactHydration(
+      browser,
+      "document.querySelector('button[data-i18n-aria-label=\"Account menu\"]')",
+      "hydrated trip list account menu",
+    );
+    await clickElement(
+      browser,
+      "document.querySelector('button[data-i18n-aria-label=\"Account menu\"]')",
+      "Account menu",
+    );
     try {
       await waitFor(
         browser,
