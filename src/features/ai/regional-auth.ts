@@ -17,18 +17,23 @@ export async function signRegional(
   payload: JWTPayload,
   lifetime = 30,
 ) {
-  const jwk = JSON.parse(config.privateJwk);
-  if (jwk.kty !== "EC" || jwk.crv !== "P-256" || !jwk.d)
+  try {
+    const jwk = JSON.parse(config.privateJwk);
+    if (jwk.kty !== "EC" || jwk.crv !== "P-256" || !jwk.d)
+      throw new AiError("REGIONAL_CONFIGURATION_REQUIRED");
+    return await new SignJWT({ ...payload, purpose })
+      .setProtectedHeader({ alg: "ES256", typ: "twg-regional+jwt" })
+      .setIssuer(endpoint(config, from))
+      .setAudience(endpoint(config, to))
+      .setSubject(from)
+      .setIssuedAt()
+      .setExpirationTime(`${lifetime}s`)
+      .setJti(randomUUID())
+      .sign(await importJWK(jwk, "ES256"));
+  } catch {
+    // Parser/crypto errors can quote malformed key input. Never pass them to action logs.
     throw new AiError("REGIONAL_CONFIGURATION_REQUIRED");
-  return new SignJWT({ ...payload, purpose })
-    .setProtectedHeader({ alg: "ES256", typ: "twg-regional+jwt" })
-    .setIssuer(endpoint(config, from))
-    .setAudience(endpoint(config, to))
-    .setSubject(from)
-    .setIssuedAt()
-    .setExpirationTime(`${lifetime}s`)
-    .setJti(randomUUID())
-    .sign(await importJWK(jwk, "ES256"));
+  }
 }
 
 export async function verifyRegional(

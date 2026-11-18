@@ -539,6 +539,19 @@ test("one MCP configuration routes two real databases and enforces independent g
     );
   });
   await t.test("service-body tampering and total revocation before cached receipts", async () => {
+    await assert.rejects(
+      signRegional(
+        { ...globalConfig, privateJwk: "private-key-must-not-appear-in-errors" },
+        "gateway",
+        "cn",
+        "api",
+        {},
+      ),
+      (error) =>
+        error instanceof Error &&
+        error.message === "REGIONAL_CONFIGURATION_REQUIRED" &&
+        !error.stack?.includes("private-key-must-not-appear"),
+    );
     await bind();
     const context = await gatewayContext(globalRpc, primary.authorization),
       grant = context.regions.find((r) => r.region === "cn")!;

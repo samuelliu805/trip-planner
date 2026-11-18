@@ -93,6 +93,12 @@ release SHA. Explicitly route CloudBase's reserved OAuth discovery path to the a
 `INVALID_ENV` is a failed check. CN discovery redirects to the trusted unified discovery; old
 `/mcp` and OAuth action endpoints return `410 MCP_MOVED`, without publishing a second issuer.
 
+CloudBase CLI 3.8.1 rejects reserved paths locally, while the platform's verified route API accepts
+the explicit migration route. The reviewed dev-target request is
+`cloudbase/mcp-legacy-discovery-route.json`. Check it with `tcb api tcb VerifyHTTPServiceRoute`,
+then apply with `tcb api tcb CreateHTTPServiceRoute`, passing the file as `--body` and the approved
+dev environment as `--env-id`. This adds only the exact discovery route and retains `/` routing.
+
 Expired private OAuth, preview, rate, binding-request, cursor and regional-credential records
 need operational expiry cleanup. Preserve durable receipts and audit history. Never delete
 an unexplained record merely to turn a residue audit green.
