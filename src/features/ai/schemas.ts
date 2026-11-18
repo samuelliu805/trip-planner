@@ -55,15 +55,26 @@ const itemFields = z
     notes: text.nullable().optional(),
     startTime: z
       .string()
-      .regex(/^\d{2}:\d{2}(:\d{2})?$/)
+      .regex(
+        /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/,
+        "Use a valid 24-hour time (HH:mm or HH:mm:ss).",
+      )
       .nullable()
       .optional(),
     endTime: z
       .string()
-      .regex(/^\d{2}:\d{2}(:\d{2})?$/)
+      .regex(
+        /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/,
+        "Use a valid 24-hour time (HH:mm or HH:mm:ss).",
+      )
       .nullable()
       .optional(),
-    scheduleKind: z.enum(["none", "all_day", "period", "approximate", "exact", "range"]).optional(),
+    scheduleKind: z
+      .enum(["none", "all_day", "period", "approximate", "exact", "range"])
+      .describe(
+        "Meals: none/all_day without times, or exact with startTime only. Activities also support range with both times. period/approximate require the web editor. Updates merge with stored fields; clear obsolete times explicitly.",
+      )
+      .optional(),
     location: itemLocationSchema.nullable().optional(),
   })
   .strict();

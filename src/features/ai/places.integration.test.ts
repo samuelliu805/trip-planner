@@ -7,6 +7,8 @@ import { invokeTool, type AiAuthorization, type Rpc } from "./service";
 import { createLookupProvider } from "./places-provider";
 import { createPlacesToolRunner } from "./places-service";
 import { handleMcp } from "./mcp";
+import { plannerItemFromRow } from "../itinerary/planner-item-record";
+import { deriveOverviewStages } from "../routes/overview";
 
 const A = "10000000-0000-4000-8000-000000000001";
 const B = "10000000-0000-4000-8000-000000000002";
@@ -82,6 +84,11 @@ export function registerPlaceIntegrationTests({
                 displayName: { text: `Provider description ${id}` },
                 formattedAddress: "Provider-only address",
                 location: { latitude: 35.01, longitude: 135.77 },
+                addressComponents: [
+                  { longText: "Kyoto", types: ["locality"] },
+                  { longText: "Kyoto Prefecture", types: ["administrative_area_level_1"] },
+                  { shortText: "JP", types: ["country"] },
+                ],
               },
         );
       return Response.json({
@@ -303,6 +310,25 @@ export function registerPlaceIntegrationTests({
       assert.equal(item.place.latitude, garden.place.latitude);
       assert.ok(saved.created.some((idea: any) => idea.id === item.saved_idea_id));
     }
+    // Follow the actual web row mapping into the full-trip map, after a fresh DB read.
+    const rows = await pool.query(
+      "SELECT item.*,to_jsonb(place.*) AS place FROM public.itinerary_items item JOIN public.places place ON place.id=item.place_id WHERE item.trip_id=$1 ORDER BY item.sort_order",
+      [trip.trip.id],
+    );
+    const expectedLocality = providerId === "google" ? "Kyoto" : "北京";
+    const day = { ...trip.days[0], items: rows.rows.map(plannerItemFromRow) };
+    const stages = deriveOverviewStages([day]);
+    assert.equal(stages.length, 1);
+    assert.equal(stages[0].entries[0].title, expectedLocality);
+    assert.equal(stages[0].latitude, garden.place.latitude);
+    for (const row of rows.rows) {
+      assert.equal(row.place.locality_name, expectedLocality);
+      assert.equal(row.place.locality_kind, "locality");
+      assert.equal(
+        row.place.locality_source,
+        providerId === "google" ? "google_address_component" : "amap_poi",
+      );
+    }
     await call("idea_update", {
       idea_id: saved.created[0].id,
       expected_revision: saved.created[0].revision,
@@ -381,6 +407,79 @@ export function registerPlaceIntegrationTests({
         (row: any) =>
           !row.body.includes("Provider description") && !row.body.includes("Provider-only address"),
       ),
+    );
+  });
+
+  test("Maps re-resolution repairs an existing place locality while preserving web labels and addresses", async () => {
+    await resetUsage();
+    const grant = await issue(A, scopes);
+    const { runner } = fixture();
+    const call = (tool: string, args: unknown) =>
+      invokeTool(rpc, tool, args, grant.authorization, runner).then(value);
+    const selected = await call("place_resolve", { provider_place_id: "GARDEN" });
+    const trip = await freshTrip(call);
+    const preview = await call("itinerary_apply_changes", {
+      trip_id: trip.trip.id,
+      expected_revision: trip.revision,
+      dry_run: true,
+      idempotency_key: randomUUID(),
+      changes: [
+        {
+          op: "add",
+          day_id: trip.days[0].id,
+          fields: {
+            title: "My garden",
+            location: { selection_id: selected.selection_id },
+          },
+        },
+      ],
+    });
+    await call("itinerary_apply_changes", {
+      trip_id: trip.trip.id,
+      expected_revision: trip.revision,
+      preview_id: preview.preview_id,
+      idempotency_key: randomUUID(),
+    });
+    const saved = await call("trip_get", { trip_id: trip.trip.id, section: "items" });
+    const item = saved.items[0];
+    await pool.query(
+      "UPDATE public.places SET display_name='Web label',formatted_address='Web address',locality_name=NULL,locality_kind=NULL,locality_source=NULL WHERE id=$1",
+      [item.place_id],
+    );
+    const again = await call("place_resolve", { provider_place_id: "GARDEN" });
+    const current = await call("trip_get", { trip_id: trip.trip.id, section: "items" });
+    const repair = await call("itinerary_apply_changes", {
+      trip_id: trip.trip.id,
+      expected_revision: current.revision,
+      dry_run: true,
+      idempotency_key: randomUUID(),
+      changes: [
+        {
+          op: "update",
+          item_id: item.id,
+          fields: { location: { selection_id: again.selection_id } },
+        },
+      ],
+    });
+    assert.equal(
+      (await pool.query("SELECT locality_name FROM public.places WHERE id=$1", [item.place_id]))
+        .rows[0].locality_name,
+      null,
+    );
+    await call("itinerary_apply_changes", {
+      trip_id: trip.trip.id,
+      expected_revision: current.revision,
+      preview_id: repair.preview_id,
+      idempotency_key: randomUUID(),
+    });
+    const row = (await pool.query("SELECT * FROM public.places WHERE id=$1", [item.place_id]))
+      .rows[0];
+    assert.equal(row.display_name, "Web label");
+    assert.equal(row.formatted_address, "Web address");
+    assert.equal(row.locality_name, providerId === "google" ? "Kyoto" : "北京");
+    assert.equal(
+      (await call("trip_get", { trip_id: trip.trip.id, section: "items" })).items[0].place_id,
+      item.place_id,
     );
   });
 

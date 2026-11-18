@@ -3690,6 +3690,7 @@
     "ai_trip_revision(uuid)",
     "ai_trip_service(text,jsonb)",
     "ai_undo(jsonb)",
+    "ai_validate_item_schedule(jsonb,integer)",
     "app_current_user_id()",
     "append_trip_history(uuid,uuid,text,jsonb)",
     "append_trip_history_v2(uuid,uuid,text,text,uuid,text,jsonb)",

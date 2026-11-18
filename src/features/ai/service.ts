@@ -1,6 +1,7 @@
 import type { Json } from "@/types/database";
 import { isToolName, parseToolInput } from "./schemas";
 import type { PlacesToolName } from "./place-schemas";
+import { scheduleErrorIssues, type FieldIssue } from "./input-errors";
 
 export type AiAuthorization = { hash: string; resource: string; issuer: string };
 export type PlacesToolRunner = (
@@ -14,7 +15,7 @@ export type Rpc = (
   parameters: Record<string, unknown>,
 ) => Promise<{
   data: unknown;
-  error: { code?: string; message: string } | null;
+  error: { code?: string; message: string; details?: string } | null;
 }>;
 const knownCodes = [
   "INVALID_TOKEN",
@@ -44,6 +45,7 @@ export class AiError extends Error {
   constructor(
     public code: string,
     message = code,
+    public issues?: FieldIssue[],
   ) {
     super(message);
   }
@@ -73,7 +75,8 @@ export async function callRpc(rpc: Rpc, name: string, args: Record<string, unkno
           : error.code?.startsWith("22") || error.code?.startsWith("23")
             ? "INVALID_INPUT"
             : "SERVICE_UNAVAILABLE");
-    throw new AiError(code);
+    const issues = code === "INVALID_INPUT" ? scheduleErrorIssues(error.details) : undefined;
+    throw new AiError(code, issues?.[0]?.message ?? code, issues);
   }
   return normalizeRevisions(data as Json);
 }

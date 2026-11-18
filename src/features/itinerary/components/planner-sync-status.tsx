@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { Popover } from "radix-ui";
+import { Check, LoaderCircle } from "lucide-react";
 import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
@@ -53,6 +54,7 @@ export function PlannerSyncStatus({ mutating, tripId }: { mutating: boolean; tri
             : waiting
               ? "Pending sync"
               : "Synced";
+  const inFlight = label === "Syncing" || label === "Pending sync";
   return (
     <Popover.Root>
       <div className="relative min-w-0 max-w-36 text-xs" data-sync-status={label}>
@@ -60,9 +62,18 @@ export function PlannerSyncStatus({ mutating, tripId }: { mutating: boolean; tri
           <button
             type="button"
             data-sync-trigger
-            className="flex min-h-11 cursor-pointer items-center px-1.5"
+            className="flex min-h-11 cursor-pointer items-center gap-1.5 px-1.5"
             aria-label={t(label)}
           >
+            {inFlight ? (
+              <LoaderCircle
+                aria-hidden="true"
+                data-sync-indicator="busy"
+                className="size-3.5 shrink-0 animate-spin text-primary motion-reduce:animate-none"
+              />
+            ) : label === "Synced" ? (
+              <Check aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+            ) : null}
             <span role="status" aria-live="polite">
               <T message={label} />
             </span>
