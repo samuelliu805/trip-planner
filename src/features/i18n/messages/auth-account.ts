@@ -1,4 +1,6 @@
 export const authAccountZhCN: Record<string, string> = {
+  "Account menu": "账号菜单",
+  "Account settings": "账号设置",
   "6-digit code": "6 位验证码",
   "Account preferences saved.": "账户偏好已保存。",
   "Accounts are created by your organization.": "账户由你的组织统一创建。",

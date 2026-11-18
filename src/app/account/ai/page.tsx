@@ -5,14 +5,15 @@ import {
   ArrowUpRight,
   BookOpen,
   ChevronDown,
-  Lightbulb,
   Link2,
   PlugZap,
   Sparkles,
 } from "lucide-react";
 import { T, Localized } from "@/features/i18n/i18n-provider";
 import { getRequestLocale } from "@/features/i18n/server";
+import { AccountMenu } from "@/components/navigation/account-menu";
 import { getAuthProvider } from "@/platform/composition/server";
+import { appUserIdentityLabel } from "@/platform/contracts/auth";
 import { aiConfig } from "@/features/ai/config";
 import { browserAiRpc } from "@/features/ai/database.server";
 import { callRpc } from "@/features/ai/service";
@@ -23,7 +24,8 @@ import type { GatewayContext } from "@/features/ai/regional-gateway";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Connect your AI", robots: { index: false, follow: false } };
 export default async function AiConnectionsPage() {
-  if (!(await getAuthProvider().getCurrentUser())) redirect("/login");
+  const user = await getAuthProvider().getCurrentUser();
+  if (!user) redirect("/login");
   const locale = await getRequestLocale();
   const config = (() => {
     try {
@@ -62,13 +64,7 @@ export default async function AiConnectionsPage() {
           <ArrowLeft aria-hidden="true" className="size-4" />
           <T message="Account" />
         </Link>
-        <Link
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-card px-3 font-medium transition-colors hover:bg-accent"
-          href="/ideas"
-        >
-          <Lightbulb aria-hidden="true" className="size-4 text-primary" />
-          <T message="Personal ideas" />
-        </Link>
+        <AccountMenu identityLabel={appUserIdentityLabel(user)} />
       </nav>
       <header className="space-y-3">
         <div className="flex items-center gap-3">

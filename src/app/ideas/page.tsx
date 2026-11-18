@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAuthProvider } from "@/platform/composition/server";
+import { appUserIdentityLabel } from "@/platform/contracts/auth";
+import { AccountMenu } from "@/components/navigation/account-menu";
 import { T } from "@/features/i18n/i18n-provider";
 import { browserAiRpc } from "@/features/ai/database.server";
 import { invokeTool } from "@/features/ai/service";
@@ -30,7 +32,8 @@ export default async function IdeasPage({
 }: {
   searchParams: Promise<{ cursor?: string }>;
 }) {
-  if (!(await getAuthProvider().getCurrentUser())) redirect("/login");
+  const user = await getAuthProvider().getCurrentUser();
+  if (!user) redirect("/login");
   const { cursor } = await searchParams;
   const result = (await invokeTool(await browserAiRpc(), "idea_search", {
     cursor,
@@ -38,13 +41,11 @@ export default async function IdeasPage({
   })) as { items: Idea[]; next_cursor: string | null };
   return (
     <main className="mx-auto min-h-dvh max-w-3xl space-y-6 p-6">
-      <nav className="flex gap-4">
+      <nav className="flex items-center justify-between gap-4">
         <Link className="min-h-11 underline" href="/trips">
           <T message="Trips" />
         </Link>
-        <Link className="min-h-11 underline" href="/account/ai">
-          <T message="Connect your AI" />
-        </Link>
+        <AccountMenu identityLabel={appUserIdentityLabel(user)} />
       </nav>
       <h1 className="text-3xl font-semibold">
         <T message="Personal ideas" />

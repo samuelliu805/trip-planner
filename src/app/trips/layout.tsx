@@ -1,11 +1,12 @@
 import { DraftScopeProvider } from "@/features/editing/draft-scope";
 import { T } from "@/features/i18n/i18n-provider";
-import { LogOut, UserRound } from "lucide-react";
+import { LogOut } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { AccountMenu } from "@/components/navigation/account-menu";
 import { logout } from "@/features/auth/actions";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 import { AuthenticatedGuestStorageCleanup } from "@/features/guest/components/authenticated-guest-storage-cleanup";
@@ -36,14 +37,7 @@ export default async function TripsLayout({ children }: { children: React.ReactN
             </Link>
             <div className="flex min-w-0 items-center gap-1 sm:gap-2">
               <LanguageSwitcher />
-              <Button asChild className="min-h-11 min-w-0 px-2 sm:px-3" variant="ghost">
-                <Link href="/account" title={appUserIdentityLabel(user)}>
-                  <UserRound aria-hidden="true" className="size-4 shrink-0" />
-                  <span className="max-w-28 truncate sm:max-w-64">
-                    {appUserIdentityLabel(user)}
-                  </span>
-                </Link>
-              </Button>
+              <AccountMenu identityLabel={appUserIdentityLabel(user)} />
               <form action={logout}>
                 <input name="surface" type="hidden" value="global_header" />
                 <Button
