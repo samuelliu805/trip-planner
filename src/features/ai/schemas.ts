@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { ideaLocationSchema, itemLocationSchema } from "./place-schemas";
+import { resourceId, pageCursor } from "./regional-handles";
 
-const id = z.uuid();
+const id = resourceId;
 const revision = z.string().min(1).max(100);
 const key = z.string().min(8).max(128);
 const text = z.string().max(5000);
@@ -18,7 +19,7 @@ const timezone = z
       return false;
     }
   }, "Use an IANA time zone.");
-const page = { cursor: id.optional(), limit: z.number().int().min(1).max(50).default(25) };
+const page = { cursor: pageCursor.optional(), limit: z.number().int().min(1).max(50).default(25) };
 const idea = z
   .object({
     name,
@@ -88,7 +89,7 @@ const change = z
   })
   .strict();
 
-export const toolSchemas = {
+const regionalToolSchemas = {
   account_get: z.object({}).strict(),
   place_search: z
     .object({
@@ -178,6 +179,16 @@ export const toolSchemas = {
     .strict(),
   change_undo: z.object({ change_id: id, idempotency_key: key }).strict(),
 };
+
+// Region is an optional routing intent. Grant validation remains authoritative.
+export const toolSchemas = Object.fromEntries(
+  Object.entries(regionalToolSchemas).map(([name, schema]) => [
+    name,
+    name === "account_get"
+      ? schema
+      : schema.extend({ region: z.enum(["global", "cn"]).optional() }),
+  ]),
+) as typeof regionalToolSchemas;
 export type ToolName = keyof typeof toolSchemas;
 export function isToolName(value: string): value is ToolName {
   return Object.hasOwn(toolSchemas, value);

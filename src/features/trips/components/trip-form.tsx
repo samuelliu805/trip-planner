@@ -41,7 +41,7 @@ export function TripForm({
   const [latestTrip, setLatestTrip] = useState<Trip>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(true);
+  const [reloadRequired, setReloadRequired] = useState(false);
   const draft = useDurableFields(editingStorageKey(useDraftScope(trip.id, "settings"), "trip"), {
     title: trip.title,
     dayCount: String(trip.day_count),
@@ -75,13 +75,12 @@ export function TripForm({
         draft.discardIfMatches(JSON.stringify(draft.getValues()));
       })
       .catch((caught) => {
-        if (current)
+        if (current) {
+          setReloadRequired(true);
           setError(
             caught instanceof Error ? caught.message : "Latest trip settings could not be loaded.",
           );
-      })
-      .finally(() => {
-        if (current) setRefreshing(false);
+        }
       });
     return () => {
       current = false;
@@ -159,6 +158,7 @@ export function TripForm({
     try {
       const latest = await loadLatestTripSettings(trip.id);
       setLatestTrip(latest);
+      setReloadRequired(false);
       setError(undefined);
     } catch (caught) {
       setError(
@@ -208,15 +208,17 @@ export function TripForm({
           </Button>
         </div>
       ) : null}
-      <Button
-        type="button"
-        disabled={loading}
-        variant="outline"
-        onClick={() => void reloadLatest()}
-        aria-busy={refreshing}
-      >
-        <T message="Reload latest" />
-      </Button>
+      {reloadRequired ? (
+        <Button
+          type="button"
+          disabled={loading}
+          variant="outline"
+          onClick={() => void reloadLatest()}
+          aria-busy={loading}
+        >
+          <T message={loading ? "Loading…" : "Reload latest"} />
+        </Button>
+      ) : null}
       {latestTrip ? (
         <div className="space-y-2 rounded-lg border p-3" role="status">
           <p>

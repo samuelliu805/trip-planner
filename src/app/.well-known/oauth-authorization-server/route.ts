@@ -1,8 +1,12 @@
 import { aiConfig, availableAiScopes } from "@/features/ai/config";
 import { errorResponse, privateHeaders } from "@/features/ai/http";
+import { cnMcpMigration } from "@/features/ai/regional-config";
+export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const migration = cnMcpMigration(request, true);
+    if (migration) return migration;
     const { issuer } = aiConfig();
     return Response.json(
       {

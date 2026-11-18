@@ -1,4 +1,21 @@
 export const aiZhCN: Record<string, string> = {
+  "Revoke CN authorization": "撤销 CN 区域授权",
+  "Global verified on Codex Desktop 26.1111.21308, Cloud mode (2026-11-17). Dual-region acceptance is pending.":
+    "Codex Desktop 26.1111.21308 的 Cloud 模式已于 2026-11-17 完成 Global 验收；双区域流程待验收。",
+  REGIONAL_API_DISABLED: "此区域的内部 API 尚未启用",
+  MCP_MOVED: "请改用统一 MCP 地址",
+  "Use the unified MCP address. Bind your CN account in website connection settings.":
+    "请使用统一 MCP 地址，并在网站的连接设置中绑定 CN 账号。",
+  "Authorize CN data": "授权访问 CN 数据",
+  "Keep the same MCP address. This consent grants access only to your signed-in CN account.":
+    "MCP 地址保持不变。此次授权仅允许访问你当前登录的 CN 账号。",
+  "Default data region": "默认数据区域",
+  "Choose a default once here. Your MCP address stays the same when you add a region.":
+    "在这里设置默认区域，新增区域账号时无需修改 MCP 地址。",
+  "Use as default": "设为默认区域",
+  "Unbind region": "解除区域授权",
+  "Renew CN authorization": "重新授权 CN 账号",
+  "Bind CN account": "绑定 CN 账号",
   "Map location resolved": "地图地点已解析",
   "Location needs confirmation": "地点待确认",
   "User-provided location": "用户提供的地点",

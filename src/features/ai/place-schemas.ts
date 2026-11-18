@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { resourceId } from "./regional-handles";
 
 export const placeReferenceSchema = z
   .object({
@@ -17,7 +18,7 @@ export const customLocationSchema = z
   })
   .strict();
 
-const selectedLocation = z.object({ selection_id: z.uuid() }).strict();
+const selectedLocation = z.object({ selection_id: resourceId }).strict();
 const customLocation = z.object({ custom: customLocationSchema }).strict();
 
 export const ideaLocationSchema = z.union([
@@ -29,7 +30,7 @@ export const ideaLocationSchema = z.union([
 export const itemLocationSchema = z.union([
   selectedLocation,
   customLocation,
-  z.object({ place_id: z.uuid() }).strict(),
+  z.object({ place_id: resourceId }).strict(),
 ]);
 
 export type PlacesToolName = "place_search" | "place_resolve";

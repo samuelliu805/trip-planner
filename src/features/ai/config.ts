@@ -17,9 +17,12 @@ function boundedLimit(value: string | undefined, fallback: number, maximum: numb
   return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, maximum) : fallback;
 }
 
-export function aiConfig() {
-  if (process.env.MCP_ENABLED !== "1") throw new Error("MCP_DISABLED");
-  const url = new URL(process.env.MCP_PUBLIC_ORIGIN ?? "");
+export function aiConfig(options: { regional?: boolean } = {}) {
+  if (process.env[options.regional ? "MCP_REGIONAL_API_ENABLED" : "MCP_ENABLED"] !== "1")
+    throw new Error("MCP_DISABLED");
+  const url = new URL(
+    (options.regional ? process.env.MCP_GATEWAY_ORIGIN : process.env.MCP_PUBLIC_ORIGIN) ?? "",
+  );
   const local = ["localhost", "127.0.0.1"].includes(url.hostname);
   if (
     url.pathname !== "/" ||

@@ -14,7 +14,7 @@ export function CopyAiTask({ tripId, mobile = false }: { tripId: string; mobile?
       await navigator.clipboard.writeText(
         t(
           "Help me plan Trip {tripId}. Read its current days, items and revision with trip_get. Save extracted ideas with sources and my notes. Show proposed changes, dry-run the itinerary batch, then commit the exact approved preview. Preserve local dates and timezone. Do not overwrite a revision conflict. Ask me for my task details before changing anything.",
-          { tripId },
+          { tripId: process.env.NEXT_PUBLIC_APP_REGION === "cn" ? `cn:${tripId}` : tripId },
         ),
       );
       setStatus("copied");

@@ -1,3 +1,4 @@
+import { cnMcpMigration } from "@/features/ai/regional-config";
 import { aiConfig } from "@/features/ai/config";
 import { privilegedAiRpc } from "@/features/ai/database.server";
 import { boundedBody, oauthErrorResponse, privateHeaders, rateLimit } from "@/features/ai/http";
@@ -7,6 +8,8 @@ import { registerClient } from "@/features/ai/oauth-registration";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
+    const migration = cnMcpMigration(request);
+    if (migration) return migration;
     const config = aiConfig();
     if (process.env.MCP_DYNAMIC_REGISTRATION !== "1") return new Response(null, { status: 404 });
     const rpc = privilegedAiRpc();

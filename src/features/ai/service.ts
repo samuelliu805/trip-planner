@@ -17,7 +17,16 @@ export type Rpc = (
   data: unknown;
   error: { code?: string; message: string; details?: string } | null;
 }>;
-const knownCodes = [
+export const knownCodes = [
+  "REGION_AUTHORIZATION_REQUIRED",
+  "REGION_SELECTION_REQUIRED",
+  "REGION_UNAVAILABLE",
+  "CROSS_REGION_OPERATION",
+  "CURSOR_INVALID",
+  "INVALID_RESOURCE_HANDLE",
+  "INVALID_INPUT",
+  "AUTHORIZATION_EXPIRED",
+  "INVALID_SERVICE_IDENTITY",
   "INVALID_TOKEN",
   "AUTHENTICATION_REQUIRED",
   "INSUFFICIENT_SCOPE",

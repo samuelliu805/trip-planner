@@ -7,6 +7,8 @@ import { browserAiRpc } from "@/features/ai/database.server";
 import { callRpc } from "@/features/ai/service";
 import { revokeConnection } from "@/features/ai/web-actions";
 import { clientGuides } from "@/features/ai/client-guides";
+import { RegionalConnections } from "@/features/ai/regional-connections";
+import type { GatewayContext } from "@/features/ai/regional-gateway";
 
 type Connection = {
   id: string;
@@ -24,7 +26,9 @@ export default async function AiConnectionsPage() {
   if (!(await getAuthProvider().getCurrentUser())) redirect("/login");
   const config = (() => {
     try {
-      return aiConfig();
+      return aiConfig({
+        regional: process.env.APP_REGION === "cn" && process.env.MCP_REGIONAL_API_ENABLED === "1",
+      });
     } catch {
       return null;
     }
@@ -34,6 +38,17 @@ export default async function AiConnectionsPage() {
         action: "list",
       })) as Connection[])
     : [];
+  const regionalAccounts =
+    process.env.MCP_REGIONAL_GATEWAY_ENABLED === "1"
+      ? ((await callRpc(await browserAiRpc(), "ai_gateway_manage_v1", {
+          action: "list",
+          input: {},
+        })) as GatewayContext[])
+      : [];
+  const publicResource =
+    process.env.APP_REGION === "cn" && process.env.MCP_GATEWAY_ORIGIN
+      ? `${process.env.MCP_GATEWAY_ORIGIN}/mcp`
+      : config?.resource;
   return (
     <main className="mx-auto min-h-dvh max-w-3xl space-y-6 p-6">
       <nav className="flex gap-4">
@@ -50,8 +65,8 @@ export default async function AiConnectionsPage() {
       <p>
         <T message="Your AI extracts and plans. Trip Planner saves structured data. No model API key is required." />
       </p>
-      {config ? (
-        <code className="block break-all rounded-lg bg-muted p-4">{config.resource}</code>
+      {publicResource ? (
+        <code className="block break-all rounded-lg bg-muted p-4">{publicResource}</code>
       ) : (
         <p role="status">
           <T message="Remote MCP is not enabled on this deployment." />
@@ -101,10 +116,21 @@ export default async function AiConnectionsPage() {
             <form action={revokeConnection}>
               <input type="hidden" name="connection_id" value={connection.id} />
               <button className="min-h-11 rounded-lg border px-4">
-                <T message="Revoke connection" />
+                <T
+                  message={
+                    process.env.APP_REGION === "cn"
+                      ? "Revoke CN authorization"
+                      : "Revoke connection"
+                  }
+                />
               </button>
             </form>
           )}
+          {regionalAccounts.find((account) => account.connection_id === connection.id) ? (
+            <RegionalConnections
+              account={regionalAccounts.find((account) => account.connection_id === connection.id)!}
+            />
+          ) : null}
         </article>
       ))}
       <h2 className="text-xl font-semibold">
@@ -117,7 +143,7 @@ export default async function AiConnectionsPage() {
             <Localized value={client.status} />
           </p>
           <pre className="whitespace-pre-wrap break-words text-sm">
-            <Localized value={client.guide.replaceAll("MCP_URL", config?.resource ?? "MCP_URL")} />
+            <Localized value={client.guide.replaceAll("MCP_URL", publicResource ?? "MCP_URL")} />
           </pre>
           <a
             className="inline-flex min-h-11 items-center underline"

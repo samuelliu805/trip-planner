@@ -43,6 +43,9 @@ export default async function TripsPage({
   searchParams: Promise<{ post_login?: string; status?: string }>;
 }) {
   const { post_login: postLogin, status } = await searchParams;
+  const pendingRegion = (await cookies()).get("trip_ai_region_login")?.value;
+  if (postLogin === "1" && pendingRegion && /^[A-Za-z0-9_-]{43}$/.test(pendingRegion))
+    redirect(`/account/ai/region?state=${pendingRegion}`);
   const pendingAi = (await cookies()).get("trip_ai_authorization")?.value;
   if (postLogin === "1" && pendingAi && /^[A-Za-z0-9_-]{43}$/.test(pendingAi))
     redirect(`/oauth/consent?request_id=${pendingAi}`);

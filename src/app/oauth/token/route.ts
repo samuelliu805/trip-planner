@@ -1,3 +1,4 @@
+import { cnMcpMigration } from "@/features/ai/regional-config";
 import OAuth2Server from "@node-oauth/oauth2-server";
 import { aiConfig } from "@/features/ai/config";
 import { privilegedAiRpc } from "@/features/ai/database.server";
@@ -9,6 +10,8 @@ import { AiError } from "@/features/ai/service";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
+    const migration = cnMcpMigration(request);
+    if (migration) return migration;
     const config = aiConfig();
     const rpc = privilegedAiRpc();
     await rateLimit(rpc, request, config.rateLimit, "token");

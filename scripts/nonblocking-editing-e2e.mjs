@@ -1907,6 +1907,38 @@ try {
       assert.equal(operations.size, 1);
     },
   );
+  for (const width of [390, 430])
+    await scenario(
+      `trip settings reload appears only after a failed read and clears on recovery at ${width}px`,
+      async (page) => {
+        await page.setViewportSize({ width, height: 844 });
+        await page.getByRole("button", { name: "Trip settings", exact: true }).click();
+        const dialog = page.getByRole("dialog");
+        await dialog.getByRole("textbox", { name: "Trip name" }).waitFor();
+        assert.equal(
+          await dialog.getByRole("button", { name: "Reload latest", exact: true }).count(),
+          0,
+        );
+        await page.keyboard.press("Escape");
+        await dialog.waitFor({ state: "hidden" });
+        await page.route("**/api/trips/*/settings", (route) =>
+          route.fulfill({ status: 503, json: { error: "Controlled read failure" } }),
+        );
+        await page.getByRole("button", { name: "Trip settings", exact: true }).click();
+        const reload = dialog.getByRole("button", { name: "Reload latest", exact: true });
+        await reload.waitFor();
+        const titleField = dialog.getByRole("textbox", { name: "Trip name" });
+        await titleField.fill("Keep this unsaved title");
+        await page.unroute("**/api/trips/*/settings");
+        await reload.click();
+        await dialog
+          .getByText("Latest trip settings loaded. Your changes are still here.", { exact: true })
+          .waitFor();
+        assert.equal(await reload.count(), 0);
+        assert.equal(await titleField.inputValue(), "Keep this unsaved title");
+        assert.equal(await dialog.evaluate((node) => node.scrollWidth > node.clientWidth), false);
+      },
+    );
   await scenario(
     "trip settings A ACK preserves B accepted by a second explicit Save",
     async (page) => {
