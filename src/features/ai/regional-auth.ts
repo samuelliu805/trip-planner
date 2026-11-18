@@ -54,7 +54,13 @@ export async function verifyRegional(
       requiredClaims: ["exp", "iat", "jti"],
       maxTokenAge: purpose === "bind" ? "5m" : "30s",
     });
-    if (protectedHeader.typ !== "twg-regional+jwt" || payload.purpose !== purpose)
+    if (
+      protectedHeader.typ !== "twg-regional+jwt" ||
+      payload.purpose !== purpose ||
+      typeof payload.jti !== "string" ||
+      payload.jti.length < 16 ||
+      payload.jti.length > 128
+    )
       throw new Error();
     return payload;
   } catch {

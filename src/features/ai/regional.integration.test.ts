@@ -4,7 +4,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
 import { createServer } from "node:http";
 import pg from "pg";
-import { generateKeyPair, exportJWK } from "jose";
+import { generateKeyPair, exportJWK, importJWK, SignJWT, decodeJwt } from "jose";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { oauthModel, credentialHash } from "./oauth-model";
@@ -624,6 +624,17 @@ test("one MCP configuration routes two real databases and enforces independent g
     const replayed = await validRequest();
     assert.equal(replayed.status, 401);
     assert.equal((await replayed.json()).error, "INVALID_SERVICE_IDENTITY");
+    const signedAgain = await new SignJWT(decodeJwt(token))
+      .setProtectedHeader({ alg: "ES256", typ: "twg-regional+jwt" })
+      .sign(await importJWK(JSON.parse(globalConfig.privateJwk), "ES256"));
+    assert.notEqual(signedAgain, token);
+    const equivalentReplay = await globalThis.fetch("https://cn.test/api/ai/regional", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${signedAgain}` },
+      body: JSON.stringify(body),
+    });
+    assert.equal(equivalentReplay.status, 401);
+    assert.equal((await equivalentReplay.json()).error, "INVALID_SERVICE_IDENTITY");
     const changed = await globalThis.fetch("https://cn.test/api/ai/regional", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },

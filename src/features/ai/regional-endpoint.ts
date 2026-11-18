@@ -92,7 +92,8 @@ export async function handleRegionalApi(
       grant_id: body.grant_id,
       authorization: body.authorization,
     })) as { grant: GatewayContext["regions"][number] };
-    const hash = credentialHash(token);
+    // Bind replay protection to the assertion ID, independent of signature encoding.
+    const hash = credentialHash(JSON.stringify([claims.iss, claims.sub, claims.jti]));
     await callRpc(rpc, "ai_regional_service_v1", {
       action: "credential",
       input: {
