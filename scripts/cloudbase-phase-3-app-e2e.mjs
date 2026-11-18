@@ -1920,12 +1920,18 @@ async function uploadAttachmentThroughUi(browser) {
     })()`,
   );
   assert.equal(queued, 1, "The browser did not queue the attachment fixture.");
+  // The header includes queued files. Only a confirmed card proves that upload,
+  // verification and session binding finished before this scenario saves the editor.
+  const confirmedAttachment = `Boolean(document.querySelector(
+    '[role="dialog"] [data-attachment-editor] article button[aria-label="Open phase3-upload.png"]',
+  )?.getClientRects().length)`;
   try {
     const uploadOutcome = await waitFor(
       browser,
       `(() => {
         const dialog = document.querySelector('[role="dialog"]');
-        if (dialog?.innerText.includes("1/5") && !dialog.innerText.includes("Failed")) {
+        if (dialog?.innerText.includes("1/5") && !dialog.innerText.includes("Failed") &&
+            ${confirmedAttachment}) {
           return "complete";
         }
         return [...document.querySelectorAll('[role="dialog"] button')].some((button) =>
@@ -1947,7 +1953,8 @@ async function uploadAttachmentThroughUi(browser) {
     await waitFor(
       browser,
       `document.querySelector('[role="dialog"]')?.innerText.includes("1/5") &&
-       !document.querySelector('[role="dialog"]')?.innerText.includes("Failed")`,
+       !document.querySelector('[role="dialog"]')?.innerText.includes("Failed") &&
+       ${confirmedAttachment}`,
       "signed browser attachment upload",
       60_000,
     );
@@ -1968,12 +1975,22 @@ async function uploadAttachmentThroughUi(browser) {
     );
   }
   await saveOpenItemEditor(browser, "activity attachment");
-  await waitFor(
-    browser,
-    `Boolean(document.querySelector('[data-cell="0-1"] [aria-label="1 attachment(s)"]'))`,
-    "committed activity attachment",
-    45_000,
-  );
+  try {
+    await waitFor(
+      browser,
+      `Boolean(document.querySelector('[data-cell="0-1"] [aria-label="1 attachment(s)"]'))`,
+      "committed activity attachment",
+      45_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({ body: document.body.innerText.slice(-2_000), requests: window.__phase3UploadRequests })`,
+    );
+    throw new Error(
+      `${error.message}; attachment commit diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
 }
 
 async function verifyMobileMapBackNavigation(browser) {
@@ -4138,6 +4155,29 @@ async function generateLongImageThroughUi(browser) {
       150_000,
     );
   } catch (error) {
+    const imageJobs = await evaluate(
+      browser,
+      `new Promise((resolve) => {
+        const timer = setTimeout(() => resolve({ unavailable: true }), 2_000);
+        const finish = (value) => { clearTimeout(timer); resolve(value); };
+        const open = indexedDB.open('trip-planner-image-exports', 1);
+        open.onerror = open.onblocked = () => finish({ unavailable: true });
+        open.onsuccess = () => {
+          const db = open.result;
+          if (!db.objectStoreNames.contains('jobs')) { db.close(); finish([]); return; }
+          const read = db.transaction('jobs').objectStore('jobs').getAll();
+          read.onerror = () => { db.close(); finish({ unavailable: true }); };
+          read.onsuccess = () => {
+            const jobs = read.result.filter((job) => job.scope?.[2] === location.pathname.split('/')[2])
+              .slice(-1).map((job) => ({ finalizing: job.finalizing, versionId: job.prepared?.versionId,
+                parts: job.parts?.slice(0, 20).map((part) => ({ uploaded: part.uploaded,
+                  byteSize: part.metadata.byteSize, actualBytes: part.blob?.size,
+                  storagePath: part.metadata.storagePath })) }));
+            db.close(); finish(jobs);
+          };
+        };
+      })`,
+    ).catch(() => ({ unavailable: true }));
     const diagnostic = await evaluate(
       browser,
       `({
@@ -4149,7 +4189,7 @@ async function generateLongImageThroughUi(browser) {
       })`,
     );
     throw new Error(
-      `${error instanceof Error ? error.message : error}; long-image diagnostic: ${JSON.stringify(diagnostic)}`,
+      `${error instanceof Error ? error.message : error}; long-image diagnostic: ${JSON.stringify({ ...diagnostic, imageJobs })}`,
     );
   }
   await clickElement(
