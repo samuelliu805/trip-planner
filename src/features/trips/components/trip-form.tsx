@@ -42,6 +42,7 @@ export function TripForm({
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [reloadRequired, setReloadRequired] = useState(false);
+  const [refreshing, setRefreshing] = useState(true);
   const draft = useDurableFields(editingStorageKey(useDraftScope(trip.id, "settings"), "trip"), {
     title: trip.title,
     dayCount: String(trip.day_count),
@@ -81,6 +82,9 @@ export function TripForm({
             caught instanceof Error ? caught.message : "Latest trip settings could not be loaded.",
           );
         }
+      })
+      .finally(() => {
+        if (current) setRefreshing(false);
       });
     return () => {
       current = false;
@@ -187,7 +191,12 @@ export function TripForm({
     >
       <div className="flex min-w-0 items-start gap-3 border-b pb-4 sm:gap-4 sm:pb-6">
         <Settings2 aria-hidden="true" className="size-5 shrink-0" />
-        <SheetTitle data-trip-settings-title tabIndex={-1} className="text-lg font-bold">
+        <SheetTitle
+          data-trip-settings-title
+          tabIndex={-1}
+          aria-busy={refreshing}
+          className="text-lg font-bold"
+        >
           <Localized value={editor.title} />
         </SheetTitle>
       </div>
