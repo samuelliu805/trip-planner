@@ -8,6 +8,8 @@
 
 请求链路：MCP adapter → `invokeTool` 的 Zod 校验 → `ai_invoke_v1` → scope、授权资源、当前数据库协作权限 → 共享业务服务 → 现有 Trip/item RPC → PostgreSQL 事务提交。adapter 不直接改表。浏览器个人收藏页使用同一个服务，通过现有网页登录身份调用 `ai_web_invoke_v1`。现有 Plan、Trip 设置继续使用原业务 RPC；数据和版本机制一致。
 
+`itinerary_apply_changes.fields` 的时间规则：餐饮支持 `exact` + `startTime`，不接受 `endTime` 或 `range`；活动另外支持 `range` + 起止时间，结束时间不得早于开始时间。两类都支持无时间的 `none` / `all_day`。时间使用 24 小时制 `HH:mm` 或 `HH:mm:ss`；`period` / `approximate` 需网页编辑器。更新会合并已有字段，切换时间类型时必须显式清空不再需要的时间。输入错误返回 `INVALID_INPUT`、可读 `message` 和 `issues:[{path:["changes",0,"fields","endTime"],message:...}]`；数据库只返回经过白名单校验的字段错误，不回传约束里的整行数据。一个批次中的错误会回滚整个批次。
+
 原 Research/Idea 依附某个 Trip，保留原功能。`saved_ideas` 是新增个人收藏库，允许没有日期或 Trip。行程保存独立快照与 `saved_idea_id`，同一 Idea 可用于多个 Trip。改快照不修改收藏，改收藏不修改快照。网页入口：`/ideas`、`/account/ai`，Trip 菜单中的“复制给 AI 的任务”只包含 ID 和任务要求。
 
 本次按用户确认保留两个入口，不合并数据模型。个人收藏网页支持手动新增名称/区域、编辑名称/区域/备注，以及归档/恢复；通过 MCP 行程工具引用到 Trip。原 Trip 内 Ideas 继续使用原有编辑、比较方案与加入 Plan 流程。个人收藏目前没有接入旧 Ideas 编辑器的手动选入 Trip 流程。

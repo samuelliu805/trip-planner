@@ -11,6 +11,7 @@ import type {
 export type RelationalError = Readonly<{
   code?: string;
   message: string;
+  details?: string;
 }>;
 
 export type RelationalResult<Result> = Readonly<{

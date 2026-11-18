@@ -1783,6 +1783,30 @@ try {
       );
     },
   );
+  for (const width of [1280, 390, 430]) {
+    await scenario(`save progress stays visible and nonblocking at ${width}px`, async (page) => {
+      await page.setViewportSize({ width, height: 900 });
+      delay = 1800;
+      await page.getByRole("button", { name: "Edit first", exact: true }).click();
+      await title(page).fill("Visible background save");
+      await saveItem(page);
+      const indicator = page.locator('[data-sync-indicator="busy"]');
+      await indicator.waitFor({ state: "visible", timeout: 750 });
+      assert.equal(await indicator.getAttribute("aria-hidden"), "true");
+      assert.equal(await page.locator("[data-sync-trigger]").isEnabled(), true);
+      await page.getByRole("button", { name: "Edit first", exact: true }).click();
+      assert.equal(await title(page).inputValue(), "Visible background save");
+      assert.equal(
+        await indicator.isVisible(),
+        true,
+        "Opening another edit must not hide in-flight work",
+      );
+      await synced(page);
+      await page.locator('[data-sync-status="Synced"]').waitFor();
+      assert.equal(await indicator.count(), 0);
+      assert.equal(await title(page).isEditable(), true);
+    });
+  }
   await scenario(
     "loaded application accepts offline edits and reconnects",
     async (page, context) => {
@@ -1792,6 +1816,7 @@ try {
       await saveItem(page);
       assert.equal(calls.filter((call) => call.kind === "update").length, 0);
       await page.locator('[data-sync-status="Offline"]').waitFor({ timeout: 3000 });
+      assert.equal(await page.locator('[data-sync-indicator="busy"]').count(), 0);
       await context.setOffline(false);
       await synced(page);
       assert.equal(workspace.days[0].items[0].title, "Offline tail");

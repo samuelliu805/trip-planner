@@ -9,6 +9,7 @@ import { registerClient } from "./oauth-registration";
 import { invokeTool, type Rpc } from "./service";
 import { handleMcp } from "./mcp";
 import { registerPlaceIntegrationTests } from "./places.integration.test";
+import { registerScheduleIntegrationTests } from "./schedule.integration.test";
 
 const pool = new pg.Pool({ connectionString: process.env.MCP_TEST_DATABASE_URL });
 const originalFetch = globalThis.fetch;
@@ -47,10 +48,13 @@ function rpcAs(role = "service_role", actor?: string): Rpc {
       return { data: result.rows[0].data, error: null };
     } catch (error) {
       await connection.query("ROLLBACK");
-      const cause = error as { code: string; message: string };
+      const cause = error as { code: string; message: string; detail?: string };
       if (!["42501", "22023", "PT409", "40001"].includes(cause.code))
         console.error("Database diagnostic:", cause.code, cause.message);
-      return { data: null, error: { code: cause.code, message: cause.message } };
+      return {
+        data: null,
+        error: { code: cause.code, message: cause.message, details: cause.detail },
+      };
     } finally {
       connection.release();
     }
@@ -815,3 +819,4 @@ test("Real MCP transport initializes and calls tools, rejects missing auth, enfo
 });
 
 registerPlaceIntegrationTests({ pool, rpc, webA, webB, issue, config, originalFetch });
+registerScheduleIntegrationTests({ rpc, issue, config });

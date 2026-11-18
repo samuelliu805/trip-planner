@@ -58,7 +58,7 @@ const descriptions: Record<ToolName, string> = {
   idea_archive:
     "Archive an idea without deleting its itinerary references; use idea_update to restore.",
   itinerary_apply_changes:
-    "Atomically add/update/move/remove activities or meals (maximum 50). Read trip_get days/items first. fields.location accepts {selection_id} from place_resolve, {place_id} already in this trip, user-supplied {custom:{displayName,latitude,longitude}}, or null to clear. An Idea with a map reference needs a matching selection unless this trip already contains that place. Always dry_run=true, then submit preview_id, same expected_revision, dry_run=false and a NEW idempotency_key. Preview lasts up to ten minutes and cannot outlive a location selection. Optional changes must match the preview exactly; provisional new place IDs become valid only on commit. Dates remain local. Compound/linked bookings require the web editor.",
+    "Atomically add/update/move/remove activities or meals (maximum 50). Read trip_get days/items first. Meals support one time: exact + startTime, no endTime. Activities also support range + startTime + endTime (end >= start). none/all_day require no times; period/approximate require the web editor. Updates validate the merged stored fields; clear obsolete times explicitly. fields.location accepts {selection_id} from place_resolve, {place_id} already in this trip, user-supplied {custom:{displayName,latitude,longitude}}, or null to clear. An Idea with a map reference needs a matching selection unless this trip already contains that place. Always dry_run=true, then submit preview_id, same expected_revision, dry_run=false and a NEW idempotency_key. Preview lasts up to ten minutes and cannot outlive a location selection. Optional changes must match the preview exactly; provisional new place IDs become valid only on commit. Dates remain local. Compound/linked bookings require the web editor.",
   change_undo:
     "Undo your recorded change only if its resources still match the saved revision. Rechecks current scopes and trip membership; refuses to overwrite later changes. Undo of creation archives the resource.",
 };
@@ -138,7 +138,22 @@ export function createMcpServer(
         PLACE_PROVIDER_UNAVAILABLE:
           "Map lookup is unavailable. Save text without inventing coordinates, or retry later.",
       };
-      const result = { error: { code, message: messages[code] ?? code } };
+      const issues =
+        error instanceof z.ZodError
+          ? error.issues.map(({ path, message }) => ({
+              path: path.map((part) => (typeof part === "number" ? part : String(part))),
+              message,
+            }))
+          : error instanceof AiError
+            ? error.issues
+            : undefined;
+      const result = {
+        error: {
+          code,
+          message: issues?.[0]?.message ?? messages[code] ?? code,
+          ...(issues && { issues }),
+        },
+      };
       return {
         isError: true,
         structuredContent: result,

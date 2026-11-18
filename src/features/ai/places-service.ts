@@ -13,7 +13,7 @@ export function createPlacesToolRunner(
 ): PlacesToolRunner {
   return async (tool, input, authorization) => {
     // The existing gateway rechecks live credentials and places:read before any
-    // billable provider request. Only IDs and short-lived coordinates are stored.
+    // billable provider request. IDs, coordinates and structured locality expire together.
     const started = (await callRpc(rpc, "ai_invoke_v1", {
       access_hash: authorization.hash,
       expected_resource: authorization.resource,
@@ -60,6 +60,10 @@ export function createPlacesToolRunner(
         provider_place_id: place.providerPlaceId,
         latitude: place.latitude,
         longitude: place.longitude,
+        localityName: place.localityName,
+        localityKind: place.localityKind,
+        countryCode: place.countryCode,
+        administrativeAreaName: place.administrativeAreaName,
       });
       return {
         ...(selected as Record<string, Json>),
