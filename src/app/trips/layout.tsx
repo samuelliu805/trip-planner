@@ -1,13 +1,9 @@
 import { DraftScopeProvider } from "@/features/editing/draft-scope";
-import { T } from "@/features/i18n/i18n-provider";
-import { LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { logout } from "@/features/auth/actions";
-import { LanguageSwitcher } from "@/features/i18n/language-switcher";
+import { AccountMenu } from "@/components/navigation/account-menu";
 import { AuthenticatedGuestStorageCleanup } from "@/features/guest/components/authenticated-guest-storage-cleanup";
 import { getRequestLocale } from "@/features/i18n/server";
 import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
@@ -34,33 +30,7 @@ export default async function TripsLayout({ children }: { children: React.ReactN
             <Link className="font-semibold tracking-tight" href="/trips">
               {tripPlannerWordmark}
             </Link>
-            <div className="flex min-w-0 items-center gap-1 sm:gap-2">
-              <LanguageSwitcher />
-              <Button asChild className="min-h-11 min-w-0 px-2 sm:px-3" variant="ghost">
-                <Link href="/account" title={appUserIdentityLabel(user)}>
-                  <UserRound aria-hidden="true" className="size-4 shrink-0" />
-                  <span className="max-w-28 truncate sm:max-w-64">
-                    {appUserIdentityLabel(user)}
-                  </span>
-                </Link>
-              </Button>
-              <form action={logout}>
-                <input name="surface" type="hidden" value="global_header" />
-                <Button
-                  aria-label="Log out"
-                  data-i18n-aria-label={"Log out"}
-                  className="size-11 p-0 sm:w-auto sm:px-3"
-                  size="sm"
-                  type="submit"
-                  variant="ghost"
-                >
-                  <LogOut aria-hidden="true" className="size-4" />
-                  <span className="hidden sm:inline">
-                    <T message={"Log out"} />
-                  </span>
-                </Button>
-              </form>
-            </div>
+            <AccountMenu identityLabel={appUserIdentityLabel(user)} />
           </div>
         </header>
         {children}

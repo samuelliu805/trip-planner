@@ -2,7 +2,7 @@ import { AiError, callRpc, type Rpc } from "./service";
 import { credentialHash } from "./oauth-model";
 
 export const privateHeaders = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
-export async function boundedBody(request: Request, max = 131072) {
+export async function boundedBody(request: Pick<Request, "body" | "headers">, max = 131072) {
   if (Number(request.headers.get("content-length")) > max) throw new AiError("REQUEST_TOO_LARGE");
   const reader = request.body?.getReader();
   if (!reader) return "";
@@ -49,15 +49,16 @@ export function errorResponse(error: unknown) {
       ? 429
       : code === "REQUEST_TOO_LARGE"
         ? 413
-        : code === "MCP_DISABLED" || code === "SERVICE_UNAVAILABLE"
+        : code === "MCP_DISABLED" || code === "SERVICE_UNAVAILABLE" || code === "REGION_UNAVAILABLE"
           ? 503
-          : code === "INVALID_TOKEN"
+          : code === "INVALID_TOKEN" || code === "INVALID_SERVICE_IDENTITY"
             ? 401
             : 400;
   return Response.json(
     {
       error: code,
       message: code === "RATE_LIMITED" ? "Too many calls. Try again in one minute." : code,
+      ...(error instanceof AiError && error.issues ? { issues: error.issues } : {}),
     },
     { status, headers: { ...privateHeaders, ...(status === 429 ? { "Retry-After": "60" } : {}) } },
   );

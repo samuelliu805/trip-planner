@@ -8,6 +8,7 @@ import { AiError, callRpc, invokeTool, type Rpc, type PlacesToolRunner } from ".
 import { toolSchemas, type ToolName } from "./schemas";
 import type { Json } from "@/types/database";
 import { placeMapUrl } from "./places-links";
+import type { ToolRunner } from "./regional-gateway";
 
 function webLinks(value: Json, resource: string): Json {
   if (Array.isArray(value)) return value.map((item) => webLinks(item, resource));
@@ -75,6 +76,7 @@ export function createMcpServer(
   rpc: Rpc,
   authorization: { hash: string; resource: string; issuer: string },
   places?: PlacesToolRunner,
+  runner?: ToolRunner,
 ) {
   const server = new Server(
     { name: "trip-planner", version: "1.0.0" },
@@ -102,7 +104,9 @@ export function createMcpServer(
   server.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
     try {
       const value = webLinks(
-        await invokeTool(rpc, params.name, params.arguments ?? {}, authorization, places),
+        await (runner
+          ? runner(params.name, params.arguments ?? {}, authorization)
+          : invokeTool(rpc, params.name, params.arguments ?? {}, authorization, places)),
         authorization.resource,
       );
       const structuredContent =
@@ -122,6 +126,16 @@ export function createMcpServer(
         REVISION_CONFLICT: "The resource changed. Read its current state and retry.",
         UNDO_CONFLICT: "A later edit prevents undo. Your later changes were preserved.",
         INVALID_TOKEN: "This connection expired or was revoked. Reconnect in the browser.",
+        REGION_AUTHORIZATION_REQUIRED:
+          "Bind and authorize this region in website connection settings.",
+        REGION_SELECTION_REQUIRED:
+          "Choose an authorized default region in website connection settings, or supply region for this operation.",
+        CROSS_REGION_OPERATION:
+          "All resource references must belong to one authorized region. No changes were made.",
+        REGION_UNAVAILABLE:
+          "The selected regional service is unavailable. Retry in the same region.",
+        CURSOR_INVALID:
+          "This cursor expired or its authorization/query changed. Start a new search.",
         INSUFFICIENT_SCOPE: "This connection does not grant the required permission.",
         PREVIEW_INVALID: "Create a new preview for the current trip revision.",
         IDEMPOTENCY_MISMATCH: "This idempotency key was already used with a different request.",
@@ -174,6 +188,7 @@ export async function handleMcp(
     rateLimit: number;
   },
   places?: PlacesToolRunner,
+  runner?: ToolRunner,
 ) {
   try {
     const origin = request.headers.get("origin");
@@ -199,7 +214,8 @@ export async function handleMcp(
     const token = /^Bearer ([A-Za-z0-9._~-]{20,2048})$/i.exec(
       request.headers.get("authorization") ?? "",
     )?.[1];
-    if (!token || !(await oauthModel(rpc, config).model.getAccessToken(token))) {
+    const credential = token ? await oauthModel(rpc, config).model.getAccessToken(token) : false;
+    if (!token || !credential) {
       return Response.json(
         { error: "INVALID_TOKEN" },
         {
@@ -215,12 +231,27 @@ export async function handleMcp(
     const hash = credentialHash(token);
     const allowed = await callRpc(rpc, "ai_oauth_store_v1", {
       action: "rate",
-      input: { key: `token:${hash}`, limit: config.rateLimit },
+      input: {
+        key: `connection:${credentialHash(
+          JSON.stringify([
+            credential.user.connection_id,
+            credential.user.id,
+            config.issuer,
+            config.resource,
+          ]),
+        )}`,
+        limit: config.rateLimit,
+      },
     });
     if (!allowed) throw new AiError("RATE_LIMITED");
     const parsedBody =
       request.method === "POST" ? JSON.parse(await boundedBody(request)) : undefined;
-    const server = createMcpServer(rpc, { hash, ...config }, places);
+    const server = createMcpServer(
+      rpc,
+      { hash, resource: config.resource, issuer: config.issuer },
+      places,
+      runner,
+    );
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

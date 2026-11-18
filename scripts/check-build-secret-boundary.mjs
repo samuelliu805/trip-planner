@@ -3,6 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const secretNames = [
+  "MCP_SERVICE_PRIVATE_JWK",
   "SUPABASE_SECRET_KEY",
   "CRON_SECRET",
   "GOOGLE_PLACES_API_KEY",

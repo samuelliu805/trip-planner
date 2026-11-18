@@ -4,6 +4,10 @@
 
 ## 运行边界
 
+统一入口、CN 账号绑定、服务间身份、资源 ID 和部署配置见
+[区域授权与路由](mcp-regions.md)。公网只推荐 `https://therewego.world/mcp`；
+网站绑定区域后客户端地址保持不变，实际双区域客户端验收结果单独记录。
+
 `/mcp` 是同一 Next.js 后端中的 Streamable HTTP 端点，使用官方 MCP TypeScript SDK，采用无会话的 JSON 响应模式，适合 Vercel 多实例及 CloudBase Run。只发布 tools 能力，不请求 sampling，不调用模型，不配置用户或平台模型 Key。提取攻略、聊天、截图和规划由用户的 AI 完成。无抓取、订票、支付、资源永久删除工具。
 
 请求链路：MCP adapter → `invokeTool` 的 Zod 校验 → `ai_invoke_v1` → scope、授权资源、当前数据库协作权限 → 共享业务服务 → 现有 Trip/item RPC → PostgreSQL 事务提交。adapter 不直接改表。浏览器个人收藏页使用同一个服务，通过现有网页登录身份调用 `ai_web_invoke_v1`。现有 Plan、Trip 设置继续使用原业务 RPC；数据和版本机制一致。

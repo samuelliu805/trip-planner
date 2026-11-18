@@ -1,3 +1,4 @@
+import { cnMcpMigration } from "@/features/ai/regional-config";
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { aiConfig } from "@/features/ai/config";
@@ -9,6 +10,8 @@ import { pendingAiCookie, validateAuthorization } from "@/features/ai/oauth-requ
 export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
+    const migration = cnMcpMigration(request);
+    if (migration) return migration;
     const config = aiConfig();
     await rateLimit(privilegedAiRpc(), request, config.rateLimit, "authorize");
     const { parameters, oauth } = await validateAuthorization(

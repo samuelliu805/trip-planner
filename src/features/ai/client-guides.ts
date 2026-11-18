@@ -3,8 +3,7 @@ export const clientGuides = [
     name: "Codex",
     guide: "codex mcp add trip-planner --url MCP_URL\ncodex mcp login trip-planner",
     docs: "https://developers.openai.com/codex/mcp/",
-    status:
-      "Verified on Codex Desktop 26.1111.21308, Cloud mode (2026-11-17). Other modes are unverified.",
+    status: "Browser authorization is required for each regional account you bind.",
   },
   {
     name: "ChatGPT",

@@ -1,8 +1,8 @@
 # 客户端接入教程
 
-核对官方文档日期：2026-11-17。Codex Desktop 26.1111.21308 的 Cloud 对话已通过真实 E2E；其他客户端和运行模式见 [矩阵](mcp-e2e.md)。菜单可能随客户端版本、账号、工作区政策变化；没有入口时记录“待验收/当前账号不支持”，不要跳过 OAuth 改用共享 token。
+核对官方文档日期：2026-11-18。此前 Codex Desktop 26.1111.21308 的 Cloud 对话通过的是 Global 单区域 E2E；当前双区域流程仍须单独验收。其他客户端和运行模式见 [矩阵](mcp-e2e.md)。菜单可能随客户端版本、账号、工作区政策变化；没有入口时记录“待验收/当前账号不支持”，不要跳过 OAuth 改用共享 token。
 
-先在产品“连接你的 AI”页面确认公网 MCP URL，例如 `https://PUBLIC_ORIGIN/mcp`。选择 OAuth；浏览器内登录 Trip Planner，查看客户端名及回调地址，选择 scope、个人 Idea 权限和指定/全部 Trip 范围。写入需要对应 write scope；Trip 中引用个人 Idea 也需要 ideas:read。创建新 Trip 需要明确授权全部行程。密码和验证码只输入浏览器登录页面，工具中不提供这些信息，也不需要模型 API Key。
+统一公网 MCP URL 为 `https://therewego.world/mcp`。在网站“连接你的 AI”页面绑定 CN 并设置默认区域，客户端地址不变。选择 OAuth；浏览器内登录 Trip Planner，查看客户端名及回调地址，选择 scope、个人 Idea 权限和指定/全部 Trip 范围。写入需要对应 write scope；Trip 中引用个人 Idea 也需要 ideas:read。创建新 Trip 需要明确授权全部行程。密码和验证码只输入浏览器登录页面，工具中不提供这些信息，也不需要模型 API Key。
 
 ## Codex CLI、Desktop 和网页
 
@@ -11,7 +11,7 @@
 CLI（先查看本机 `codex --version` 和 `codex mcp --help`）：
 
 ```bash
-codex mcp add trip-planner --url https://PUBLIC_ORIGIN/mcp
+codex mcp add trip-planner --url https://therewego.world/mcp
 codex mcp login trip-planner
 ```
 
@@ -19,7 +19,7 @@ codex mcp login trip-planner
 
 ```toml
 [mcp_servers.trip-planner]
-url = "https://PUBLIC_ORIGIN/mcp"
+url = "https://therewego.world/mcp"
 ```
 
 Desktop 在 MCP 设置中添加远程地址并登录；如果该版本共享 CLI 配置，重载后检查 `/mcp` 中的状态。网页/Cloud 模式是否接受任意远程服务器取决于当前产品能力及组织策略，不能将 CLI 的通过结果直接当作网页已支持。
@@ -50,7 +50,7 @@ startup_timeout_sec = 30
 官方说明：[Claude Code MCP](https://code.claude.com/docs/en/mcp)。先记录 `claude --version`：
 
 ```bash
-claude mcp add --transport http trip-planner https://PUBLIC_ORIGIN/mcp
+claude mcp add --transport http trip-planner https://therewego.world/mcp
 claude mcp login trip-planner
 ```
 

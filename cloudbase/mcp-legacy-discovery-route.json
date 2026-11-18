@@ -1,0 +1,17 @@
+{
+  "EnvId": "trip-planner-cn-dev-d3bz94038b26",
+  "Domain": {
+    "Domain": "cn.therewego.world",
+    "Routes": [
+      {
+        "Path": "/.well-known/oauth-authorization-server",
+        "UpstreamResourceType": "CBR",
+        "UpstreamResourceName": "trip-planner-cn",
+        "Enable": true,
+        "EnableAuth": false,
+        "EnableSafeDomain": true,
+        "EnablePathTransmission": true
+      }
+    ]
+  }
+}

@@ -8,6 +8,7 @@ import {
 export async function proxy(request: NextRequest) {
   if (
     request.nextUrl.pathname === "/mcp" ||
+    request.nextUrl.pathname === "/api/ai/regional" ||
     request.nextUrl.pathname.startsWith("/.well-known/") ||
     ["/oauth/authorize", "/oauth/token", "/oauth/register", "/oauth/revoke"].includes(
       request.nextUrl.pathname,

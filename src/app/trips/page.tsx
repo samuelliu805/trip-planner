@@ -3,7 +3,6 @@ import { MapPin } from "lucide-react";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { PostLoginRefresh } from "@/features/auth/components/post-login-refresh";
@@ -43,6 +42,9 @@ export default async function TripsPage({
   searchParams: Promise<{ post_login?: string; status?: string }>;
 }) {
   const { post_login: postLogin, status } = await searchParams;
+  const pendingRegion = (await cookies()).get("trip_ai_region_login")?.value;
+  if (postLogin === "1" && pendingRegion && /^[A-Za-z0-9_-]{43}$/.test(pendingRegion))
+    redirect(`/account/ai/region?state=${pendingRegion}`);
   const pendingAi = (await cookies()).get("trip_ai_authorization")?.value;
   if (postLogin === "1" && pendingAi && /^[A-Za-z0-9_-]{43}$/.test(pendingAi))
     redirect(`/oauth/consent?request_id=${pendingAi}`);
@@ -59,14 +61,6 @@ export default async function TripsPage({
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-      <nav className="mb-4 flex gap-4">
-        <Link className="min-h-11 underline" href="/account/ai">
-          <T message="Connect your AI" />
-        </Link>
-        <Link className="min-h-11 underline" href="/ideas">
-          <T message="Personal ideas" />
-        </Link>
-      </nav>
       <div className="min-w-0">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           <T message={"Trips"} />

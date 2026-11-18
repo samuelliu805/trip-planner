@@ -8,9 +8,19 @@ const root = resolve(import.meta.dirname, "..");
 const temp = resolve(root, "node_modules/.cache", `mcp-test-${process.pid}`);
 mkdirSync(temp, { recursive: true });
 const entry = resolve(temp, "integration.test.mjs");
+const regionalEntry = resolve(temp, "regional.integration.test.mjs");
 await build({
   entryPoints: [resolve(root, "src/features/ai/integration.test.ts")],
   outfile: entry,
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  packages: "external",
+  target: "node24",
+});
+await build({
+  entryPoints: [resolve(root, "src/features/ai/regional.integration.test.ts")],
+  outfile: regionalEntry,
   bundle: true,
   platform: "node",
   format: "esm",
@@ -22,41 +32,45 @@ const docker = (...args) =>
 const selectedProvider = process.env.MCP_TEST_PROVIDER_ONLY;
 if (selectedProvider && !["supabase", "cloudbase"].includes(selectedProvider))
   throw new Error("MCP_TEST_PROVIDER_ONLY must be supabase or cloudbase");
-for (const provider of selectedProvider ? [selectedProvider] : ["supabase", "cloudbase"]) {
-  const container = `trip-mcp-${provider}-${process.pid}`;
-  const password = randomBytes(24).toString("hex");
-  const sql = (source) => {
-    const output = spawnSync(
-      "docker",
-      ["exec", "-i", container, "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-U", "postgres"],
-      { input: source, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
-    );
-    if (output.status !== 0) throw new Error(output.stderr.slice(-5000));
-  };
-  try {
-    docker(
-      "run",
-      "-d",
-      "--name",
-      container,
-      "-p",
-      "127.0.0.1::5432",
-      "-e",
-      `POSTGRES_PASSWORD=${password}`,
-      "postgres:17-alpine",
-    );
-    for (let attempt = 0; attempt < 60; attempt++) {
-      try {
-        docker("exec", container, "pg_isready", "-h", "127.0.0.1", "-U", "postgres");
-        break;
-      } catch {
-        if (attempt === 59) throw new Error("PostgreSQL startup failed");
-        await new Promise((done) => setTimeout(done, 200));
+const containers = [];
+const databases = {};
+try {
+  for (const provider of selectedProvider ? [selectedProvider] : ["supabase", "cloudbase"]) {
+    const container = `trip-mcp-${provider}-${process.pid}`;
+    const password = randomBytes(24).toString("hex");
+    const sql = (source) => {
+      const output = spawnSync(
+        "docker",
+        ["exec", "-i", container, "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-U", "postgres"],
+        { input: source, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+      );
+      if (output.status !== 0) throw new Error(output.stderr.slice(-5000));
+    };
+    containers.push(container);
+    {
+      docker(
+        "run",
+        "-d",
+        "--name",
+        container,
+        "-p",
+        "127.0.0.1::5432",
+        "-e",
+        `POSTGRES_PASSWORD=${password}`,
+        "postgres:17-alpine",
+      );
+      for (let attempt = 0; attempt < 60; attempt++) {
+        try {
+          docker("exec", container, "pg_isready", "-h", "127.0.0.1", "-U", "postgres");
+          break;
+        } catch {
+          if (attempt === 59) throw new Error("PostgreSQL startup failed");
+          await new Promise((done) => setTimeout(done, 200));
+        }
       }
-    }
-    // Managed identity/storage schemas are local adapters. The entire real regional
-    // migration chain and business RPCs run against PostgreSQL, without mock services.
-    sql(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
+      // Managed identity/storage schemas are local adapters. The entire real regional
+      // migration chain and business RPCs run against PostgreSQL, without mock services.
+      sql(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
       CREATE SCHEMA auth; CREATE SCHEMA storage; CREATE SCHEMA extensions;
       CREATE EXTENSION pgcrypto WITH SCHEMA extensions;
       ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon,authenticated,service_role;
@@ -69,42 +83,64 @@ for (const provider of selectedProvider ? [selectedProvider] : ["supabase", "clo
       CREATE FUNCTION storage.allow_any_operation(text[]) RETURNS boolean LANGUAGE sql AS $$ SELECT true $$;
       GRANT USAGE ON SCHEMA auth,storage TO anon,authenticated,service_role;
       GRANT SELECT ON auth.users TO authenticated;`);
-    const directory = resolve(
-      root,
-      provider === "supabase" ? "supabase/migrations" : "cloudbase/migrations",
-    );
-    for (const file of readdirSync(directory)
-      .filter((file) => file.endsWith(".sql"))
-      .sort()) {
-      try {
-        sql(readFileSync(resolve(directory, file), "utf8"));
-      } catch (error) {
-        throw new Error(`${file}: ${error.message}`);
+      const directory = resolve(
+        root,
+        provider === "supabase" ? "supabase/migrations" : "cloudbase/migrations",
+      );
+      for (const file of readdirSync(directory)
+        .filter((file) => file.endsWith(".sql"))
+        .sort()) {
+        try {
+          sql(readFileSync(resolve(directory, file), "utf8"));
+        } catch (error) {
+          throw new Error(`${file}: ${error.message}`);
+        }
       }
-    }
-    const port = docker("port", container, "5432/tcp").trim().split(":").at(-1);
-    const namePattern = process.env.MCP_TEST_NAME_PATTERN;
-    const result = spawnSync(
-      process.execPath,
-      ["--test", ...(namePattern ? [`--test-name-pattern=${namePattern}`] : []), entry],
-      {
-        cwd: root,
-        encoding: "utf8",
-        env: {
-          ...process.env,
-          MCP_TEST_DATABASE_URL: `postgres://postgres:${password}@127.0.0.1:${port}/postgres`,
-          MCP_TEST_PROVIDER: provider,
+      const port = docker("port", container, "5432/tcp").trim().split(":").at(-1);
+      databases[provider] = `postgres://postgres:${password}@127.0.0.1:${port}/postgres`;
+      if (process.env.MCP_TEST_REGIONAL_ONLY === "1") continue;
+      const namePattern = process.env.MCP_TEST_NAME_PATTERN;
+      const result = spawnSync(
+        process.execPath,
+        ["--test", ...(namePattern ? [`--test-name-pattern=${namePattern}`] : []), entry],
+        {
+          cwd: root,
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            MCP_TEST_DATABASE_URL: `postgres://postgres:${password}@127.0.0.1:${port}/postgres`,
+            MCP_TEST_PROVIDER: provider,
+          },
+          maxBuffer: 4 * 1024 * 1024,
         },
-        maxBuffer: 4 * 1024 * 1024,
+      );
+      if (result.status !== 0)
+        throw new Error(
+          `${provider}: ${result.stdout.slice(-11000)}\n${result.stderr.slice(-3000)}`,
+        );
+      console.log(`${provider}: real PostgreSQL + OAuth library + MCP SDK integration passed.`);
+    }
+  }
+  if (!selectedProvider) {
+    const result = spawnSync(process.execPath, ["--test", regionalEntry], {
+      cwd: root,
+      encoding: "utf8",
+      maxBuffer: 4 * 1024 * 1024,
+      env: {
+        ...process.env,
+        MCP_TEST_GLOBAL_DATABASE_URL: databases.supabase,
+        MCP_TEST_CN_DATABASE_URL: databases.cloudbase,
       },
-    );
+    });
     if (result.status !== 0)
-      throw new Error(`${provider}: ${result.stdout.slice(-11000)}\n${result.stderr.slice(-3000)}`);
-    console.log(`${provider}: real PostgreSQL + OAuth library + MCP SDK integration passed.`);
-  } finally {
+      throw new Error(`${result.stdout.slice(-14000)}\n${result.stderr.slice(-3000)}`);
+    console.log("Unified gateway: dual-database authorization, routing and revocation passed.");
+  }
+} finally {
+  for (const container of containers) {
     docker("rm", "-f", container);
     if (docker("ps", "-a", "--filter", `name=^/${container}$`, "--format", "{{.Names}}").trim())
       throw new Error("Test container residue");
   }
+  rmSync(temp, { recursive: true, force: true });
 }
-rmSync(temp, { recursive: true, force: true });
