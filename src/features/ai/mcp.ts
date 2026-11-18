@@ -214,7 +214,8 @@ export async function handleMcp(
     const token = /^Bearer ([A-Za-z0-9._~-]{20,2048})$/i.exec(
       request.headers.get("authorization") ?? "",
     )?.[1];
-    if (!token || !(await oauthModel(rpc, config).model.getAccessToken(token))) {
+    const credential = token ? await oauthModel(rpc, config).model.getAccessToken(token) : false;
+    if (!token || !credential) {
       return Response.json(
         { error: "INVALID_TOKEN" },
         {
@@ -230,7 +231,17 @@ export async function handleMcp(
     const hash = credentialHash(token);
     const allowed = await callRpc(rpc, "ai_oauth_store_v1", {
       action: "rate",
-      input: { key: `token:${hash}`, limit: config.rateLimit },
+      input: {
+        key: `connection:${credentialHash(
+          JSON.stringify([
+            credential.user.connection_id,
+            credential.user.id,
+            config.issuer,
+            config.resource,
+          ]),
+        )}`,
+        limit: config.rateLimit,
+      },
     });
     if (!allowed) throw new AiError("RATE_LIMITED");
     const parsedBody =

@@ -33,6 +33,7 @@ export async function POST(request: Request) {
               grant_id: grant.grant_id,
             }),
           places,
+          config.rateLimit,
         )
       : undefined;
     return await handleMcp(request, rpc, config, places, runner);

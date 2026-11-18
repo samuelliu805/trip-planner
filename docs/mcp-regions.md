@@ -22,6 +22,8 @@ RPC's current membership/permission checks. No API accepts service_role plus arb
 
 Revocation precedes cached receipts. A call already in progress may finish before concurrent
 revocation; subsequent calls fail. Regional failure never redirects a write to another backend.
+The ingress rate bucket binds the logical connection/user/issuer, so access-token rotation does
+not reset it. Regional business buckets additionally bind the regional identity and resource.
 
 ## Binding and revocation
 

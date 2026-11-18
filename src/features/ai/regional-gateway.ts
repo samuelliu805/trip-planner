@@ -58,10 +58,27 @@ export function createRegionalGateway(
   originFor: (region: DataRegion) => string,
   remote: RegionalAdapter,
   places?: PlacesToolRunner,
+  rateLimit = 60,
 ): ToolRunner {
   const execute: RegionalAdapter = async (tool, input, authorization, context, grant) => {
     // No backend is queried until all references in a composite operation agree.
     const args = regionalInput(input as Json, grant.region);
+    const allowed = await callRpc(rpc, "ai_oauth_store_v1", {
+      action: "rate",
+      input: {
+        key: `regional:${credentialHash(
+          JSON.stringify([
+            context.connection_id,
+            grant.user_id,
+            grant.region,
+            input.trip_id ?? input.idea_id ?? input.change_id ?? "*",
+            authorization.resource,
+          ]),
+        )}`,
+        limit: rateLimit,
+      },
+    });
+    if (!allowed) throw new AiError("RATE_LIMITED");
     const result =
       grant.region === "global"
         ? await invokeTool(rpc, tool, args, authorization, places)

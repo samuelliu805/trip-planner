@@ -189,6 +189,8 @@ before(async () => {
         connection_id: context.connection_id,
         grant_id: grant.grant_id,
       }),
+    undefined,
+    config.rateLimit,
   );
   const origins = new Map<string, string>();
   for (const region of ["global", "cn"] as const) {
@@ -537,6 +539,47 @@ test("one MCP configuration routes two real databases and enforces independent g
       invoke("trip_get", { trip_id: another.trip.id }, restricted),
       /RESOURCE_FORBIDDEN/,
     );
+  });
+  await t.test("rotating access credentials cannot reset the connection rate bucket", async () => {
+    await globalDb.query("DELETE FROM app_private.ai_rate_buckets WHERE key LIKE 'connection:%'");
+    const replacement = randomBytes(32).toString("base64url");
+    await oauth.store("tokens_save", {
+      connection_id: primary.connection_id,
+      credentials: [
+        {
+          kind: "access",
+          hash: credentialHash(replacement),
+          expires_at: new Date(Date.now() + 900000).toISOString(),
+        },
+      ],
+      payload: { scope: scopes, accessTokenExpiresAt: new Date(Date.now() + 900000).toISOString() },
+    });
+    const request = (token: string, ip: string) =>
+      new Request(config.resource, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "x-forwarded-for": ip,
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 99, method: "tools/list" }),
+      });
+    assert.equal(
+      (
+        await handleMcp(request(primary.token, "198.51.100.201"), globalRpc, {
+          ...config,
+          rateLimit: 1,
+        })
+      ).status,
+      200,
+    );
+    const limited = await handleMcp(request(replacement, "198.51.100.202"), globalRpc, {
+      ...config,
+      rateLimit: 1,
+    });
+    assert.equal(limited.status, 429);
+    assert.equal(limited.headers.get("Retry-After"), "60");
   });
   await t.test("service-body tampering and total revocation before cached receipts", async () => {
     await assert.rejects(
