@@ -516,6 +516,11 @@ test("one MCP configuration routes two real databases and enforces independent g
     );
     const restricted = await issue(globalA, scopes, [globalTrip.trip.id], false);
     await bind(restricted, cnA, scopes, false, [cnTrip.trip.id.slice(3)]);
+    const restrictedAccount = await invoke("account_get", {}, restricted);
+    assert.deepEqual(
+      restrictedAccount.regions.find((grant: any) => grant.region === "cn").trip_ids,
+      [cnTrip.trip.id],
+    );
     await assert.rejects(
       invoke(
         "trip_create",

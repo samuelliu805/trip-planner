@@ -101,10 +101,17 @@ export function createRegionalGateway(
               context,
               grant,
             )) as Record<string, Json>;
-            return { ...grant, scopes: actual.scopes, status: "connected" };
+            return {
+              ...grant,
+              scopes: actual.scopes,
+              trip_ids: actual.trip_ids,
+              all_trips: actual.all_trips,
+              status: "connected",
+            };
           } catch (error) {
             return {
               ...grant,
+              trip_ids: grant.trip_ids.map((id) => (grant.region === "cn" ? `cn:${id}` : id)),
               status: "unavailable",
               error: error instanceof AiError ? error.code : "REGION_UNAVAILABLE",
             };
