@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { T } from "@/features/i18n/i18n-provider";
 import type { AppRegion } from "@/platform/config/provider-matrix";
 
+import { AiPlanningStory } from "./ai-planning-story";
 import { tripPlannerWordmark } from "./brand";
 import { FeatureSections } from "./feature-sections";
 import { LandingNavigation } from "./landing-navigation";
@@ -47,6 +48,7 @@ export function LandingPage({
     <main className="plandock-page">
       <LandingNavigation accountLabel={accountLabel} />
       <RouteDockHero appRegion={appRegion} startHref={startHref} />
+      <AiPlanningStory appRegion={appRegion} />
       <FeatureSections appRegion={appRegion} />
       <LandingRevealSection className="landing-final-cta">
         <p className="landing-eyebrow">

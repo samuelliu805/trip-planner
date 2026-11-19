@@ -21,6 +21,9 @@ export function LandingNavigation({ accountLabel }: { accountLabel?: string }) {
         </Link>
       </div>
       <div className="plandock-nav-links">
+        <a href="#plan-with-ai">
+          <T message="Plan with AI" />
+        </a>
         <Link href="#features">
           <T message="Features" />
         </Link>
