@@ -1,7 +1,8 @@
 .landing-ai-story {
+  --landing-ai-accent: #2c5e49;
   align-items: center;
-  background: radial-gradient(ellipse at 82% 80%, #2d544d 0, transparent 64%), var(--dock-navy);
-  color: var(--dock-paper);
+  background: radial-gradient(ellipse at 86% 12%, #e7f0e7 0, transparent 66%), #bdd8c8;
+  color: var(--dock-navy);
   display: grid;
   gap: clamp(2.25rem, 5vw, 6rem);
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
@@ -11,7 +12,7 @@
 
 .landing-ai-copy .landing-eyebrow {
   align-items: center;
-  color: var(--dock-mint);
+  color: var(--landing-ai-accent);
   display: flex;
   gap: 0.6rem;
 }
@@ -31,7 +32,7 @@
 }
 
 .landing-ai-copy h2 > span {
-  color: var(--dock-mint);
+  color: var(--landing-ai-accent);
   display: block;
 }
 
@@ -42,21 +43,25 @@ html[lang="zh-CN"] .landing-ai-copy h2 {
 }
 
 .landing-ai-description {
-  color: #d7e4de;
+  color: #384e45;
   line-height: 1.7;
   margin-top: 1.25rem;
   max-width: 31rem;
 }
 
 .landing-ai-copy .landing-ai-link {
-  background: var(--dock-mint);
-  color: var(--dock-navy);
+  background: var(--dock-navy);
+  color: var(--dock-paper);
   margin-top: 1.5rem;
   min-height: 48px;
 }
 
 .landing-ai-copy .landing-ai-link:hover {
-  background: #bbe2cc;
+  background: #23463c;
+}
+
+.landing-ai-copy .landing-ai-link:focus-visible {
+  outline-color: var(--landing-ai-accent);
 }
 
 .landing-ai-board {

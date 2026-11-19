@@ -112,7 +112,16 @@
 }
 
 .route-section {
-  background: #e7eee9;
+  background: #23463c;
+}
+.route-section .feature-heading {
+  color: var(--dock-paper);
+}
+.route-section .landing-eyebrow {
+  color: #b1dac5;
+}
+.route-section .feature-heading > p:last-child {
+  color: #dcebe2;
 }
 .route-demo {
   background: #faf9f4;
