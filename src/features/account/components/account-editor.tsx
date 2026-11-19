@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/select";
 import { SheetTitle } from "@/components/ui/sheet";
 import { updateAccount } from "@/features/account/actions";
-import { AccountToolLinks } from "./account-tool-links";
 import { logout } from "@/features/auth/actions";
 import type { Locale } from "@/features/i18n/config";
 import { T, useI18n } from "@/features/i18n/i18n-provider";
@@ -211,8 +210,6 @@ function AccountForm({
       <AccountHomeCityField initialHomeCity={homeCity} key={homeCity} />
 
       <AccountLanguageField initialLocale={locale} key={locale} />
-
-      <AccountToolLinks />
 
       {passwordManagement ? (
         <div className="border-t pt-4">

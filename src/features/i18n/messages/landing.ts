@@ -136,6 +136,23 @@ export const landingZhCN: Record<string, string> = {
   Stay: "住宿",
   Document: "文件",
   Features: "能做什么",
+  "Plan with AI": "AI 规划行程",
+  "AI PLANNING WITH MCP": "通过 MCP 连接 AI",
+  "Let your AI": "让你的 AI",
+  "plan the trip.": "生成下一趟行程。",
+  "Connect the AI you already use through MCP. Ask it to draft an itinerary and save it to There we go, where you can make it your own on the map and timeline.":
+    "通过 MCP 连接你常用的 AI，说说你想去哪儿、怎么玩。让它生成行程并保存到 There we go，再对照地图和时间线，慢慢调整成你喜欢的样子。",
+  "Example prompt": "给 AI 的提问示例",
+  "Two days in Paris": "巴黎两日游",
+  "Plan two days in Paris with art, cafés and walks by the water.":
+    "帮我安排巴黎两日游，想看艺术展、喝咖啡，也想去河边散步。",
+  "Louvre Museum · Seine riverside walk": "卢浮宫 · 塞纳河畔散步",
+  "Canal Saint-Martin · Café stop": "圣马丁运河 · 咖啡馆小憩",
+  "Two days in western Sichuan": "川西两日游",
+  "Plan two days in western Sichuan, with a scenic drive and time for photos.":
+    "帮我排个川西两日游，想开车看山景，沿途留些时间拍照。",
+  "Kangding Old Town · Zheduo Mountain": "康定老城 · 折多山",
+  "Xinduqiao · Tagong Grassland": "新都桥 · 塔公草原",
   "How it works": "怎么使用",
   "Sign in": "登录",
   "Go to China site": "前往中国站",

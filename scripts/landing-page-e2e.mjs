@@ -188,7 +188,7 @@ async function assertLandingFrame(browser) {
     `(() => {
       const left = document.querySelector('.plandock-nav .plandock-wordmark').getBoundingClientRect().left;
       const right = document.querySelector('.plandock-nav-actions').getBoundingClientRect().right;
-      const sections = [...document.querySelectorAll('.feature-section, .departure-story, .share-section, .landing-final-cta, .plandock-footer')].map(node => {
+      const sections = [...document.querySelectorAll('.landing-ai-story, .feature-section, .departure-story, .share-section, .landing-final-cta, .plandock-footer')].map(node => {
         const rect = node.getBoundingClientRect();
         const style = getComputedStyle(node);
         return { name: node.className, left: rect.left + parseFloat(style.paddingLeft), right: rect.right - parseFloat(style.paddingRight) };
@@ -197,7 +197,7 @@ async function assertLandingFrame(browser) {
     })()`,
   );
   assert.ok(Math.abs(frame.heroLeft - frame.left) <= 1, `${frame.width}px hero frame drifted.`);
-  assert.equal(frame.sections.length, 8);
+  assert.equal(frame.sections.length, 9);
   for (const section of frame.sections) {
     assert.ok(
       Math.abs(section.left - frame.left) <= 1 && Math.abs(section.right - frame.right) <= 1,
@@ -289,7 +289,7 @@ try {
   );
   const navigation = await evaluate(
     browser,
-    `(() => { const center = (node) => { const rect = node.getBoundingClientRect(); return rect.top + rect.height / 2; }; const brand = document.querySelector('.plandock-wordmark'); const descriptor = document.querySelector('.plandock-brand-lockup > span'); const nav = document.querySelector('.plandock-nav'); const features = document.querySelector('.plandock-nav-links a').getBoundingClientRect(); const actions = [...document.querySelector('.plandock-nav-actions').children].map((node) => node.getBoundingClientRect()); const gaps = [actions[0].left - features.right, ...actions.slice(1).map((rect, index) => rect.left - actions[index].right)]; return { brandCenterDelta: Math.abs(center(brand)-center(nav)), descriptorPresent: Boolean(descriptor), gapDelta: Math.max(...gaps)-Math.min(...gaps), howItWorks: Boolean(document.querySelector('a[href="#how-it-works"]')) }; })()`,
+    `(() => { const center = (node) => { const rect = node.getBoundingClientRect(); return rect.top + rect.height / 2; }; const brand = document.querySelector('.plandock-wordmark'); const descriptor = document.querySelector('.plandock-brand-lockup > span'); const nav = document.querySelector('.plandock-nav'); const items = [...document.querySelectorAll('.plandock-nav-links a, .plandock-nav-actions > *')].map((node) => node.getBoundingClientRect()); const gaps = items.slice(1).map((rect, index) => rect.left - items[index].right); return { brandCenterDelta: Math.abs(center(brand)-center(nav)), descriptorPresent: Boolean(descriptor), gapDelta: Math.max(...gaps)-Math.min(...gaps), howItWorks: Boolean(document.querySelector('a[href="#how-it-works"]')) }; })()`,
   );
   assert.equal(navigation.descriptorPresent, false);
   assert.equal(navigation.howItWorks, false);
@@ -298,6 +298,15 @@ try {
     navigation.brandCenterDelta <= 2,
     `Brand wordmark is misaligned by ${navigation.brandCenterDelta}px.`,
   );
+  const aiPlanning = await evaluate(
+    browser,
+    `(() => { const navLink = document.querySelector('.plandock-nav a[href="#plan-with-ai"]'); const story = document.querySelector(navLink.getAttribute('href')); return { heading: story.querySelector('h2').textContent.trim(), setupPath: story.querySelector('.landing-ai-link').getAttribute('href'), sampleDays: story.querySelectorAll('ol li').length }; })()`,
+  );
+  assert.deepEqual(aiPlanning, {
+    heading: "Let your AI plan the trip.",
+    setupPath: "/account/ai",
+    sampleDays: 2,
+  });
   const initialDesk = await evaluate(
     browser,
     `(() => { const workspace = document.querySelector('[data-testid="assembled-product"]'); const style = getComputedStyle(document.querySelector('.workspace-stage')); return { opacity: Number(style.opacity), transform: style.transform, visibleWorkspace: workspace.getBoundingClientRect().top < innerHeight, targets: [...document.querySelectorAll('.route-dock-viewport [data-dock-target]')].map((node) => node.dataset.dockTarget).sort() }; })()`,
@@ -1029,6 +1038,10 @@ try {
   assert.ok(chineseLanding.navClearance >= 12);
   assert.ok(chineseLanding.overflow <= 1);
   assert.deepEqual(chineseLanding.untranslatedFixture, []);
+  assert.equal(
+    await evaluate(browser, `document.querySelector('#plan-with-ai h2').textContent.trim()`),
+    "让你的 AI 生成下一趟行程。",
+  );
   const chineseDocumentHeading = await evaluate(
     browser,
     `(() => { const heading = document.querySelector('.documents-section .feature-heading h2'); return { copy: heading.textContent, whiteSpace: getComputedStyle(heading).whiteSpace }; })()`,
