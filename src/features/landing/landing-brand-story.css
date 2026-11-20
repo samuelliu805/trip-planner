@@ -28,7 +28,7 @@ html[lang="zh-CN"] .documents-section .feature-heading h2 {
   justify-content: space-between;
   padding: clamp(2.5rem, 5vw, 5rem) var(--landing-frame-inset);
   color: var(--dock-paper);
-  background: var(--dock-navy);
+  background: #533e2d;
 }
 .departure-story > img {
   object-fit: cover;
@@ -39,7 +39,7 @@ html[lang="zh-CN"] .documents-section .feature-heading h2 {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #132238f2, #1322389c 60%, #13223875);
+  background: linear-gradient(90deg, #342719eb, #4a3828bd 60%, #4a3828b8);
   z-index: -1;
 }
 .departure-copy h2 {
@@ -53,7 +53,7 @@ html[lang="zh-CN"] .documents-section .feature-heading h2 {
   color: #a8d6bb;
 }
 .departure-copy > p:last-child {
-  color: #fbfaf6c9;
+  color: var(--dock-paper);
   font-size: 1rem;
 }
 .departure-story > a {

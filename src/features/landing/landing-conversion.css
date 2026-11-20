@@ -96,9 +96,13 @@
 }
 
 .landing-final-cta {
-  background: #e2ece6;
+  background: #b9dbc8;
   padding: clamp(6rem, 11vw, 10rem) var(--landing-frame-inset);
   text-align: center;
+}
+.landing-final-cta .landing-eyebrow,
+.landing-final-cta > p:nth-of-type(2) {
+  color: #2c5e49;
 }
 .landing-final-cta h2 {
   font-size: clamp(3rem, 7vw, 6.5rem);
@@ -108,7 +112,6 @@
   margin: 1rem auto 0;
 }
 .landing-final-cta > p:nth-of-type(2) {
-  color: #5d6874;
   margin: 1.4rem auto 1.8rem;
   max-width: 35rem;
 }
@@ -116,6 +119,9 @@
   background: var(--dock-navy);
   color: var(--dock-paper);
   min-height: 48px;
+}
+.plandock-page .landing-final-cta a:focus-visible {
+  outline-color: var(--dock-navy);
 }
 .plandock-footer {
   align-items: center;
